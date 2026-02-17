@@ -36,6 +36,8 @@ class CoachSettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color separatorColor = Colors.white.withValues(alpha: 0.1);
     final Color mutedTextColor = Colors.white.withValues(alpha: 0.92);
+    const Color luxuryPurple = Color(0xFF7A4CFF);
+    const Color luxuryPurpleDark = Color(0xFF5D33D6);
     final InAppReview inAppReview = InAppReview.instance;
 
     Widget settingsRow({
@@ -97,6 +99,18 @@ class CoachSettingsScreen extends StatelessWidget {
                   trailing: Switch(
                     value: notificationEnabled,
                     onChanged: onNotificationChanged,
+                    activeColor: Colors.white,
+                    activeTrackColor: luxuryPurple,
+                    inactiveThumbColor: Colors.white.withValues(alpha: 0.92),
+                    inactiveTrackColor: luxuryPurpleDark.withValues(alpha: 0.32),
+                    trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
+                      Set<WidgetState> states,
+                    ) {
+                      if (states.contains(WidgetState.selected)) {
+                        return luxuryPurple.withValues(alpha: 0.9);
+                      }
+                      return Colors.white.withValues(alpha: 0.16);
+                    }),
                   ),
                 ),
                 Divider(height: 1, color: separatorColor),

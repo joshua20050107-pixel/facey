@@ -130,6 +130,16 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Image.asset(
+              'assets/images/keke.png',
+              height: 28,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
