@@ -35,13 +35,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<IconData> _bottomIcons = <IconData>[
     Icons.crop_free_rounded,
+    Icons.event_available,
     Icons.bar_chart_rounded,
-    Icons.check_circle_outline_rounded,
+    Icons.mode_comment_rounded,
     Icons.more_horiz_rounded,
   ];
 
   static const List<String> _bottomLabels = <String>[
     'scan',
+    'activity',
     'growth',
     'daily',
     'coach',
