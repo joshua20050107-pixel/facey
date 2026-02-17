@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 
@@ -41,9 +42,18 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           ],
         ),
         child: TextButton(
-          onPressed: () {},
+          onPressed: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    ScanNextScreen(selectedGender: widget.selectedGender),
+              ),
+            );
+          },
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
+            overlayColor: Colors.white.withValues(alpha: 0.25),
+            splashFactory: InkRipple.splashFactory,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(buttonRadius),
             ),
