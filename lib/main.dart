@@ -32,12 +32,17 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedBottomIndex = 0;
   int _currentPageIndex = 0;
+  bool _settingsNotificationEnabled = false;
+  static const double _topIconSize = 39;
+  static const double _topHeaderHeight = 52;
+  static const double _pageHorizontalPadding = 24;
+  static const double _pageTopPadding = 12;
 
   static const List<IconData> _bottomIcons = <IconData>[
     Icons.crop_free_rounded,
     Icons.event_available,
     Icons.bar_chart_rounded,
-    Icons.mode_comment_rounded,
+    Icons.chat_bubble_outline_rounded,
     Icons.more_horiz_rounded,
   ];
 
@@ -190,9 +195,161 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildTopHeader({
+    required String title,
+    required TextStyle titleStyle,
+  }) {
+    return SizedBox(
+      height: _topHeaderHeight,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: Padding(
+              padding: EdgeInsets.only(right: _topIconSize + 12),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: titleStyle,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: 0,
+            top: (_topHeaderHeight - _topIconSize) / 2,
+            child: GestureDetector(
+              onTap: () {},
+              child: Image.asset(
+                'assets/images/keke.png',
+                width: _topIconSize,
+                height: _topIconSize,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCoachSettingsScreen() {
+    final Color separatorColor = Colors.white.withValues(alpha: 0.1);
+    final Color mutedTextColor = Colors.white.withValues(alpha: 0.92);
+
+    Widget settingsRow({
+      required IconData icon,
+      required String label,
+      Widget? trailing,
+      bool highlighted = false,
+      Color textColor = Colors.white,
+    }) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          color: highlighted
+              ? const Color(0xFF2A3358).withValues(alpha: 0.75)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 26, color: mutedTextColor),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  color: textColor,
+                ),
+              ),
+            ),
+            if (trailing != null) trailing,
+          ],
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        _pageHorizontalPadding,
+        _pageTopPadding,
+        _pageHorizontalPadding,
+        8,
+      ),
+      child: Column(
+        children: [
+          _buildTopHeader(
+            title: '設定',
+            titleStyle: const TextStyle(
+              fontSize: 30,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            child: ListView(
+              children: [
+                settingsRow(
+                  icon: Icons.notifications_none_rounded,
+                  label: 'Notification',
+                  highlighted: true,
+                  trailing: Switch(
+                    value: _settingsNotificationEnabled,
+                    onChanged: (bool value) {
+                      setState(() {
+                        _settingsNotificationEnabled = value;
+                      });
+                    },
+                  ),
+                ),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(icon: Icons.dark_mode_outlined, label: 'Dark Mode'),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(icon: Icons.star_border_rounded, label: 'Rate App'),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(icon: Icons.share_outlined, label: 'Share App'),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(
+                  icon: Icons.lock_outline_rounded,
+                  label: 'Privacy Policy',
+                ),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(
+                  icon: Icons.description_outlined,
+                  label: 'Terms and Conditions',
+                ),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(
+                  icon: Icons.text_snippet_outlined,
+                  label: 'Cookies Policy',
+                ),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(icon: Icons.mail_outline_rounded, label: 'Contact'),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  label: 'Feedback',
+                ),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(icon: Icons.logout_rounded, label: 'Logout'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isScanTab = _selectedBottomIndex == 0;
+    final bool isCoachTab = _selectedBottomIndex == 4;
 
     return Scaffold(
       bottomNavigationBar: SafeArea(
@@ -233,9 +390,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      body: SafeArea(
-        child: isScanTab
-            ? LayoutBuilder(
+      body: isScanTab
+          ? SafeArea(
+              child: LayoutBuilder(
                 builder: (BuildContext context, BoxConstraints constraints) {
                   final double widthScale = (constraints.maxWidth / 430).clamp(
                     0.82,
@@ -248,47 +405,48 @@ class _HomeScreenState extends State<HomeScreen> {
                       : heightScale;
 
                   return Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: 24 * scale,
-                      vertical: 20 * scale,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: _pageHorizontalPadding,
+                      vertical: _pageTopPadding,
                     ),
                     child: Column(
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'Facial Analysis',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: (42 * scale).clamp(30.0, 42.0),
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: () {},
-                              icon: Icon(
-                                Icons.settings_rounded,
-                                size: 40 * scale,
-                                color: Colors.white.withValues(alpha: 0.8),
-                              ),
-                            ),
-                          ],
+                        _buildTopHeader(
+                          title: 'ビジュアル評価',
+                          titleStyle: const TextStyle(
+                            fontSize: 25,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
-                        SizedBox(height: 20 * scale),
+
+                        Transform.translate(
+                          offset: const Offset(3, -4),
+                          child: const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'あなたの魅力と改善点を分析',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFFB9C0CF),
+                              ),
+                            ),
+                          ),
+                        ),
+
                         Expanded(child: _buildSlidingPages(scale)),
-                        SizedBox(height: 14 * scale),
+                        const SizedBox(height: 8),
                         _buildPageIndicator(),
-                        SizedBox(height: 12 * scale),
+                        const SizedBox(height: 23),
                       ],
                     ),
                   );
                 },
-              )
-            : const SizedBox.expand(),
-      ),
+              ),
+            )
+          : isCoachTab
+          ? SafeArea(child: _buildCoachSettingsScreen())
+          : const SizedBox.expand(),
     );
   }
 }
