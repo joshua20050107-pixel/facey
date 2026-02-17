@@ -25,9 +25,13 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
       imageQuality: 92,
     );
     if (file == null || !mounted) return;
-    Navigator.of(context).push(
+    await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => LaserAnalyzeShell(imagePath: file.path),
+        builder: (_) => ScanImageConfirmScreen(
+          initialImagePath: file.path,
+          selectedGender: widget.selectedGender,
+          goToSideProfileStepOnContinue: true,
+        ),
       ),
     );
   }
@@ -122,10 +126,10 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
-          'あなたの顔を解析します',
+          '正面からの画像をアップロード',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 18,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -476,6 +480,412 @@ class ScanImagePreviewScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SideProfileUploadScreen extends StatefulWidget {
+  const SideProfileUploadScreen({super.key, required this.selectedGender});
+
+  final YomuGender selectedGender;
+
+  @override
+  State<SideProfileUploadScreen> createState() =>
+      _SideProfileUploadScreenState();
+}
+
+class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage(ImageSource source) async {
+    final XFile? file = await _picker.pickImage(
+      source: source,
+      preferredCameraDevice: CameraDevice.front,
+      imageQuality: 92,
+    );
+    if (file == null || !mounted) return;
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ScanImageConfirmScreen(
+          initialImagePath: file.path,
+          selectedGender: widget.selectedGender,
+          goToSideProfileStepOnContinue: false,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showPickerOptions() async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoActionSheet(
+          title: const Text(
+            '画像をアップロード',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _pickImage(ImageSource.camera);
+              },
+              child: const Text(
+                '自撮りを撮影',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _pickImage(ImageSource.gallery);
+              },
+              child: const Text('写真を選択', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(context).pop(),
+            isDefaultAction: true,
+            child: const Text('キャンセル', style: TextStyle(color: Colors.white)),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStartScanButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.4),
+            width: 1.0,
+          ),
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [Color(0xFF5D2DFF), Color(0xFFAD24FF)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF8B31FF).withValues(alpha: 0.5),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: TextButton(
+          onPressed: _showPickerOptions,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            overlayColor: Colors.white.withValues(alpha: 0.2),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(30),
+            ),
+          ),
+          child: const Text(
+            'アップロード',
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final String imagePath = widget.selectedGender == YomuGender.female
+        ? 'assets/images/memem.png'
+        : 'assets/images/papipe.png';
+
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text(
+          '横顔をアップロード',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Image.asset(
+              'assets/images/keke.png',
+              height: 28,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              return Stack(
+                children: [
+                  Align(
+                    alignment: const Alignment(0, -0.9),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(13),
+                      child: SizedBox(
+                        width: constraints.maxWidth - 34,
+                        child: Image.asset(imagePath, fit: BoxFit.cover),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: 36,
+                    right: 36,
+                    bottom: 32,
+                    child: _buildStartScanButton(),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ScanImageConfirmScreen extends StatefulWidget {
+  const ScanImageConfirmScreen({
+    super.key,
+    required this.initialImagePath,
+    required this.selectedGender,
+    required this.goToSideProfileStepOnContinue,
+  });
+
+  final String initialImagePath;
+  final YomuGender selectedGender;
+  final bool goToSideProfileStepOnContinue;
+
+  @override
+  State<ScanImageConfirmScreen> createState() => _ScanImageConfirmScreenState();
+}
+
+class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
+  final ImagePicker _picker = ImagePicker();
+  late String _currentImagePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentImagePath = widget.initialImagePath;
+  }
+
+  Future<void> _replaceImage(ImageSource source) async {
+    final XFile? file = await _picker.pickImage(
+      source: source,
+      preferredCameraDevice: CameraDevice.front,
+      imageQuality: 92,
+    );
+    if (file == null || !mounted) return;
+    setState(() {
+      _currentImagePath = file.path;
+    });
+  }
+
+  Future<void> _showPickerOptions() async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoActionSheet(
+          title: const Text(
+            '画像をアップロード',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _replaceImage(ImageSource.camera);
+              },
+              child: const Text(
+                '自撮りを撮影',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _replaceImage(ImageSource.gallery);
+              },
+              child: const Text('写真を選択', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(context).pop(),
+            isDefaultAction: true,
+            child: const Text('キャンセル', style: TextStyle(color: Colors.white)),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUseAnotherButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.82),
+            width: 1.3,
+          ),
+          color: const Color(0x0FFFFFFF),
+        ),
+        child: TextButton(
+          onPressed: _showPickerOptions,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            overlayColor: Colors.white.withValues(alpha: 0.1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          ),
+          child: const Text(
+            '別の画像を選択',
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContinueButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.35),
+            width: 0.9,
+          ),
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [Color(0xFF5B22FF), Color(0xFFB61DFF)],
+          ),
+        ),
+        child: TextButton(
+          onPressed: () {
+            if (widget.goToSideProfileStepOnContinue) {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SideProfileUploadScreen(
+                    selectedGender: widget.selectedGender,
+                  ),
+                ),
+              );
+              return;
+            }
+            Navigator.of(context).pop();
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            overlayColor: Colors.white.withValues(alpha: 0.16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          ),
+          child: const Text(
+            '進む',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text(
+          '正面からの画像をアップロード',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Image.asset(
+              'assets/images/keke.png',
+              height: 28,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.file(
+                      File(_currentImagePath),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _buildUseAnotherButton(context),
+                const SizedBox(height: 14),
+                _buildContinueButton(context),
+              ],
+            ),
           ),
         ),
       ),

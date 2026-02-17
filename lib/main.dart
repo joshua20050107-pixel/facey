@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'screens/activity_tab_screen.dart';
 import 'screens/coach_settings_screen.dart';
 import 'screens/scan_tab_screen.dart';
 import 'widgets/yomu_gender_two_choice.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await Hive.openBox<String>('app_prefs');
   runApp(const FaceyApp());
 }
 
@@ -35,9 +39,32 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  static const String _prefsBoxName = 'app_prefs';
+  static const String _genderKey = 'selected_gender';
   int _selectedBottomIndex = 0;
   bool _settingsNotificationEnabled = false;
   YomuGender _selectedGender = YomuGender.male;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedGender();
+  }
+
+  void _loadSavedGender() {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final String? saved = box.get(_genderKey);
+    if (saved == null) return;
+    final YomuGender gender = saved == YomuGender.female.name
+        ? YomuGender.female
+        : YomuGender.male;
+    _selectedGender = gender;
+  }
+
+  Future<void> _saveGender(YomuGender value) async {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    await box.put(_genderKey, value.name);
+  }
 
   static const List<IconData> _bottomIcons = <IconData>[
     Icons.crop_free_rounded,
@@ -116,6 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 setState(() {
                   _selectedGender = value;
                 });
+                _saveGender(value);
               },
             ),
           )
