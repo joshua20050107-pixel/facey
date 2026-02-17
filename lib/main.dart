@@ -35,14 +35,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<IconData> _bottomIcons = <IconData>[
     Icons.crop_free_rounded,
-    Icons.more_vert_rounded,
+    Icons.bar_chart_rounded,
     Icons.check_circle_outline_rounded,
     Icons.more_horiz_rounded,
   ];
 
   static const List<String> _bottomLabels = <String>[
     'scan',
-    'extras',
+    'growth',
     'daily',
     'coach',
   ];
@@ -202,37 +202,36 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildBottomItem(int index) {
     final bool active = _selectedBottomIndex == index;
     return Expanded(
-      child: InkWell(
-        onTap: () {
-          setState(() {
-            _selectedBottomIndex = index;
-          });
-        },
-        borderRadius: BorderRadius.circular(18),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _bottomIcons[index],
-                size: 32,
-                color: active
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.45),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _bottomLabels[index],
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          color: active
+              ? const Color(0xFF15233A).withValues(alpha: 0.72)
+              : Colors.transparent,
+        ),
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _selectedBottomIndex = index;
+            });
+          },
+          borderRadius: BorderRadius.circular(26),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  _bottomIcons[index],
+                  size: 28,
                   color: active
                       ? Colors.white
-                      : Colors.white.withValues(alpha: 0.5),
+                      : Colors.white.withValues(alpha: 0.45),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -241,74 +240,102 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isScanTab = _selectedBottomIndex == 0;
+
     return Scaffold(
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 10),
-          child: Row(
-            children: List<Widget>.generate(
-              _bottomLabels.length,
-              _buildBottomItem,
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(34),
+              border: Border.all(
+                color: const Color(0xFF2B3A56).withValues(alpha: 0.35),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.38),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF101A2B).withValues(alpha: 0.92),
+                  const Color(0xFF080F1C).withValues(alpha: 0.96),
+                ],
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: Row(
+                children: List<Widget>.generate(
+                  _bottomLabels.length,
+                  _buildBottomItem,
+                ),
+              ),
             ),
           ),
         ),
       ),
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (BuildContext context, BoxConstraints constraints) {
-            final double widthScale = (constraints.maxWidth / 430).clamp(
-              0.82,
-              1.0,
-            );
-            final double heightScale = (constraints.maxHeight / 860).clamp(
-              0.74,
-              1.0,
-            );
-            final double scale = widthScale < heightScale
-                ? widthScale
-                : heightScale;
+        child: isScanTab
+            ? LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final double widthScale = (constraints.maxWidth / 430).clamp(
+                    0.82,
+                    1.0,
+                  );
+                  final double heightScale = (constraints.maxHeight / 860)
+                      .clamp(0.74, 1.0);
+                  final double scale = widthScale < heightScale
+                      ? widthScale
+                      : heightScale;
 
-            return Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 24 * scale,
-                vertical: 20 * scale,
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          'Facial Analysis',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: (42 * scale).clamp(30.0, 42.0),
-                            fontWeight: FontWeight.w700,
-                          ),
+                  return Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 24 * scale,
+                      vertical: 20 * scale,
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Facial Analysis',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: (42 * scale).clamp(30.0, 42.0),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: () {},
+                              icon: Icon(
+                                Icons.settings_rounded,
+                                size: 40 * scale,
+                                color: Colors.white.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                      IconButton(
-                        onPressed: () {},
-                        icon: Icon(
-                          Icons.settings_rounded,
-                          size: 40 * scale,
-                          color: Colors.white.withValues(alpha: 0.8),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20 * scale),
-                  Expanded(child: _buildMainCard(scale)),
-                  SizedBox(height: 24 * scale),
-                  _buildDots(),
-                  SizedBox(height: 12 * scale),
-                ],
-              ),
-            );
-          },
-        ),
+                        SizedBox(height: 20 * scale),
+                        Expanded(child: _buildMainCard(scale)),
+                        SizedBox(height: 24 * scale),
+                        _buildDots(),
+                        SizedBox(height: 12 * scale),
+                      ],
+                    ),
+                  );
+                },
+              )
+            : const SizedBox.expand(),
       ),
     );
   }
