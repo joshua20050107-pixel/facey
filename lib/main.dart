@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/activity_tab_screen.dart';
 import 'screens/coach_settings_screen.dart';
 import 'screens/scan_tab_screen.dart';
+import 'widgets/yomu_gender_two_choice.dart';
 
 void main() {
   runApp(const FaceyApp());
@@ -36,6 +37,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedBottomIndex = 0;
   bool _settingsNotificationEnabled = false;
+  YomuGender _selectedGender = YomuGender.male;
 
   static const List<IconData> _bottomIcons = <IconData>[
     Icons.crop_free_rounded,
@@ -62,9 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
         margin: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(26),
-          color: active
-              ? const Color(0xFF1F3150)
-              : Colors.transparent,
+          color: active ? const Color(0xFF3A4D6E) : Colors.transparent,
         ),
         child: InkWell(
           onTap: () {
@@ -83,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   size: iconSize,
                   color: active
                       ? Colors.white
-                      : Colors.white.withValues(alpha: 0.45),
+                      : Colors.white.withValues(alpha: 0.62),
                 ),
               ],
             ),
@@ -98,8 +98,31 @@ class _HomeScreenState extends State<HomeScreen> {
     final bool isScanTab = _selectedBottomIndex == 0;
     final bool isSecondTab = _selectedBottomIndex == 1;
     final bool isCoachTab = _selectedBottomIndex == 4;
+    final Widget tabBody = isScanTab
+        ? SafeArea(child: ScanTabScreen(selectedGender: _selectedGender))
+        : isSecondTab
+        ? const SafeArea(child: ActivityTabScreen())
+        : isCoachTab
+        ? SafeArea(
+            child: CoachSettingsScreen(
+              notificationEnabled: _settingsNotificationEnabled,
+              onNotificationChanged: (bool value) {
+                setState(() {
+                  _settingsNotificationEnabled = value;
+                });
+              },
+              selectedGender: _selectedGender,
+              onGenderChanged: (YomuGender value) {
+                setState(() {
+                  _selectedGender = value;
+                });
+              },
+            ),
+          )
+        : const SizedBox.expand();
 
     return Scaffold(
+      extendBody: true,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
@@ -108,12 +131,12 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(34),
               border: Border.all(
-                color: const Color(0xFF2B3A56).withValues(alpha: 0.35),
+                color: const Color(0xFF6E7F99).withValues(alpha: 0.28),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.38),
-                  blurRadius: 20,
+                  color: const Color(0xFF000000).withValues(alpha: 0.34),
+                  blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
               ],
@@ -121,8 +144,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF101A2B).withValues(alpha: 0.92),
-                  const Color(0xFF080F1C).withValues(alpha: 0.96),
+                  const Color(0xFF1D2737).withValues(alpha: 0.9),
+                  const Color(0xFF141C2A).withValues(alpha: 0.94),
                 ],
               ),
             ),
@@ -138,22 +161,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      body: isScanTab
-          ? const SafeArea(child: ScanTabScreen())
-          : isSecondTab
-          ? const SafeArea(child: ActivityTabScreen())
-          : isCoachTab
-          ? SafeArea(
-              child: CoachSettingsScreen(
-                notificationEnabled: _settingsNotificationEnabled,
-                onNotificationChanged: (bool value) {
-                  setState(() {
-                    _settingsNotificationEnabled = value;
-                  });
-                },
-              ),
-            )
-          : const SizedBox.expand(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: tabBody,
+      ),
     );
   }
 }

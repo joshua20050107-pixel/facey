@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../widgets/top_header.dart';
+import '../widgets/yomu_gender_two_choice.dart';
 
 class ScanTabScreen extends StatefulWidget {
-  const ScanTabScreen({super.key});
+  const ScanTabScreen({super.key, required this.selectedGender});
+
+  final YomuGender selectedGender;
 
   @override
   State<ScanTabScreen> createState() => _ScanTabScreenState();
@@ -60,6 +63,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
 
   Widget _buildSlidingPages(double scale) {
     final double imageWidth = (420 * scale).clamp(260.0, 440.0);
+    final String imagePath = widget.selectedGender == YomuGender.female
+        ? 'assets/images/まま.png'
+        : 'assets/images/いもり.png';
     return PageView(
       onPageChanged: (int index) {
         setState(() {
@@ -73,11 +79,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Image.asset(
-                  'assets/images/いもり.png',
-                  width: imageWidth,
-                  fit: BoxFit.contain,
-                ),
+                Image.asset(imagePath, width: imageWidth, fit: BoxFit.contain),
                 Positioned(
                   left: imageWidth * 0.16,
                   right: imageWidth * 0.16,
@@ -132,7 +134,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           child: Column(
             children: [
               const TopHeader(
-                title: '外見の分析',
+                title: '外見の診断',
                 titleStyle: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.w900,

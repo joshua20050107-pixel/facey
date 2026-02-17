@@ -1,21 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:in_app_review/in_app_review.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../widgets/top_header.dart';
+import '../widgets/yomu_gender_two_choice.dart';
 
 class CoachSettingsScreen extends StatelessWidget {
   const CoachSettingsScreen({
     super.key,
     required this.notificationEnabled,
     required this.onNotificationChanged,
+    required this.selectedGender,
+    required this.onGenderChanged,
   });
 
   final bool notificationEnabled;
   final ValueChanged<bool> onNotificationChanged;
+  final YomuGender selectedGender;
+  final ValueChanged<YomuGender> onGenderChanged;
+  static final Uri _privacyPolicyUrl = Uri.parse(
+    'https://mercury-ixora-4df.notion.site/30ab9bad745580b89262d3bead931a6b',
+  );
+  static final Uri _termsUrl = Uri.parse(
+    'https://mercury-ixora-4df.notion.site/Facey-30ab9bad745580b78192d675b7fa6b1b',
+  );
+  static final Uri _contactMailUri = Uri(
+    scheme: 'mailto',
+    path: 'contactfacey@ymail.ne.jp',
+    queryParameters: <String, String>{'subject': 'Facey お問い合わせ'},
+  );
 
   @override
   Widget build(BuildContext context) {
     final Color separatorColor = Colors.white.withValues(alpha: 0.1);
     final Color mutedTextColor = Colors.white.withValues(alpha: 0.92);
+    final InAppReview inAppReview = InAppReview.instance;
 
     Widget settingsRow({
       required IconData icon,
@@ -85,24 +106,69 @@ class CoachSettingsScreen extends StatelessWidget {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const GenderScreen(),
+                        builder: (_) => GenderScreen(
+                          selectedGender: selectedGender,
+                          onGenderChanged: onGenderChanged,
+                        ),
                       ),
                     );
                   },
                 ),
                 Divider(height: 1, color: separatorColor),
-                settingsRow(icon: Icons.star_border_rounded, label: 'アプリを評価'),
+                settingsRow(
+                  icon: Icons.star_border_rounded,
+                  label: 'アプリを評価',
+                  onTap: () async {
+                    try {
+                      await inAppReview.requestReview();
+                    } on MissingPluginException {
+                      // Unsupported platform or plugin not linked in this runtime.
+                    } on PlatformException {
+                      // Request review failed on current platform/runtime.
+                    }
+                  },
+                ),
                 Divider(height: 1, color: separatorColor),
-                settingsRow(icon: Icons.share_outlined, label: 'アプリを共有'),
+                settingsRow(
+                  icon: Icons.share_outlined,
+                  label: 'アプリを共有',
+                  onTap: () {
+                    Share.share(
+                      'Faceyを使ってみてください！\nhttps://mercury-ixora-4df.notion.site/Facey-30ab9bad745580b78192d675b7fa6b1b',
+                      subject: 'Faceyを共有',
+                    );
+                  },
+                ),
                 Divider(height: 1, color: separatorColor),
                 settingsRow(
                   icon: Icons.lock_outline_rounded,
                   label: 'プライバシーポリシー',
+                  onTap: () async {
+                    await launchUrl(
+                      _privacyPolicyUrl,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
                 ),
                 Divider(height: 1, color: separatorColor),
-                settingsRow(icon: Icons.description_outlined, label: '利用規約'),
+                settingsRow(
+                  icon: Icons.description_outlined,
+                  label: '利用規約',
+                  onTap: () async {
+                    await launchUrl(
+                      _termsUrl,
+                      mode: LaunchMode.externalApplication,
+                    );
+                  },
+                ),
                 Divider(height: 1, color: separatorColor),
-                settingsRow(icon: Icons.mail_outline_rounded, label: 'お問い合わせ'),
+                settingsRow(
+                  icon: Icons.mail_outline_rounded,
+                  label: 'お問い合わせ',
+                  onTap: () async {
+                    await launchUrl(_contactMailUri);
+                  },
+                ),
               ],
             ),
           ),
@@ -113,23 +179,53 @@ class CoachSettingsScreen extends StatelessWidget {
 }
 
 class GenderScreen extends StatelessWidget {
-  const GenderScreen({super.key});
+  const GenderScreen({
+    super.key,
+    required this.selectedGender,
+    required this.onGenderChanged,
+  });
+
+  final YomuGender selectedGender;
+  final ValueChanged<YomuGender> onGenderChanged;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
           '性別を選択',
           style: TextStyle(fontWeight: FontWeight.w700),
         ),
-        backgroundColor: const Color(0xFF060911),
+        backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: const SizedBox.expand(),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: YomuGenderTwoChoice(
+            showTitle: true,
+            title: 'あなたの性別を\n選択してください',
+            wholeOffset: Offset(0, 28),
+            titleStyle: TextStyle(
+              color: const Color.fromARGB(255, 212, 212, 212),
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+            initialValue: selectedGender,
+            onChanged: onGenderChanged,
+          ),
+        ),
+      ),
     );
   }
 }
