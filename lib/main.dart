@@ -31,7 +31,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedBottomIndex = 0;
-  int _selectedDotIndex = 0;
+  int _currentPageIndex = 0;
 
   static const List<IconData> _bottomIcons = <IconData>[
     Icons.crop_free_rounded,
@@ -49,155 +49,105 @@ class _HomeScreenState extends State<HomeScreen> {
     'coach',
   ];
 
-  Widget _buildMainCard(double scale) {
-    final double cardRadius = 36 * scale;
-    final double imageRadius = 28 * scale;
-    final double cardPadding = 18 * scale;
-    final double headingSize = (42 * scale).clamp(24.0, 42.0);
-    final double buttonHeight = (68 * scale).clamp(48.0, 68.0);
-    final double buttonRadius = 36 * scale;
-    final double buttonTextSize = (30 * scale).clamp(20.0, 30.0);
-    final double avatarSize = (220 * scale).clamp(120.0, 220.0);
-    final double topGap = (22 * scale).clamp(10.0, 22.0);
-    final double bottomGap = (20 * scale).clamp(10.0, 20.0);
-
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(cardPadding),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(cardRadius),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black54,
-            blurRadius: 32,
-            offset: Offset(0, 18),
+  Widget _buildSlidingPages(double scale) {
+    final double imageWidth = (420 * scale).clamp(260.0, 440.0);
+    return PageView(
+      onPageChanged: (int index) {
+        setState(() {
+          _currentPageIndex = index;
+        });
+      },
+      children: [
+        Center(
+          child: SizedBox(
+            width: imageWidth,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Image.asset(
+                  'assets/images/いもり.png',
+                  width: imageWidth,
+                  fit: BoxFit.contain,
+                ),
+                Positioned(
+                  left: imageWidth * 0.16,
+                  right: imageWidth * 0.16,
+                  bottom: imageWidth * 0.09,
+                  child: _buildStartAnalysisButton(scale),
+                ),
+              ],
+            ),
           ),
-        ],
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF161B27), Color(0xFF070A11)],
         ),
-      ),
-      child: Column(
-        children: [
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(imageRadius),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [Color(0xFF2A3343), Color(0xFF0D1119)],
-                      ),
-                    ),
-                  ),
-                  Center(
-                    child: Icon(
-                      Icons.account_circle_rounded,
-                      size: avatarSize,
-                      color: const Color(0xFFB7BFCC),
-                    ),
-                  ),
-                  DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.25),
-                          Colors.black.withValues(alpha: 0.9),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: topGap),
-          Text(
-            'Get your ratings and\nrecommendations',
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            style: TextStyle(
-              fontSize: headingSize,
-              height: 1.1,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          SizedBox(height: bottomGap),
-          SizedBox(
-            width: double.infinity,
-            height: buttonHeight,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(buttonRadius),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF5D34FF), Color(0xFFB71CF7)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF9141FF).withValues(alpha: 0.45),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(buttonRadius),
-                  ),
-                ),
-                onPressed: () {},
-                child: Text(
-                  'Begin scan',
-                  style: TextStyle(
-                    fontSize: buttonTextSize,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        const SizedBox.expand(),
+      ],
     );
   }
 
-  Widget _buildDots() {
+  Widget _buildPageIndicator() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List<Widget>.generate(3, (int index) {
-        final bool active = index == _selectedDotIndex;
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _selectedDotIndex = index;
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: active ? 22 : 10,
-            height: 10,
-            margin: const EdgeInsets.symmetric(horizontal: 5),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
-              color: active
-                  ? Colors.white
-                  : Colors.white.withValues(alpha: 0.36),
-            ),
+      children: List<Widget>.generate(2, (int index) {
+        final bool isActive = _currentPageIndex == index;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          width: isActive ? 22 : 10,
+          height: 10,
+          margin: const EdgeInsets.symmetric(horizontal: 5),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            color: isActive
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.35),
           ),
         );
       }),
+    );
+  }
+
+  Widget _buildStartAnalysisButton(double scale) {
+    final double buttonHeight = (58 * scale).clamp(44.0, 62.0);
+    final double buttonRadius = (38 * scale).clamp(28.0, 40.0);
+    final double textSize = (22 * scale).clamp(18.0, 24.0);
+
+    return SizedBox(
+      width: double.infinity,
+      height: buttonHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(buttonRadius),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [Color(0xFF5B22FF), Color(0xFFB61DFF)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF8C35FF).withValues(alpha: 0.5),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: TextButton(
+          onPressed: () {},
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(buttonRadius),
+            ),
+          ),
+          child: Text(
+            '分析を始める',
+            style: TextStyle(
+              fontSize: textSize,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -328,9 +278,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         SizedBox(height: 20 * scale),
-                        Expanded(child: _buildMainCard(scale)),
-                        SizedBox(height: 24 * scale),
-                        _buildDots(),
+                        Expanded(child: _buildSlidingPages(scale)),
+                        SizedBox(height: 14 * scale),
+                        _buildPageIndicator(),
                         SizedBox(height: 12 * scale),
                       ],
                     ),
