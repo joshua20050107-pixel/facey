@@ -68,7 +68,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   static const List<IconData> _bottomIcons = <IconData>[
     Icons.crop_free_rounded,
-    Icons.event_available,
+    Icons.person_rounded,
     Icons.bar_chart_rounded,
     Icons.chat_bubble_outline_rounded,
     Icons.more_horiz_rounded,

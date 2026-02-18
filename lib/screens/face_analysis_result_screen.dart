@@ -531,7 +531,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                     ),
                   ),
                   Transform.translate(
-                    offset: const Offset(0, -68),
+                    offset: const Offset(0, -58),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List<Widget>.generate(2, (int index) {
