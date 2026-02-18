@@ -233,6 +233,31 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     );
   }
 
+  Widget _buildCardWithFaceyOverlay(Widget card) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        card,
+        const Positioned(
+          bottom: 10,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            child: Text(
+              'facey',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Color(0xFF8A8A8A),
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final FaceAnalysisResult viewData =
@@ -253,6 +278,9 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     while (metrics.length < 6) {
       metrics.add(const FaceMetricScore(label: '-', value: 0));
     }
+    final int potentialScore = metrics.first.value.clamp(0, 100);
+    final int betterThan = (viewData.overall + 20).clamp(0, 99).toInt();
+    final int potentialBetterThan = (potentialScore + 2).clamp(0, 99).toInt();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -262,13 +290,16 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
           onTap: () => Navigator.of(context).pop(),
           child: const Center(child: Icon(Icons.close_rounded, size: 34)),
         ),
-        title: const Text(
-          '分析結果',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.w900,
-            fontFamily: 'Hiragino Sans',
+        title: Transform.translate(
+          offset: Offset(0, 2),
+          child: Text(
+            '分析結果',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              fontFamily: 'Hiragino Sans',
+            ),
           ),
         ),
         centerTitle: true,
@@ -362,96 +393,89 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                               transform: Matrix4.identity()
                                                 ..setEntry(3, 2, 0.0012)
                                                 ..rotateY(angle),
-                                              child: showFront
-                                                  ? SizedBox(
-                                                      height: _resultCardHeight,
-                                                      child:
-                                                          _buildResultCardFrame(
-                                                            child:
-                                                                frontCardContent,
-                                                          ),
-                                                    )
-                                                  : Transform(
-                                                      alignment:
-                                                          Alignment.center,
-                                                      transform:
-                                                          Matrix4.identity()
-                                                            ..rotateY(math.pi),
-                                                      child: SizedBox(
-                                                        height:
-                                                            _resultCardHeight,
-                                                        child: _buildResultCardFrame(
-                                                          child: Stack(
-                                                            children: [
-                                                              Opacity(
-                                                                opacity: 0,
-                                                                child:
-                                                                    frontCardContent,
-                                                              ),
-                                                              Positioned.fill(
-                                                                child: Stack(
-                                                                  fit: StackFit
-                                                                      .expand,
-                                                                  children: [
-                                                                    Hero(
-                                                                      tag: _heroTagForPath(
-                                                                        _cardBackImagePath,
-                                                                      ),
-                                                                      child: Image.file(
-                                                                        File(
+                                              child: SizedBox(
+                                                height: _resultCardHeight,
+                                                child: _buildCardWithFaceyOverlay(
+                                                  showFront
+                                                      ? _buildResultCardFrame(
+                                                          child:
+                                                              frontCardContent,
+                                                        )
+                                                      : Transform(
+                                                          alignment:
+                                                              Alignment.center,
+                                                          transform:
+                                                              Matrix4.identity()
+                                                                ..rotateY(
+                                                                  math.pi,
+                                                                ),
+                                                          child: _buildResultCardFrame(
+                                                            child: Stack(
+                                                              children: [
+                                                                Opacity(
+                                                                  opacity: 0,
+                                                                  child:
+                                                                      frontCardContent,
+                                                                ),
+                                                                Positioned.fill(
+                                                                  child: Stack(
+                                                                    fit: StackFit
+                                                                        .expand,
+                                                                    children: [
+                                                                      Hero(
+                                                                        tag: _heroTagForPath(
                                                                           _cardBackImagePath,
                                                                         ),
-                                                                        fit: BoxFit
-                                                                            .cover,
-                                                                      ),
-                                                                    ),
-                                                                    ColoredBox(
-                                                                      color: Colors
-                                                                          .black
-                                                                          .withValues(
-                                                                            alpha:
-                                                                                0.2,
+                                                                        child: Image.file(
+                                                                          File(
+                                                                            _cardBackImagePath,
                                                                           ),
-                                                                    ),
-                                                                    Align(
-                                                                      alignment:
-                                                                          Alignment
-                                                                              .bottomCenter,
-                                                                      child: Container(
-                                                                        width: double
-                                                                            .infinity,
-                                                                        padding: const EdgeInsets.symmetric(
-                                                                          vertical:
-                                                                              12,
+                                                                          fit: BoxFit
+                                                                              .cover,
                                                                         ),
+                                                                      ),
+                                                                      ColoredBox(
                                                                         color: Colors
                                                                             .black
                                                                             .withValues(
-                                                                              alpha: 0.35,
+                                                                              alpha: 0.2,
                                                                             ),
-                                                                        child: const Text(
-                                                                          '長押しでプレビュー',
-                                                                          textAlign:
-                                                                              TextAlign.center,
-                                                                          style: TextStyle(
-                                                                            color:
-                                                                                Colors.white,
-                                                                            fontSize:
-                                                                                14,
-                                                                            fontWeight:
-                                                                                FontWeight.w600,
+                                                                      ),
+                                                                      Align(
+                                                                        alignment:
+                                                                            Alignment.bottomCenter,
+                                                                        child: Container(
+                                                                          width:
+                                                                              double.infinity,
+                                                                          padding: const EdgeInsets.symmetric(
+                                                                            vertical:
+                                                                                12,
+                                                                          ),
+                                                                          color: Colors.black.withValues(
+                                                                            alpha:
+                                                                                0.35,
+                                                                          ),
+                                                                          child: const Text(
+                                                                            '長押しでプレビュー',
+                                                                            textAlign:
+                                                                                TextAlign.center,
+                                                                            style: TextStyle(
+                                                                              color: Colors.white,
+                                                                              fontSize: 14,
+                                                                              fontWeight: FontWeight.w600,
+                                                                            ),
                                                                           ),
                                                                         ),
                                                                       ),
-                                                                    ),
-                                                                  ],
+                                                                    ],
+                                                                  ),
                                                                 ),
-                                                              ),
-                                                            ],
+                                                              ],
+                                                            ),
                                                           ),
                                                         ),
-                                                      ),
-                                                    ),
+                                                ),
+                                              ),
                                             );
                                           },
                                         ),
@@ -493,36 +517,380 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                     ),
                                     child: SizedBox(
                                       height: _resultCardHeight,
+                                      child: _buildCardWithFaceyOverlay(
+                                        _buildResultCardFrame(
+                                          child: Column(
+                                            children: [
+                                              const Spacer(flex: 2),
+                                              _MetricPairCard(
+                                                left: secondPageMetrics[0],
+                                                right: secondPageMetrics[1],
+                                              ),
+                                              const Spacer(flex: 1),
+                                              _MetricPairCard(
+                                                left: secondPageMetrics[2],
+                                                right: secondPageMetrics[3],
+                                              ),
+                                              const Spacer(flex: 1),
+                                              _MetricPairCard(
+                                                left: secondPageMetrics[4],
+                                                right: secondPageMetrics[5],
+                                              ),
+                                              const Spacer(flex: 1),
+                                              _MetricPairCard(
+                                                left: secondPageMetrics[6],
+                                                right: secondPageMetrics[7],
+                                              ),
+                                              const Spacer(flex: 2),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              Row(
+                                children: [
+                                  _buildActionButton(
+                                    label: '保存',
+                                    icon: Icons.download_rounded,
+                                    onTap: _saveCardToGallery,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  _buildActionButton(
+                                    label: '共有',
+                                    icon: Icons.send_rounded,
+                                    onTap: _shareCardImage,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: SizedBox(
+                                      height: _resultCardHeight,
                                       child: _buildResultCardFrame(
-                                        child: Column(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          22,
+                                          18,
+                                          22,
+                                          22,
+                                        ),
+                                        child: Stack(
                                           children: [
-                                            const Spacer(flex: 2),
-                                            _MetricPairCard(
-                                              left: secondPageMetrics[0],
-                                              right: secondPageMetrics[1],
+                                            Positioned(
+                                              top: 0,
+                                              right: 6,
+                                              child: ClipOval(
+                                                child: Image.file(
+                                                  File(widget.imagePath),
+                                                  width: 85,
+                                                  height: 85,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
                                             ),
-                                            const Spacer(flex: 1),
-                                            _MetricPairCard(
-                                              left: secondPageMetrics[2],
-                                              right: secondPageMetrics[3],
+                                            Positioned.fill(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 0,
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    const Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '総合スコア',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 31,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '${viewData.overall}',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 83,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          height: 1,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 30),
+                                                    _OverallBellCurve(
+                                                      score: viewData.overall,
+                                                    ),
+                                                    const Spacer(),
+                                                    Text(
+                                                      'あなたのスコアは全体の$betterThan%を上回っています',
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: Colors.white
+                                                            .withValues(
+                                                              alpha: 0.52,
+                                                            ),
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
-                                            const Spacer(flex: 1),
-                                            _MetricPairCard(
-                                              left: secondPageMetrics[4],
-                                              right: secondPageMetrics[5],
-                                            ),
-                                            const Spacer(flex: 1),
-                                            _MetricPairCard(
-                                              left: secondPageMetrics[6],
-                                              right: secondPageMetrics[7],
-                                            ),
-                                            const Spacer(flex: 2),
                                           ],
                                         ),
                                       ),
                                     ),
                                   ),
                                 ),
+                              ),
+                              const SizedBox(height: 22),
+                              Row(
+                                children: [
+                                  _buildActionButton(
+                                    label: '保存',
+                                    icon: Icons.download_rounded,
+                                    onTap: _saveCardToGallery,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  _buildActionButton(
+                                    label: '共有',
+                                    icon: Icons.send_rounded,
+                                    onTap: _shareCardImage,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: SizedBox(
+                                      height: _resultCardHeight,
+                                      child: _buildResultCardFrame(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          22,
+                                          18,
+                                          22,
+                                          22,
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              top: 0,
+                                              right: 6,
+                                              child: ClipOval(
+                                                child: Image.file(
+                                                  File(widget.imagePath),
+                                                  width: 85,
+                                                  height: 85,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned.fill(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 0,
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    const Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        'ポテンシャル',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 31,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '$potentialScore',
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 83,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          height: 1,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 30),
+                                                    _OverallBellCurve(
+                                                      score: potentialScore,
+                                                    ),
+                                                    const Spacer(),
+                                                    Text(
+                                                      'あなたのポテンシャルは全体の$potentialBetterThan%を上回っています',
+                                                      textAlign:
+                                                          TextAlign.center,
+                                                      style: TextStyle(
+                                                        color: Colors.white
+                                                            .withValues(
+                                                              alpha: 0.52,
+                                                            ),
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w500,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              Row(
+                                children: [
+                                  _buildActionButton(
+                                    label: '保存',
+                                    icon: Icons.download_rounded,
+                                    onTap: _saveCardToGallery,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  _buildActionButton(
+                                    label: '共有',
+                                    icon: Icons.send_rounded,
+                                    onTap: _shareCardImage,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: SizedBox(
+                                      height: _resultCardHeight,
+                                      child: _buildResultCardFrame(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          22,
+                                          18,
+                                          22,
+                                          22,
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              top: 0,
+                                              right: 6,
+                                              child: ClipOval(
+                                                child: Image.file(
+                                                  File(widget.imagePath),
+                                                  width: 85,
+                                                  height: 85,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned.fill(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 0,
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    const Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        'あなたの魅力',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 31,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const Spacer(),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              Row(
+                                children: [
+                                  _buildActionButton(
+                                    label: '保存',
+                                    icon: Icons.download_rounded,
+                                    onTap: _saveCardToGallery,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  _buildActionButton(
+                                    label: '共有',
+                                    icon: Icons.send_rounded,
+                                    onTap: _shareCardImage,
+                                  ),
+                                ],
                               ),
                             ],
                           ),
@@ -534,7 +902,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                     offset: const Offset(0, -58),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List<Widget>.generate(2, (int index) {
+                      children: List<Widget>.generate(5, (int index) {
                         final bool active = _currentPageIndex == index;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -910,4 +1278,117 @@ class _ScoreBar extends StatelessWidget {
       ),
     );
   }
+}
+
+class _OverallBellCurve extends StatelessWidget {
+  const _OverallBellCurve({required this.score});
+
+  final int score;
+
+  @override
+  Widget build(BuildContext context) {
+    final double marker = score.clamp(0, 100) / 100;
+    return SizedBox(
+      width: double.infinity,
+      height: 175,
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double width = constraints.maxWidth;
+          final double markerX = (width * (0.12 + marker * 0.76))
+              .clamp(16.0, width - 16.0)
+              .toDouble();
+          final double textLeft = (markerX - 54)
+              .clamp(0.0, width - 120)
+              .toDouble();
+          return Stack(
+            children: [
+              Positioned.fill(
+                child: CustomPaint(painter: _BellCurvePainter(marker: marker)),
+              ),
+              Positioned(
+                left: markerX - 11,
+                bottom: 34,
+                child: const Icon(
+                  Icons.change_history_rounded,
+                  size: 26,
+                  color: Colors.white,
+                ),
+              ),
+              Positioned(
+                left: textLeft,
+                bottom: 0,
+                child: const Text(
+                  "あなたのスコア",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _BellCurvePainter extends CustomPainter {
+  const _BellCurvePainter({required this.marker});
+
+  final double marker;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double baseline = size.height * 0.68;
+    final double clampedMarker = marker.clamp(0.0, 1.0);
+    final double markerX = size.width * (0.12 + clampedMarker * 0.76);
+    final Path curvePath = Path()
+      ..moveTo(0, baseline)
+      ..cubicTo(
+        size.width * 0.18,
+        baseline,
+        size.width * 0.28,
+        size.height * 0.08,
+        size.width * 0.5,
+        size.height * 0.08,
+      )
+      ..cubicTo(
+        size.width * 0.72,
+        size.height * 0.08,
+        size.width * 0.82,
+        baseline,
+        size.width,
+        baseline,
+      );
+
+    final Path fillPath = Path.from(curvePath)
+      ..lineTo(size.width, baseline)
+      ..lineTo(0, baseline)
+      ..close();
+
+    final Paint fillPaint = Paint()
+      ..shader = LinearGradient(
+        colors: const <Color>[Color(0xFF1B0C3B), Color(0xFF4D23A6)],
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+      ).createShader(Rect.fromLTWH(0, 0, markerX, size.height));
+
+    final Paint linePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 5
+      ..color = Colors.white;
+
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, markerX, size.height));
+    canvas.drawPath(fillPath, fillPaint);
+    canvas.restore();
+    canvas.drawPath(curvePath, linePaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _BellCurvePainter oldDelegate) =>
+      oldDelegate.marker != marker;
 }
