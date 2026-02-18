@@ -4,6 +4,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'upgrade_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 
@@ -117,6 +118,42 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.workspace_premium_outlined,
                   label: 'アップグレード',
+                  onTap: () {
+                    Navigator.of(context).push(
+                      PageRouteBuilder<void>(
+                        transitionDuration: const Duration(milliseconds: 320),
+                        reverseTransitionDuration: const Duration(
+                          milliseconds: 280,
+                        ),
+                        pageBuilder: (BuildContext context, _, __) {
+                          return const UpgradeScreen();
+                        },
+                        transitionsBuilder:
+                            (
+                              BuildContext context,
+                              Animation<double> animation,
+                              Animation<double> secondaryAnimation,
+                              Widget child,
+                            ) {
+                              final Animation<Offset> offsetAnimation =
+                                  Tween<Offset>(
+                                    begin: const Offset(0, 1),
+                                    end: Offset.zero,
+                                  ).animate(
+                                    CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeOutCubic,
+                                      reverseCurve: Curves.easeInCubic,
+                                    ),
+                                  );
+                              return SlideTransition(
+                                position: offsetAnimation,
+                                child: child,
+                              );
+                            },
+                      ),
+                    );
+                  },
                 ),
                 Divider(height: 1, color: separatorColor),
                 settingsRow(

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
-import '../routes/no_swipe_back_material_page_route.dart';
 import 'face_analysis_result_screen.dart';
 
 class LaserAnalyzeSpec {
@@ -93,13 +92,51 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
     await _resultController.forward();
     if (!mounted || _didNavigate) return;
     _didNavigate = true;
-    Navigator.of(context).pushReplacement(
-      NoSwipeBackMaterialPageRoute<void>(
-        builder: (_) => FaceAnalysisResultScreen(
-          imagePath: widget.imagePath,
-          sideImagePath: widget.sideImagePath,
-        ),
+    Navigator.of(context).pushAndRemoveUntil(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 340),
+        reverseTransitionDuration: const Duration(milliseconds: 360),
+        pageBuilder: (BuildContext context, _, __) {
+          return FaceAnalysisResultScreen(
+            imagePath: widget.imagePath,
+            sideImagePath: widget.sideImagePath,
+          );
+        },
+        transitionsBuilder:
+            (
+              BuildContext context,
+              Animation<double> animation,
+              Animation<double> secondaryAnimation,
+              Widget child,
+            ) {
+              if (animation.status == AnimationStatus.reverse) {
+                final Animation<Offset> reverseOffsetAnimation = Tween<Offset>(
+                  begin: Offset.zero,
+                  end: const Offset(0, 1),
+                ).animate(
+                  CurvedAnimation(
+                    parent: ReverseAnimation(animation),
+                    curve: Curves.easeInCubic,
+                  ),
+                );
+                return SlideTransition(
+                  position: reverseOffsetAnimation,
+                  child: child,
+                );
+              }
+              final Animation<Offset> forwardOffsetAnimation = Tween<Offset>(
+                begin: const Offset(1, 0),
+                end: Offset.zero,
+              ).animate(
+                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
+              );
+              return SlideTransition(
+                position: forwardOffsetAnimation,
+                child: child,
+              );
+            },
       ),
+      (Route<dynamic> route) => route.isFirst,
     );
   }
 

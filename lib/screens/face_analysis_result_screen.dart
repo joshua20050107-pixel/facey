@@ -25,14 +25,14 @@ class FaceAnalysisResult {
 
   factory FaceAnalysisResult.dummy() {
     return const FaceAnalysisResult(
-      overall: 84,
+      overall: 67,
       metrics: <FaceMetricScore>[
-        FaceMetricScore(label: 'ポテンシャル', value: 78),
-        FaceMetricScore(label: '性的魅力', value: 86),
+        FaceMetricScore(label: 'ポテンシャル', value: 96),
+        FaceMetricScore(label: '性的魅力', value: 82),
         FaceMetricScore(label: '印象', value: 73),
-        FaceMetricScore(label: '清潔感', value: 91),
-        FaceMetricScore(label: '骨格', value: 82),
-        FaceMetricScore(label: '肌', value: 69),
+        FaceMetricScore(label: '清潔感', value: 61),
+        FaceMetricScore(label: '骨格', value: 54),
+        FaceMetricScore(label: '肌', value: 34),
       ],
     );
   }
@@ -241,14 +241,14 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       viewData.metrics,
     );
     final List<FaceMetricScore> secondPageMetrics = <FaceMetricScore>[
-      const FaceMetricScore(label: '男性らしさ', value: 88),
-      const FaceMetricScore(label: '自信', value: 84),
-      const FaceMetricScore(label: '親しみやすさ', value: 79),
-      const FaceMetricScore(label: '髪の毛', value: 86),
-      const FaceMetricScore(label: 'シャープさ', value: 82),
-      const FaceMetricScore(label: '目力', value: 90),
-      const FaceMetricScore(label: '顎ライン', value: 84),
-      const FaceMetricScore(label: '眉', value: 86),
+      const FaceMetricScore(label: '男性らしさ', value: 92),
+      const FaceMetricScore(label: '自信', value: 83),
+      const FaceMetricScore(label: '親しみやすさ', value: 76),
+      const FaceMetricScore(label: '髪の毛', value: 68),
+      const FaceMetricScore(label: 'シャープさ', value: 58),
+      const FaceMetricScore(label: '目力', value: 47),
+      const FaceMetricScore(label: '顎ライン', value: 37),
+      const FaceMetricScore(label: '眉', value: 25),
     ];
     while (metrics.length < 6) {
       metrics.add(const FaceMetricScore(label: '-', value: 0));
@@ -259,9 +259,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       appBar: AppBar(
         leading: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () {
-            Navigator.of(context).popUntil((route) => route.isFirst);
-          },
+          onTap: () => Navigator.of(context).pop(),
           child: const Center(child: Icon(Icons.close_rounded, size: 34)),
         ),
         title: const Text(
@@ -860,15 +858,22 @@ class _ScoreBar extends StatelessWidget {
   final double width;
   final double height;
 
+  (Color, Color) _gradientByScore(int score) {
+    final double t = (score.clamp(0, 100)) / 100;
+    final Color start =
+        Color.lerp(const Color(0xFF6A7696), const Color(0xFF95EEFF), t) ??
+        const Color(0xFF6A7696);
+    final Color end =
+        Color.lerp(const Color(0xFF3F4B6E), const Color(0xFF124CFF), t) ??
+        const Color(0xFF124CFF);
+    return (start, end);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double clamped = (value.clamp(0, 100)) / 100;
-    final Color startColor =
-        Color.lerp(const Color(0xFF95EEFF), const Color(0xFF3CC8FF), clamped) ??
-        const Color(0xFF95EEFF);
-    final Color endColor =
-        Color.lerp(const Color(0xFF5BB9FF), const Color(0xFF124CFF), clamped) ??
-        const Color(0xFF124CFF);
+    final int score = value.clamp(0, 100);
+    final double clamped = score / 100;
+    final (Color startColor, Color endColor) = _gradientByScore(score);
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
