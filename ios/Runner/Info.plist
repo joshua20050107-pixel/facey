@@ -30,6 +30,8 @@
 	<string>顔解析のためにカメラを使用します。</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>顔解析のために写真を選択します。</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>解析結果カードを写真ライブラリに保存します。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
