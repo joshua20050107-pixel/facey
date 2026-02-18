@@ -6,16 +6,22 @@ import '../routes/no_swipe_back_material_page_route.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'scan_image_confirm_screen.dart';
 
-class ScanNextScreen extends StatefulWidget {
-  const ScanNextScreen({super.key, required this.selectedGender});
+class SideProfileUploadScreen extends StatefulWidget {
+  const SideProfileUploadScreen({
+    super.key,
+    required this.selectedGender,
+    required this.frontImagePath,
+  });
 
   final YomuGender selectedGender;
+  final String frontImagePath;
 
   @override
-  State<ScanNextScreen> createState() => _ScanNextScreenState();
+  State<SideProfileUploadScreen> createState() =>
+      _SideProfileUploadScreenState();
 }
 
-class _ScanNextScreenState extends State<ScanNextScreen> {
+class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
@@ -30,7 +36,9 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
         builder: (_) => ScanImageConfirmScreen(
           initialImagePath: file.path,
           selectedGender: widget.selectedGender,
-          goToSideProfileStepOnContinue: true,
+          goToSideProfileStepOnContinue: false,
+          appBarTitle: '横顔をアップロード',
+          laserThumbnailPath: widget.frontImagePath,
         ),
       ),
     );
@@ -108,7 +116,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
             ),
           ),
           child: const Text(
-            'スキャン開始',
+            'アップロード',
             style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
           ),
         ),
@@ -119,14 +127,14 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
   @override
   Widget build(BuildContext context) {
     final String imagePath = widget.selectedGender == YomuGender.female
-        ? 'assets/images/bay.png'
-        : 'assets/images/pay.png';
+        ? 'assets/images/memem.png'
+        : 'assets/images/papipe.png';
 
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
-          '正面からの画像をアップロード',
+          '横顔をアップロード',
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,

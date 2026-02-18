@@ -1,0 +1,246 @@
+import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../routes/no_swipe_back_material_page_route.dart';
+import '../widgets/yomu_gender_two_choice.dart';
+import 'laser_analyze_screen.dart';
+import 'side_profile_upload_screen.dart';
+
+class ScanImageConfirmScreen extends StatefulWidget {
+  const ScanImageConfirmScreen({
+    super.key,
+    required this.initialImagePath,
+    required this.selectedGender,
+    required this.goToSideProfileStepOnContinue,
+    this.appBarTitle = '正面からの画像をアップロード',
+    this.laserThumbnailPath,
+  });
+
+  final String initialImagePath;
+  final YomuGender selectedGender;
+  final bool goToSideProfileStepOnContinue;
+  final String appBarTitle;
+  final String? laserThumbnailPath;
+
+  @override
+  State<ScanImageConfirmScreen> createState() => _ScanImageConfirmScreenState();
+}
+
+class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
+  final ImagePicker _picker = ImagePicker();
+  late String _currentImagePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentImagePath = widget.initialImagePath;
+  }
+
+  Future<void> _replaceImage(ImageSource source) async {
+    final XFile? file = await _picker.pickImage(
+      source: source,
+      preferredCameraDevice: CameraDevice.front,
+      imageQuality: 92,
+    );
+    if (file == null || !mounted) return;
+    setState(() {
+      _currentImagePath = file.path;
+    });
+  }
+
+  Future<void> _showPickerOptions() async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return CupertinoActionSheet(
+          title: const Text(
+            '画像をアップロード',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _replaceImage(ImageSource.camera);
+              },
+              child: const Text(
+                '自撮りを撮影',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _replaceImage(ImageSource.gallery);
+              },
+              child: const Text('写真を選択', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(context).pop(),
+            isDefaultAction: true,
+            child: const Text('キャンセル', style: TextStyle(color: Colors.white)),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildUseAnotherButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.82),
+            width: 1.3,
+          ),
+          color: const Color(0x0FFFFFFF),
+        ),
+        child: TextButton(
+          onPressed: _showPickerOptions,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            overlayColor: Colors.white.withValues(alpha: 0.1),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          ),
+          child: const Text(
+            '別の画像を選択',
+            style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContinueButton(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      height: 58,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.35),
+            width: 0.9,
+          ),
+          gradient: const LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [Color(0xFF5B22FF), Color(0xFFB61DFF)],
+          ),
+        ),
+        child: TextButton(
+          onPressed: () {
+            if (widget.goToSideProfileStepOnContinue) {
+              Navigator.of(context).push(
+                NoSwipeBackMaterialPageRoute<void>(
+                  builder: (_) => SideProfileUploadScreen(
+                    selectedGender: widget.selectedGender,
+                    frontImagePath: _currentImagePath,
+                  ),
+                ),
+              );
+              return;
+            }
+            final String laserImagePath =
+                widget.laserThumbnailPath ?? _currentImagePath;
+            Navigator.of(context).push(
+              NoSwipeBackMaterialPageRoute<void>(
+                builder: (_) => LaserAnalyzeShell(
+                  imagePath: laserImagePath,
+                  sideImagePath: _currentImagePath,
+                ),
+              ),
+            );
+          },
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            overlayColor: Colors.white.withValues(alpha: 0.16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          ),
+          child: const Text(
+            '進む',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: Text(
+          widget.appBarTitle,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Image.asset(
+              'assets/images/keke.png',
+              height: 28,
+              fit: BoxFit.contain,
+            ),
+          ),
+        ],
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+            child: Column(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.file(
+                      File(_currentImagePath),
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 22),
+                _buildUseAnotherButton(context),
+                const SizedBox(height: 14),
+                _buildContinueButton(context),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

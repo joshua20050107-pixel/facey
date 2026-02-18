@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../routes/no_swipe_back_material_page_route.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
@@ -44,7 +45,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         child: TextButton(
           onPressed: () {
             Navigator.of(context).push(
-              MaterialPageRoute<void>(
+              NoSwipeBackMaterialPageRoute<void>(
                 builder: (_) =>
                     ScanNextScreen(selectedGender: widget.selectedGender),
               ),
