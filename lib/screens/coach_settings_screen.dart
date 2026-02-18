@@ -115,6 +115,11 @@ class CoachSettingsScreen extends StatelessWidget {
                 ),
                 Divider(height: 1, color: separatorColor),
                 settingsRow(
+                  icon: Icons.workspace_premium_outlined,
+                  label: 'アップグレード',
+                ),
+                Divider(height: 1, color: separatorColor),
+                settingsRow(
                   icon: Icons.wc_rounded,
                   label: '性別',
                   onTap: () {
