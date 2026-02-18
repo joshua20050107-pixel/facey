@@ -864,6 +864,26 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                         ),
                                                       ),
                                                     ),
+                                                    const SizedBox(height: 63),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '目元にやわらかい印象があり、親しみやすさがしっかり出ています。\n'
+                                                        '鼻筋と輪郭のバランスが良く、正面から見たときに顔立ちが整って見えるタイプです。\n'
+                                                        '口元も清潔感があり、全体として好印象につながる顔立ちです。',
+                                                        style: TextStyle(
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.74,
+                                                              ),
+                                                          fontSize: 16,
+                                                          height: 1.55,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
                                                     const Spacer(),
                                                   ],
                                                 ),
@@ -895,6 +915,243 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                             ],
                           ),
                         ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: SizedBox(
+                                      height: _resultCardHeight,
+                                      child: _buildResultCardFrame(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          22,
+                                          18,
+                                          22,
+                                          22,
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              top: 0,
+                                              right: 6,
+                                              child: ClipOval(
+                                                child: Image.file(
+                                                  File(widget.imagePath),
+                                                  width: 85,
+                                                  height: 85,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned.fill(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 0,
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    const Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '改善点',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 31,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 72),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '輪郭はすでに整っているので、次は肌の質感を上げると全体の印象がさらに伸びます。\n'
+                                                        '眉の形をほんの少しだけ整えると、目元の強さが自然に引き立ちます。\n'
+                                                        '髪型は額まわりに軽さを作ると、顔全体がよりシャープに見えます。',
+                                                        style: TextStyle(
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.74,
+                                                              ),
+                                                          fontSize: 16,
+                                                          height: 1.55,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const Spacer(),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              Row(
+                                children: [
+                                  _buildActionButton(
+                                    label: '保存',
+                                    icon: Icons.download_rounded,
+                                    onTap: _saveCardToGallery,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  _buildActionButton(
+                                    label: '共有',
+                                    icon: Icons.send_rounded,
+                                    onTap: _shareCardImage,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: SizedBox(
+                                      height: _resultCardHeight,
+                                      child: _buildResultCardFrame(
+                                        padding: const EdgeInsets.fromLTRB(
+                                          22,
+                                          18,
+                                          22,
+                                          22,
+                                        ),
+                                        child: Stack(
+                                          children: [
+                                            Positioned(
+                                              top: 0,
+                                              right: 6,
+                                              child: ClipOval(
+                                                child: Image.file(
+                                                  File(widget.imagePath),
+                                                  width: 85,
+                                                  height: 85,
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
+                                            ),
+                                            Positioned.fill(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                  top: 0,
+                                                ),
+                                                child: Column(
+                                                  children: [
+                                                    const Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '次の一手',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 31,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 72),
+                                                    Align(
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        '・明日から1週間、朝と夜で保湿を固定して肌の質感を安定させる\n'
+                                                        '・次のヘアカットでは「前髪は少し軽め、サイドはボリュームを抑える」でオーダーする\n'
+                                                        '・眉は上ラインを触りすぎず、下側の産毛だけ整えて目元をシャープに見せる\n'
+                                                        '・写真を撮るときは正面よりやや斜め（10〜15度）で、自然光の近くを選ぶ',
+                                                        style: TextStyle(
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.74,
+                                                              ),
+                                                          fontSize: 16,
+                                                          height: 1.55,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const Spacer(),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 22),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 58,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(29),
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      colors: <Color>[
+                                        Color(0xFF6C1CFF),
+                                        Color(0xFFB62BFF),
+                                      ],
+                                    ),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.36,
+                                      ),
+                                    ),
+                                  ),
+                                  child: TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(context).pop(),
+                                    style: TextButton.styleFrom(
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(29),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      '終了',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -902,7 +1159,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                     offset: const Offset(0, -58),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List<Widget>.generate(5, (int index) {
+                      children: List<Widget>.generate(7, (int index) {
                         final bool active = _currentPageIndex == index;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 180),

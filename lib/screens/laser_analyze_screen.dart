@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 import 'face_analysis_result_screen.dart';
 
@@ -34,6 +35,9 @@ class LaserAnalyzeShell extends StatefulWidget {
 
 class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
     with TickerProviderStateMixin {
+  static const String _prefsBoxName = 'app_prefs';
+  static const String _latestResultFrontImageKey = 'latest_result_front_image';
+  static const String _latestResultSideImageKey = 'latest_result_side_image';
   late final AnimationController _laserController;
   late final Animation<double> _laserProgress;
   late final AnimationController _resultController;
@@ -91,11 +95,18 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
     });
     await _resultController.forward();
     if (!mounted || _didNavigate) return;
+    final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+    await prefs.put(_latestResultFrontImageKey, widget.imagePath);
+    if (widget.sideImagePath != null) {
+      await prefs.put(_latestResultSideImageKey, widget.sideImagePath!);
+    } else {
+      await prefs.delete(_latestResultSideImageKey);
+    }
     _didNavigate = true;
     Navigator.of(context).pushAndRemoveUntil(
       PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 340),
-        reverseTransitionDuration: const Duration(milliseconds: 360),
+        transitionDuration: const Duration(milliseconds: 240),
+        reverseTransitionDuration: const Duration(milliseconds: 180),
         pageBuilder: (BuildContext context, _, __) {
           return FaceAnalysisResultScreen(
             imagePath: widget.imagePath,
@@ -116,7 +127,7 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
                 ).animate(
                   CurvedAnimation(
                     parent: ReverseAnimation(animation),
-                    curve: Curves.easeInCubic,
+                    curve: Curves.easeOutCubic,
                   ),
                 );
                 return SlideTransition(

@@ -1,6 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 
 import '../routes/no_swipe_back_material_page_route.dart';
+import 'face_analysis_result_screen.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
@@ -15,7 +19,27 @@ class ScanTabScreen extends StatefulWidget {
 }
 
 class _ScanTabScreenState extends State<ScanTabScreen> {
+  static const String _prefsBoxName = 'app_prefs';
+  static const String _latestResultFrontImageKey = 'latest_result_front_image';
+  static const String _latestResultSideImageKey = 'latest_result_side_image';
   int _currentPageIndex = 0;
+  String? _latestResultFrontImagePath;
+  String? _latestResultSideImagePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestResult();
+  }
+
+  void _loadLatestResult() {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    if (!mounted) return;
+    setState(() {
+      _latestResultFrontImagePath = box.get(_latestResultFrontImageKey);
+      _latestResultSideImagePath = box.get(_latestResultSideImageKey);
+    });
+  }
 
   Widget _buildStartAnalysisButton(double scale) {
     final double buttonHeight = (58 * scale).clamp(44.0, 62.0);
@@ -43,13 +67,14 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           ],
         ),
         child: TextButton(
-          onPressed: () {
-            Navigator.of(context).push(
+          onPressed: () async {
+            await Navigator.of(context).push(
               NoSwipeBackMaterialPageRoute<void>(
                 builder: (_) =>
                     ScanNextScreen(selectedGender: widget.selectedGender),
               ),
             );
+            _loadLatestResult();
           },
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
@@ -61,6 +86,72 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           ),
           child: Text(
             'スキャンする',
+            style: TextStyle(
+              fontSize: textSize,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOpenLatestResultButton(double scale) {
+    final double buttonHeight = (58 * scale).clamp(44.0, 62.0);
+    final double buttonRadius = (38 * scale).clamp(28.0, 40.0);
+    final double textSize = (22 * scale).clamp(18.0, 24.0);
+    final String? path = _latestResultFrontImagePath;
+    final bool enabled =
+        path != null && path.isNotEmpty && File(path).existsSync();
+
+    return SizedBox(
+      width: double.infinity,
+      height: buttonHeight,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(buttonRadius),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: enabled
+                ? const [Color(0xFF5B22FF), Color(0xFFB61DFF)]
+                : const [Color(0xFF444A57), Color(0xFF383D47)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (enabled ? const Color(0xFF8C35FF) : Colors.black)
+                  .withValues(alpha: enabled ? 0.5 : 0.3),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: TextButton(
+          onPressed: enabled
+              ? () {
+                  Navigator.of(context).push(
+                    NoSwipeBackMaterialPageRoute<void>(
+                      builder: (_) => FaceAnalysisResultScreen(
+                        imagePath: path,
+                        sideImagePath: _latestResultSideImagePath,
+                      ),
+                    ),
+                  );
+                }
+              : null,
+          style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
+            disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
+            overlayColor: Colors.white.withValues(alpha: 0.25),
+            splashFactory: InkRipple.splashFactory,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(buttonRadius),
+            ),
+          ),
+          child: Text(
+            enabled ? '結果を見る' : '結果がありません',
             style: TextStyle(
               fontSize: textSize,
               fontWeight: FontWeight.w700,
@@ -101,7 +192,67 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
             ),
           ),
         ),
-        const SizedBox.expand(),
+        Center(
+          child: SizedBox(
+            width: imageWidth,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: AspectRatio(
+                    aspectRatio: 0.72,
+                    child:
+                        _latestResultFrontImagePath != null &&
+                            _latestResultFrontImagePath!.isNotEmpty &&
+                            File(_latestResultFrontImagePath!).existsSync()
+                        ? Image.file(
+                            File(_latestResultFrontImagePath!),
+                            fit: BoxFit.cover,
+                          )
+                        : DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [
+                                  const Color(
+                                    0xFF212936,
+                                  ).withValues(alpha: 0.95),
+                                  const Color(
+                                    0xFF111720,
+                                  ).withValues(alpha: 0.98),
+                                ],
+                              ),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.18),
+                              ),
+                            ),
+                            child: const Center(
+                              child: Text(
+                                '直近の分析結果が\nここに表示されます',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Color(0xFFAEB7C8),
+                                  fontSize: 18,
+                                  height: 1.4,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                  ),
+                ),
+                Positioned(
+                  left: imageWidth * 0.16,
+                  right: imageWidth * 0.16,
+                  bottom: imageWidth * 0.09,
+                  child: _buildOpenLatestResultButton(scale),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -145,7 +296,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           child: Column(
             children: [
               const TopHeader(
-                title: '外見の診断',
+                title: 'ビジュアル評価',
                 titleStyle: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.w900,
