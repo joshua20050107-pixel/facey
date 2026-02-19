@@ -41,6 +41,61 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     });
   }
 
+  Route<void> _buildResultScreenRoute({
+    required String imagePath,
+    String? sideImagePath,
+  }) {
+    return PageRouteBuilder<void>(
+      transitionDuration: const Duration(milliseconds: 240),
+      reverseTransitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (BuildContext context, _, __) {
+        return FaceAnalysisResultScreen(
+          imagePath: imagePath,
+          sideImagePath: sideImagePath,
+        );
+      },
+      transitionsBuilder:
+          (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+            Widget child,
+          ) {
+            if (animation.status == AnimationStatus.reverse) {
+              final Animation<Offset> reverseOffsetAnimation =
+                  Tween<Offset>(
+                    begin: Offset.zero,
+                    end: const Offset(0, 1),
+                  ).animate(
+                    CurvedAnimation(
+                      parent: ReverseAnimation(animation),
+                      curve: Curves.easeOutCubic,
+                    ),
+                  );
+              return SlideTransition(
+                position: reverseOffsetAnimation,
+                child: child,
+              );
+            }
+
+            final Animation<Offset> forwardOffsetAnimation =
+                Tween<Offset>(
+                  begin: const Offset(1, 0),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                );
+            return SlideTransition(
+              position: forwardOffsetAnimation,
+              child: child,
+            );
+          },
+    );
+  }
+
   Widget _buildStartAnalysisButton(double scale) {
     final double buttonHeight = (58 * scale).clamp(44.0, 62.0);
     final double buttonRadius = (38 * scale).clamp(28.0, 40.0);
@@ -132,11 +187,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           onPressed: enabled
               ? () {
                   Navigator.of(context).push(
-                    NoSwipeBackMaterialPageRoute<void>(
-                      builder: (_) => FaceAnalysisResultScreen(
-                        imagePath: path,
-                        sideImagePath: _latestResultSideImagePath,
-                      ),
+                    _buildResultScreenRoute(
+                      imagePath: path,
+                      sideImagePath: _latestResultSideImagePath,
                     ),
                   );
                 }
@@ -168,11 +221,28 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     final String imagePath = widget.selectedGender == YomuGender.female
         ? 'assets/images/まま.png'
         : 'assets/images/いもり.png';
+    final double firstPageAspectRatio =
+        widget.selectedGender == YomuGender.female
+        ? (1042 / 1629)
+        : (1045 / 1629);
+    final double firstPageImageHeight = imageWidth / firstPageAspectRatio;
+    final String? latestFrontPath = _latestResultFrontImagePath;
+    final String? thumbnailPath =
+        latestFrontPath != null &&
+            latestFrontPath.isNotEmpty &&
+            File(latestFrontPath).existsSync()
+        ? latestFrontPath
+        : null;
+    final bool hasLatestResult =
+        thumbnailPath != null && thumbnailPath.isNotEmpty;
     return PageView(
       onPageChanged: (int index) {
         setState(() {
           _currentPageIndex = index;
         });
+        if (index == 1) {
+          _loadLatestResult();
+        }
       },
       children: [
         Center(
@@ -195,62 +265,63 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         Center(
           child: SizedBox(
             width: imageWidth,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
-                  child: AspectRatio(
-                    aspectRatio: 0.72,
-                    child:
-                        _latestResultFrontImagePath != null &&
-                            _latestResultFrontImagePath!.isNotEmpty &&
-                            File(_latestResultFrontImagePath!).existsSync()
-                        ? Image.file(
-                            File(_latestResultFrontImagePath!),
-                            fit: BoxFit.cover,
-                          )
-                        : DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  const Color(
-                                    0xFF212936,
-                                  ).withValues(alpha: 0.95),
-                                  const Color(
-                                    0xFF111720,
-                                  ).withValues(alpha: 0.98),
-                                ],
+            child: hasLatestResult
+                ? Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(37),
+                        child: SizedBox(
+                          width: imageWidth,
+                          height: firstPageImageHeight,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.file(
+                                File(thumbnailPath!),
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center,
+                                filterQuality: FilterQuality.high,
                               ),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.18),
-                              ),
-                            ),
-                            child: const Center(
-                              child: Text(
-                                '直近の分析結果が\nここに表示されます',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Color(0xFFAEB7C8),
-                                  fontSize: 18,
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w600,
+                              IgnorePointer(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      stops: const [0.70, 0.86, 1.0],
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withValues(alpha: 0.82),
+                                        Colors.black.withValues(alpha: 0.98),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ),
+                        ),
+                      ),
+                      Positioned(
+                        left: imageWidth * 0.16,
+                        right: imageWidth * 0.16,
+                        bottom: imageWidth * 0.09,
+                        child: _buildOpenLatestResultButton(scale),
+                      ),
+                    ],
+                  )
+                : const Center(
+                    child: Text(
+                      '分析結果が表示されます',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xFFAEB7C8),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-                Positioned(
-                  left: imageWidth * 0.16,
-                  right: imageWidth * 0.16,
-                  bottom: imageWidth * 0.09,
-                  child: _buildOpenLatestResultButton(scale),
-                ),
-              ],
-            ),
           ),
         ),
       ],

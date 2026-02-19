@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(34),

@@ -5,6 +5,8 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:hive/hive.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -59,21 +61,35 @@ class FaceAnalysisResultScreen extends StatefulWidget {
 
 class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     with SingleTickerProviderStateMixin {
+  static const String _prefsBoxName = 'app_prefs';
+  static const String _latestResultCardImageKey = 'latest_result_card_image';
   static const double _resultCardHeight = 500;
   int _currentPageIndex = 0;
   final GlobalKey _cardCaptureKey = GlobalKey();
   late final AnimationController _flipController;
   late String _cardBackImagePath;
+  bool _didPersistLatestCardThumbnail = false;
 
   Future<Uint8List?> _captureCardAsPng() async {
-    final RenderObject? renderObject = _cardCaptureKey.currentContext
-        ?.findRenderObject();
-    if (renderObject is! RenderRepaintBoundary) return null;
-    final ui.Image image = await renderObject.toImage(pixelRatio: 3);
-    final ByteData? byteData = await image.toByteData(
-      format: ui.ImageByteFormat.png,
-    );
-    return byteData?.buffer.asUint8List();
+    for (int i = 0; i < 8; i++) {
+      await SchedulerBinding.instance.endOfFrame;
+      final RenderObject? renderObject = _cardCaptureKey.currentContext
+          ?.findRenderObject();
+      if (renderObject is! RenderRepaintBoundary) continue;
+      if (!renderObject.attached || renderObject.debugNeedsPaint) continue;
+      try {
+        final ui.Image image = await renderObject.toImage(pixelRatio: 3);
+        final ByteData? byteData = await image.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
+        if (byteData == null) continue;
+        return byteData.buffer.asUint8List();
+      } on AssertionError {
+        // Render state can change between checks; retry on next frame.
+        continue;
+      }
+    }
+    return null;
   }
 
   Future<void> _saveCardToGallery() async {
@@ -115,6 +131,24 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     }
   }
 
+  Future<void> _persistLatestCardThumbnail() async {
+    if (_didPersistLatestCardThumbnail || !mounted) return;
+    for (int i = 0; i < 8; i++) {
+      final Uint8List? bytes = await _captureCardAsPng();
+      if (bytes != null && bytes.isNotEmpty) {
+        final Directory tempDir = await getTemporaryDirectory();
+        final String path = '${tempDir.path}/facey_latest_result_card.png';
+        final File file = File(path);
+        await file.writeAsBytes(bytes, flush: true);
+        final Box<String> box = Hive.box<String>(_prefsBoxName);
+        await box.put(_latestResultCardImageKey, path);
+        _didPersistLatestCardThumbnail = true;
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 120));
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -123,6 +157,9 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       duration: const Duration(milliseconds: 300),
     );
     _cardBackImagePath = widget.imagePath;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _persistLatestCardThumbnail();
+    });
   }
 
   @override
