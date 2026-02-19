@@ -284,16 +284,32 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                                 filterQuality: FilterQuality.high,
                               ),
                               IgnorePointer(
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      stops: const [0.70, 0.86, 1.0],
-                                      colors: [
-                                        Colors.transparent,
-                                        Colors.black.withValues(alpha: 0.82),
-                                        Colors.black.withValues(alpha: 0.98),
+                                child: Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: FractionallySizedBox(
+                                    heightFactor: 0.28,
+                                    widthFactor: 1,
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        Transform.translate(
+                                          offset: const Offset(0, -10),
+                                          child: Image.asset(
+                                            'assets/images/a.png',
+                                            fit: BoxFit.cover,
+                                            alignment: Alignment.bottomCenter,
+                                          ),
+                                        ),
+                                        const Align(
+                                          alignment: Alignment.bottomCenter,
+                                          child: SizedBox(
+                                            height: 10,
+                                            width: double.infinity,
+                                            child: ColoredBox(
+                                              color: Colors.black,
+                                            ),
+                                          ),
+                                        ),
                                       ],
                                     ),
                                   ),
