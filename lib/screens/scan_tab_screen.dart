@@ -55,8 +55,8 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     String? sideImagePath,
   }) {
     return PageRouteBuilder<void>(
-      transitionDuration: const Duration(milliseconds: 240),
-      reverseTransitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 420),
       pageBuilder: (BuildContext context, _, __) {
         return FaceAnalysisResultScreen(
           imagePath: imagePath,
@@ -78,7 +78,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                   ).animate(
                     CurvedAnimation(
                       parent: ReverseAnimation(animation),
-                      curve: Curves.easeOutCubic,
+                      curve: Curves.easeInOutCubic,
                     ),
                   );
               return SlideTransition(
@@ -94,7 +94,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                 ).animate(
                   CurvedAnimation(
                     parent: animation,
-                    curve: Curves.easeOutCubic,
+                    curve: Curves.easeInOutCubic,
                   ),
                 );
             return SlideTransition(
@@ -103,6 +103,11 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
             );
           },
     );
+  }
+
+  String _todayDateText() {
+    final DateTime now = DateTime.now();
+    return '${now.month}月${now.day}日';
   }
 
   Widget _buildStartAnalysisButton(double scale) {
@@ -300,6 +305,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                                 alignment: Alignment.center,
                                 filterQuality: FilterQuality.high,
                               ),
+                              const ColoredBox(color: Color(0x45000000)),
                               IgnorePointer(
                                 child: Align(
                                   alignment: Alignment.bottomCenter,
@@ -341,6 +347,22 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                         right: imageWidth * 0.16,
                         bottom: imageWidth * 0.09,
                         child: _buildOpenLatestResultButton(scale),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: imageWidth * 0.34,
+                        child: Text(
+                          _todayDateText(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Color(0xEBFFFFFF),
+                            fontSize: 37,
+                            fontWeight: FontWeight.w900,
+                            fontFamily: 'Hiragino Kaku Gothic ProN',
+                            letterSpacing: 0.2,
+                          ),
+                        ),
                       ),
                     ],
                   )

@@ -124,11 +124,19 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final bool isScanTab = _selectedBottomIndex == 0;
     final bool isSecondTab = _selectedBottomIndex == 1;
+    final bool isThirdTab = _selectedBottomIndex == 2;
     final bool isCoachTab = _selectedBottomIndex == 4;
     final Widget tabBody = isScanTab
         ? SafeArea(child: ScanTabScreen(selectedGender: _selectedGender))
         : isSecondTab
         ? const SafeArea(child: ActivityTabScreen())
+        : isThirdTab
+        ? const SafeArea(
+            child: ActivityTabScreen(
+              title: '成長ログ',
+              subtitle: 'あなたの変化を振り返りましょう',
+            ),
+          )
         : isCoachTab
         ? SafeArea(
             child: CoachSettingsScreen(

@@ -3,7 +3,14 @@ import 'package:flutter/material.dart';
 import '../widgets/top_header.dart';
 
 class ActivityTabScreen extends StatelessWidget {
-  const ActivityTabScreen({super.key});
+  const ActivityTabScreen({
+    super.key,
+    this.title = '今日のコンディション',
+    this.subtitle = '今日のあなたの状態を観測します',
+  });
+
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -11,16 +18,16 @@ class ActivityTabScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Column(
         children: [
-          const TopHeader(
-            title: '今日のコンディション',
+          TopHeader(
+            title: title,
             titleStyle: TextStyle(fontSize: 25, fontWeight: FontWeight.w900),
           ),
           Transform.translate(
             offset: const Offset(3, -4),
-            child: const Align(
+            child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                '今日のあなたの状態を観測します',
+                subtitle,
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
