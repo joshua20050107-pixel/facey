@@ -22,6 +22,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultFrontImageKey = 'latest_result_front_image';
   static const String _latestResultSideImageKey = 'latest_result_side_image';
+  final PageController _pageController = PageController(
+    viewportFraction: 0.9998,
+  );
   int _currentPageIndex = 0;
   String? _latestResultFrontImagePath;
   String? _latestResultSideImagePath;
@@ -30,6 +33,12 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   void initState() {
     super.initState();
     _loadLatestResult();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   void _loadLatestResult() {
@@ -236,6 +245,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     final bool hasLatestResult =
         thumbnailPath != null && thumbnailPath.isNotEmpty;
     return PageView(
+      controller: _pageController,
+      clipBehavior: Clip.none,
+      physics: const _FastSnapPagePhysics(),
       onPageChanged: (int index) {
         setState(() {
           _currentPageIndex = index;
@@ -248,10 +260,15 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         Center(
           child: SizedBox(
             width: imageWidth,
+            height: firstPageImageHeight,
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Image.asset(imagePath, width: imageWidth, fit: BoxFit.contain),
+                SizedBox(
+                  width: imageWidth,
+                  height: firstPageImageHeight,
+                  child: Image.asset(imagePath, fit: BoxFit.contain),
+                ),
                 Positioned(
                   left: imageWidth * 0.16,
                   right: imageWidth * 0.16,
@@ -413,4 +430,23 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
       },
     );
   }
+}
+
+class _FastSnapPagePhysics extends PageScrollPhysics {
+  const _FastSnapPagePhysics({super.parent});
+
+  @override
+  _FastSnapPagePhysics applyTo(ScrollPhysics? ancestor) {
+    return _FastSnapPagePhysics(parent: buildParent(ancestor));
+  }
+
+  @override
+  double get minFlingDistance => 6.0;
+
+  @override
+  double get dragStartDistanceMotionThreshold => 1.0;
+
+  @override
+  SpringDescription get spring =>
+      const SpringDescription(mass: 0.7, stiffness: 380.0, damping: 34.0);
 }
