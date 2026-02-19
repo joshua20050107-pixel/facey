@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'screens/activity_tab_screen.dart';
@@ -38,17 +41,53 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   static const String _prefsBoxName = 'app_prefs';
   static const String _genderKey = 'selected_gender';
+  static final SpringDescription _bottomIconSpring =
+      SpringDescription.withDampingRatio(mass: 1, stiffness: 200, ratio: 0.5);
+  static final SpringDescription _bottomTargetSlideSpring =
+      SpringDescription.withDampingRatio(mass: 1, stiffness: 260, ratio: 0.78);
   int _selectedBottomIndex = 0;
   bool _settingsNotificationEnabled = false;
   YomuGender _selectedGender = YomuGender.male;
+  late final List<AnimationController> _bottomIconScaleControllers;
+  late final List<Timer?> _bottomIconClampTimers;
+  late final AnimationController _bottomTargetSlideController;
+  late final AnimationController _bottomCapsuleScaleController;
+  Timer? _bottomCapsuleClampTimer;
 
   @override
   void initState() {
     super.initState();
+    _bottomIconScaleControllers = List<AnimationController>.generate(
+      _bottomIcons.length,
+      (_) => AnimationController.unbounded(vsync: this, value: 1.0),
+    );
+    _bottomIconClampTimers = List<Timer?>.filled(_bottomIcons.length, null);
+    _bottomTargetSlideController = AnimationController.unbounded(
+      vsync: this,
+      value: _selectedBottomIndex.toDouble(),
+    );
+    _bottomCapsuleScaleController = AnimationController.unbounded(
+      vsync: this,
+      value: 1.0,
+    );
     _loadSavedGender();
+  }
+
+  @override
+  void dispose() {
+    for (final Timer? timer in _bottomIconClampTimers) {
+      timer?.cancel();
+    }
+    _bottomCapsuleClampTimer?.cancel();
+    for (final AnimationController controller in _bottomIconScaleControllers) {
+      controller.dispose();
+    }
+    _bottomTargetSlideController.dispose();
+    _bottomCapsuleScaleController.dispose();
+    super.dispose();
   }
 
   void _loadSavedGender() {
@@ -82,38 +121,93 @@ class _HomeScreenState extends State<HomeScreen> {
     'coach',
   ];
 
+  void _playBottomIconSpring(int index) {
+    final AnimationController controller = _bottomIconScaleControllers[index];
+    _bottomIconClampTimers[index]?.cancel();
+    controller.stop();
+    controller.value = 0.88;
+    controller.animateWith(
+      SpringSimulation(_bottomIconSpring, controller.value, 1.0, 8.2),
+    );
+    _bottomIconClampTimers[index] = Timer(
+      const Duration(milliseconds: 300),
+      () {
+        if (!mounted) return;
+        controller.stop();
+        controller.value = 1.0;
+      },
+    );
+  }
+
+  void _playBottomCapsuleSpring() {
+    _bottomCapsuleClampTimer?.cancel();
+    _bottomCapsuleScaleController.stop();
+    _bottomCapsuleScaleController.value = 0.9;
+    _bottomCapsuleScaleController.animateWith(
+      SpringSimulation(
+        _bottomIconSpring,
+        _bottomCapsuleScaleController.value,
+        1.0,
+        7.8,
+      ),
+    );
+    _bottomCapsuleClampTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _bottomCapsuleScaleController.stop();
+      _bottomCapsuleScaleController.value = 1.0;
+    });
+  }
+
+  void _slideBottomTargetTo(int index) {
+    _bottomTargetSlideController.stop();
+    _bottomTargetSlideController.animateWith(
+      SpringSimulation(
+        _bottomTargetSlideSpring,
+        _bottomTargetSlideController.value,
+        index.toDouble(),
+        0.0,
+      ),
+    );
+  }
+
   Widget _buildBottomItem(int index) {
     final bool active = _selectedBottomIndex == index;
     final double iconSize = active ? 29.4 : 28;
+    final AnimationController iconScaleController =
+        _bottomIconScaleControllers[index];
     return Expanded(
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(26),
-          color: active ? const Color(0xFF3A4D6E) : Colors.transparent,
-        ),
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              _selectedBottomIndex = index;
-            });
-          },
-          borderRadius: BorderRadius.circular(26),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
+      child: InkWell(
+        onTap: () {
+          _playBottomIconSpring(index);
+          _playBottomCapsuleSpring();
+          _slideBottomTargetTo(index);
+          setState(() {
+            _selectedBottomIndex = index;
+          });
+        },
+        borderRadius: BorderRadius.circular(26),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedBuilder(
+                animation: iconScaleController,
+                builder: (BuildContext context, Widget? child) {
+                  return Transform.scale(
+                    scale: iconScaleController.value.clamp(0.88, 1.12),
+                    child: child,
+                  );
+                },
+                child: Icon(
                   _bottomIcons[index],
                   size: iconSize,
                   color: active
                       ? Colors.white
                       : Colors.white.withValues(alpha: 0.62),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -162,7 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 8, 18, 4),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 3),
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(34),
@@ -187,11 +281,55 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                children: List<Widget>.generate(
-                  _bottomLabels.length,
-                  _buildBottomItem,
-                ),
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final int itemCount = _bottomLabels.length;
+                  final double itemWidth = constraints.maxWidth / itemCount;
+                  return Stack(
+                    children: [
+                      AnimatedBuilder(
+                        animation: Listenable.merge(<Listenable>[
+                          _bottomTargetSlideController,
+                          _bottomCapsuleScaleController,
+                        ]),
+                        builder: (BuildContext context, Widget? child) {
+                          final double target = _bottomTargetSlideController
+                              .value
+                              .clamp(0.0, (itemCount - 1).toDouble());
+                          return Positioned(
+                            left: target * itemWidth,
+                            top: 0,
+                            bottom: 0,
+                            width: itemWidth,
+                            child: Transform.scale(
+                              scale: _bottomCapsuleScaleController.value.clamp(
+                                0.9,
+                                1.08,
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 2,
+                                ),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(26),
+                                    color: const Color(0xFF3A4D6E),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      Row(
+                        children: List<Widget>.generate(
+                          _bottomLabels.length,
+                          _buildBottomItem,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
