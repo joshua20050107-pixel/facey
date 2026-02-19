@@ -305,7 +305,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                                 alignment: Alignment.center,
                                 filterQuality: FilterQuality.high,
                               ),
-                              const ColoredBox(color: Color(0x45000000)),
+                              const ColoredBox(color: Color(0x66000000)),
                               IgnorePointer(
                                 child: Align(
                                   alignment: Alignment.bottomCenter,
@@ -351,7 +351,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                       Positioned(
                         left: 0,
                         right: 0,
-                        bottom: imageWidth * 0.34,
+                        bottom: imageWidth * 0.36,
                         child: Text(
                           _todayDateText(),
                           textAlign: TextAlign.center,
