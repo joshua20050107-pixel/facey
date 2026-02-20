@@ -537,7 +537,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           child: Column(
             children: [
               const TopHeader(
-                title: 'ビジュアル評価',
+                title: '魅力を測定',
                 titleStyle: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.w900,
