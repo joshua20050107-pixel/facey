@@ -167,118 +167,128 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
             ),
             Padding(
               padding: const EdgeInsets.only(bottom: 2),
-              child: Row(
-                children: [
-                  _CircleActionButton(icon: Icons.add_rounded, onPressed: null),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minHeight: 48,
-                        maxHeight: 168,
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: Stack(
-                          children: [
-                            RawScrollbar(
-                              controller: _inputScrollController,
-                              thumbVisibility: _showOverflowScrollbar,
-                              interactive: true,
-                              thickness: 4,
-                              radius: const Radius.circular(999),
-                              mainAxisMargin: 20,
-                              crossAxisMargin: 6,
-                              minThumbLength: 12,
-                              thumbColor: Colors.white.withValues(alpha: 0.68),
-                              child: TextField(
-                                controller: _messageController,
-                                scrollController: _inputScrollController,
-                                minLines: 1,
-                                maxLines: 5,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
+              child: Transform.translate(
+                offset: const Offset(0, 2),
+                child: Row(
+                  children: [
+                    _CircleActionButton(
+                      icon: Icons.add_rounded,
+                      onPressed: null,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minHeight: 48,
+                          maxHeight: 168,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Stack(
+                            children: [
+                              RawScrollbar(
+                                controller: _inputScrollController,
+                                thumbVisibility: _showOverflowScrollbar,
+                                interactive: true,
+                                thickness: 4,
+                                radius: const Radius.circular(999),
+                                mainAxisMargin: 20,
+                                crossAxisMargin: 6,
+                                minThumbLength: 12,
+                                thumbColor: Colors.white.withValues(
+                                  alpha: 0.68,
                                 ),
-                                cursorColor: Colors.white.withValues(
-                                  alpha: 0.85,
-                                ),
-                                decoration: InputDecoration(
-                                  hintText: 'メッセージを入力',
-                                  hintStyle: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.45),
+                                child: TextField(
+                                  controller: _messageController,
+                                  scrollController: _inputScrollController,
+                                  minLines: 1,
+                                  maxLines: 5,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
                                     fontSize: 14,
                                     fontWeight: FontWeight.w500,
                                   ),
-                                  filled: true,
-                                  fillColor: Colors.white.withValues(
-                                    alpha: 0.1,
+                                  cursorColor: Colors.white.withValues(
+                                    alpha: 0.85,
                                   ),
-                                  contentPadding: const EdgeInsets.only(
-                                    left: 12,
-                                    right: 52,
-                                    top: 14,
-                                    bottom: 14,
-                                  ),
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide(
+                                  decoration: InputDecoration(
+                                    hintText: 'メッセージを入力',
+                                    hintStyle: TextStyle(
                                       color: Colors.white.withValues(
-                                        alpha: 0.15,
+                                        alpha: 0.45,
+                                      ),
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    contentPadding: const EdgeInsets.only(
+                                      left: 12,
+                                      right: 52,
+                                      top: 14,
+                                      bottom: 14,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                      borderSide: BorderSide(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  enabledBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.15,
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                      borderSide: BorderSide(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.15,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  focusedBorder: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(24),
-                                    borderSide: BorderSide(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.24,
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                      borderSide: BorderSide(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.24,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                            Positioned(
-                              right: 12,
-                              bottom: 8,
-                              child: SizedBox(
-                                width: 34,
-                                height: 34,
-                                child: DecoratedBox(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: IconButton(
-                                    onPressed: null,
-                                    padding: EdgeInsets.zero,
-                                    constraints: const BoxConstraints(),
-                                    icon: const Icon(
-                                      Icons.arrow_upward_rounded,
-                                      size: 23,
-                                      color: Colors.white,
+                              Positioned(
+                                right: 12,
+                                bottom: 8,
+                                child: SizedBox(
+                                  width: 34,
+                                  height: 34,
+                                  child: DecoratedBox(
+                                    decoration: const BoxDecoration(
+                                      color: Colors.black,
+                                      shape: BoxShape.circle,
                                     ),
-                                    disabledColor: Colors.white,
+                                    child: IconButton(
+                                      onPressed: null,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      icon: const Icon(
+                                        Icons.arrow_upward_rounded,
+                                        size: 23,
+                                        color: Colors.white,
+                                      ),
+                                      disabledColor: Colors.white,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
