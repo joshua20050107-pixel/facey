@@ -103,7 +103,9 @@ class CoachSettingsScreen extends StatelessWidget {
                     activeColor: Colors.white,
                     activeTrackColor: luxuryPurple,
                     inactiveThumbColor: Colors.white.withValues(alpha: 0.92),
-                    inactiveTrackColor: luxuryPurpleDark.withValues(alpha: 0.32),
+                    inactiveTrackColor: luxuryPurpleDark.withValues(
+                      alpha: 0.32,
+                    ),
                     trackOutlineColor: WidgetStateProperty.resolveWith<Color?>((
                       Set<WidgetState> states,
                     ) {

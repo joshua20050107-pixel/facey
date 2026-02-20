@@ -22,9 +22,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultFrontImageKey = 'latest_result_front_image';
   static const String _latestResultSideImageKey = 'latest_result_side_image';
-  final PageController _pageController = PageController(
-    viewportFraction: 0.9998,
-  );
+  final PageController _pageController = PageController(viewportFraction: 0.93);
   int _currentPageIndex = 0;
   String? _latestResultFrontImagePath;
   String? _latestResultSideImagePath;
@@ -231,15 +229,17 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   }
 
   Widget _buildSlidingPages(double scale) {
-    final double imageWidth = (420 * scale).clamp(260.0, 440.0);
+    final double imageWidth = (430 * scale).clamp(268.0, 448.0);
+
     final String imagePath = widget.selectedGender == YomuGender.female
-        ? 'assets/images/まま.png'
-        : 'assets/images/いもり.png';
+        ? 'assets/images/plaos.png'
+        : 'assets/images/oaks.png';
     final double firstPageAspectRatio =
         widget.selectedGender == YomuGender.female
         ? (1042 / 1629)
         : (1045 / 1629);
-    final double firstPageImageHeight = imageWidth / firstPageAspectRatio;
+    final double firstPageImageHeight =
+        (imageWidth / firstPageAspectRatio) * 0.95;
     final String? latestFrontPath = _latestResultFrontImagePath;
     final String? thumbnailPath =
         latestFrontPath != null &&
@@ -249,8 +249,10 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         : null;
     final bool hasLatestResult =
         thumbnailPath != null && thumbnailPath.isNotEmpty;
+    final double pageGap = (1.4 * scale).clamp(1.0, 2.0);
     return PageView(
       controller: _pageController,
+      padEnds: true,
       clipBehavior: Clip.none,
       physics: const _FastSnapPagePhysics(),
       onPageChanged: (int index) {
@@ -262,121 +264,276 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         }
       },
       children: [
-        Center(
-          child: SizedBox(
-            width: imageWidth,
-            height: firstPageImageHeight,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: imageWidth,
-                  height: firstPageImageHeight,
-                  child: Image.asset(imagePath, fit: BoxFit.contain),
-                ),
-                Positioned(
-                  left: imageWidth * 0.16,
-                  right: imageWidth * 0.16,
-                  bottom: imageWidth * 0.09,
-                  child: _buildStartAnalysisButton(scale),
-                ),
-              ],
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: pageGap),
+          child: Align(
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: imageWidth,
+              height: firstPageImageHeight,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(37),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          blurRadius: 2.2,
+                          spreadRadius: -0.45,
+                          offset: const Offset(0, -1),
+                        ),
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.07),
+                          blurRadius: 1.2,
+                          spreadRadius: -0.7,
+                          offset: const Offset(0, -2),
+                        ),
+                        BoxShadow(
+                          color: Colors.white.withValues(alpha: 0.26),
+                          blurRadius: 2.8,
+                          spreadRadius: -0.08,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(37),
+                      child: SizedBox(
+                        width: imageWidth,
+                        height: firstPageImageHeight,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Image.asset(imagePath, fit: BoxFit.cover),
+                            IgnorePointer(
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: FractionallySizedBox(
+                                  heightFactor: 0.28,
+                                  widthFactor: 1,
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      Transform.translate(
+                                        offset: const Offset(0, -17),
+                                        child: Image.asset(
+                                          'assets/images/ppak.png',
+                                          fit: BoxFit.cover,
+                                          alignment: Alignment.bottomCenter,
+                                        ),
+                                      ),
+                                      const Align(
+                                        alignment: Alignment.bottomCenter,
+                                        child: SizedBox(
+                                          height: 18,
+                                          width: double.infinity,
+                                          child: ColoredBox(
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: imageWidth * 0.06,
+                    right: imageWidth * 0.06,
+                    bottom: imageWidth * 0.28,
+                    child: const Text(
+                      'あなたの顔を分析して\n改善点を提案',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Color(0xF2FFFFFF),
+                        fontSize: 29,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'Hiragino Kaku Gothic ProN',
+                        letterSpacing: 0.0,
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: imageWidth * 0.16,
+                    right: imageWidth * 0.16,
+                    bottom: imageWidth * 0.09,
+                    child: _buildStartAnalysisButton(scale),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-        Center(
-          child: SizedBox(
-            width: imageWidth,
-            child: hasLatestResult
-                ? Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(37),
-                        child: SizedBox(
-                          width: imageWidth,
-                          height: firstPageImageHeight,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.file(
-                                File(thumbnailPath!),
-                                fit: BoxFit.cover,
-                                alignment: Alignment.center,
-                                filterQuality: FilterQuality.high,
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: pageGap),
+          child: Align(
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: imageWidth,
+              child: hasLatestResult
+                  ? Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(37),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                blurRadius: 2.2,
+                                spreadRadius: -0.45,
+                                offset: const Offset(0, -1),
                               ),
-                              const ColoredBox(color: Color(0x66000000)),
-                              IgnorePointer(
-                                child: Align(
-                                  alignment: Alignment.bottomCenter,
-                                  child: FractionallySizedBox(
-                                    heightFactor: 0.28,
-                                    widthFactor: 1,
-                                    child: Stack(
-                                      fit: StackFit.expand,
-                                      children: [
-                                        Transform.translate(
-                                          offset: const Offset(0, -10),
-                                          child: Image.asset(
-                                            'assets/images/a.png',
-                                            fit: BoxFit.cover,
-                                            alignment: Alignment.bottomCenter,
-                                          ),
-                                        ),
-                                        const Align(
-                                          alignment: Alignment.bottomCenter,
-                                          child: SizedBox(
-                                            height: 10,
-                                            width: double.infinity,
-                                            child: ColoredBox(
-                                              color: Colors.black,
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.07),
+                                blurRadius: 1.2,
+                                spreadRadius: -0.7,
+                                offset: const Offset(0, -2),
+                              ),
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.26),
+                                blurRadius: 2.8,
+                                spreadRadius: -0.08,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(37),
+                            child: SizedBox(
+                              width: imageWidth,
+                              height: firstPageImageHeight,
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.file(
+                                    File(thumbnailPath),
+                                    fit: BoxFit.cover,
+                                    alignment: Alignment.center,
+                                    filterQuality: FilterQuality.high,
+                                  ),
+                                  const ColoredBox(color: Color(0x66000000)),
+                                  IgnorePointer(
+                                    child: Align(
+                                      alignment: Alignment.bottomCenter,
+                                      child: FractionallySizedBox(
+                                        heightFactor: 0.28,
+                                        widthFactor: 1,
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            Transform.translate(
+                                              offset: const Offset(0, -17),
+                                              child: Image.asset(
+                                                'assets/images/ppak.png',
+                                                fit: BoxFit.cover,
+                                                alignment:
+                                                    Alignment.bottomCenter,
+                                              ),
                                             ),
-                                          ),
+                                            const Align(
+                                              alignment: Alignment.bottomCenter,
+                                              child: SizedBox(
+                                                height: 17,
+                                                width: double.infinity,
+                                                child: ColoredBox(
+                                                  color: Colors.black,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          left: imageWidth * 0.16,
+                          right: imageWidth * 0.16,
+                          bottom: imageWidth * 0.09,
+                          child: _buildOpenLatestResultButton(scale),
+                        ),
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          bottom: imageWidth * 0.36,
+                          child: Text(
+                            _todayDateText(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Color(0xEBFFFFFF),
+                              fontSize: 37,
+                              fontWeight: FontWeight.w900,
+                              fontFamily: 'Hiragino Kaku Gothic ProN',
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  : Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        DecoratedBox(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(37),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.12),
+                                blurRadius: 2.2,
+                                spreadRadius: -0.45,
+                                offset: const Offset(0, -1),
+                              ),
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.07),
+                                blurRadius: 1.2,
+                                spreadRadius: -0.7,
+                                offset: const Offset(0, -2),
+                              ),
+                              BoxShadow(
+                                color: Colors.white.withValues(alpha: 0.26),
+                                blurRadius: 2.8,
+                                spreadRadius: -0.08,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(37),
+                            child: SizedBox(
+                              width: imageWidth,
+                              height: firstPageImageHeight,
+                              child: const ColoredBox(
+                                color: Color(0xFF1A2230),
+                                child: Center(
+                                  child: Text(
+                                    '分析結果が表示されます',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFFAEB7C8),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
                                     ),
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        left: imageWidth * 0.16,
-                        right: imageWidth * 0.16,
-                        bottom: imageWidth * 0.09,
-                        child: _buildOpenLatestResultButton(scale),
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: imageWidth * 0.36,
-                        child: Text(
-                          _todayDateText(),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Color(0xEBFFFFFF),
-                            fontSize: 37,
-                            fontWeight: FontWeight.w900,
-                            fontFamily: 'Hiragino Kaku Gothic ProN',
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                      ),
-                    ],
-                  )
-                : const Center(
-                    child: Text(
-                      '分析結果が表示されます',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Color(0xFFAEB7C8),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      ],
                     ),
-                  ),
+            ),
           ),
         ),
       ],
@@ -442,9 +599,25 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                   ),
                 ),
               ),
-              Expanded(child: _buildSlidingPages(scale)),
+              Expanded(
+                child: Transform.translate(
+                  offset: const Offset(0, 4),
+                  child: OverflowBox(
+                    alignment: Alignment.center,
+                    minWidth: 0,
+                    maxWidth: constraints.maxWidth,
+                    child: SizedBox(
+                      width: constraints.maxWidth,
+                      child: _buildSlidingPages(scale),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 8),
-              _buildPageIndicator(),
+              Transform.translate(
+                offset: const Offset(0, 8),
+                child: _buildPageIndicator(),
+              ),
               const SizedBox(height: 23),
             ],
           ),

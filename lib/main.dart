@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'screens/activity_tab_screen.dart';
@@ -121,6 +123,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'coach',
   ];
 
+  static const MethodChannel _hapticChannel = MethodChannel('facey/haptics');
+
+  void _triggerBottomNavHaptic() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    unawaited(
+      _hapticChannel.invokeMethod<void>('softImpact').catchError((Object _) {}),
+    );
+  }
+
   void _playBottomIconSpring(int index) {
     final AnimationController controller = _bottomIconScaleControllers[index];
     _bottomIconClampTimers[index]?.cancel();
@@ -178,6 +189,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Expanded(
       child: InkWell(
         onTap: () {
+          _triggerBottomNavHaptic();
           _playBottomIconSpring(index);
           _playBottomCapsuleSpring();
           _slideBottomTargetTo(index);
@@ -225,12 +237,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         : isSecondTab
         ? const SafeArea(child: ActivityTabScreen())
         : isThirdTab
-        ? const SafeArea(
-            child: ActivityTabScreen(
-              title: '成長ログ',
-              subtitle: 'あなたの変化を振り返りましょう',
-            ),
-          )
+        ? const SizedBox.expand()
         : isCoachTab
         ? SafeArea(
             child: CoachSettingsScreen(
@@ -256,7 +263,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 3),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(34),
