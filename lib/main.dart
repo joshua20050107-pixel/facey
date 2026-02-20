@@ -267,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 4),
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
           child: DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(34),
@@ -349,7 +349,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
+            colors: [Color(0xFF10151D), Color(0xFF222C3B), Color(0xFF364B68)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

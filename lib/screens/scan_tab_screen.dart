@@ -234,12 +234,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     final String imagePath = widget.selectedGender == YomuGender.female
         ? 'assets/images/plaos.png'
         : 'assets/images/oaks.png';
-    final double firstPageAspectRatio =
-        widget.selectedGender == YomuGender.female
-        ? (1042 / 1629)
-        : (1045 / 1629);
-    final double firstPageImageHeight =
-        (imageWidth / firstPageAspectRatio) * 0.95;
+    final double firstPageImageHeight = (imageWidth / (1045 / 1629)) * 0.95;
     final String? latestFrontPath = _latestResultFrontImagePath;
     final String? thumbnailPath =
         latestFrontPath != null &&
@@ -482,56 +477,19 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                         ),
                       ],
                     )
-                  : Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(37),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.12),
-                                blurRadius: 2.2,
-                                spreadRadius: -0.45,
-                                offset: const Offset(0, -1),
-                              ),
-                              BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.07),
-                                blurRadius: 1.2,
-                                spreadRadius: -0.7,
-                                offset: const Offset(0, -2),
-                              ),
-                              BoxShadow(
-                                color: Colors.white.withValues(alpha: 0.26),
-                                blurRadius: 2.8,
-                                spreadRadius: -0.08,
-                                offset: const Offset(0, 1),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(37),
-                            child: SizedBox(
-                              width: imageWidth,
-                              height: firstPageImageHeight,
-                              child: const ColoredBox(
-                                color: Color(0xFF1A2230),
-                                child: Center(
-                                  child: Text(
-                                    '分析結果が表示されます',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Color(0xFFAEB7C8),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
+                  : SizedBox(
+                      height: firstPageImageHeight,
+                      child: const Center(
+                        child: Text(
+                          '分析結果が表示されます',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFFAEB7C8),
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                      ],
+                      ),
                     ),
             ),
           ),
