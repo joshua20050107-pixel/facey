@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import 'screens/activity_tab_screen.dart';
+import 'screens/chat_tab_screen.dart';
 import 'screens/coach_settings_screen.dart';
 import 'screens/scan_tab_screen.dart';
 import 'widgets/yomu_gender_two_choice.dart';
@@ -231,6 +232,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final bool isScanTab = _selectedBottomIndex == 0;
     final bool isSecondTab = _selectedBottomIndex == 1;
     final bool isThirdTab = _selectedBottomIndex == 2;
+    final bool isChatTab = _selectedBottomIndex == 3;
     final bool isCoachTab = _selectedBottomIndex == 4;
     final Widget tabBody = isScanTab
         ? SafeArea(child: ScanTabScreen(selectedGender: _selectedGender))
@@ -238,6 +240,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ? const SafeArea(child: ActivityTabScreen())
         : isThirdTab
         ? const SizedBox.expand()
+        : isChatTab
+        ? const SafeArea(child: ChatTabScreen())
         : isCoachTab
         ? SafeArea(
             child: CoachSettingsScreen(
