@@ -352,6 +352,13 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                         fontWeight: FontWeight.w900,
                         fontFamily: 'Hiragino Kaku Gothic ProN',
                         letterSpacing: 0.0,
+                        shadows: <Shadow>[
+                          Shadow(
+                            color: Color(0x66000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
                       ),
                     ),
                   ),
