@@ -471,7 +471,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Center(
                         child: Transform.translate(
-                          offset: const Offset(0, -8),
+                          offset: const Offset(0, -3),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -506,7 +506,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Transform.translate(
-                        offset: const Offset(0, -8),
+                        offset: const Offset(0, -3),
                         child: _ProgressSummaryCard(
                           overallText: overallText,
                           potentialText: potentialText,
@@ -518,7 +518,9 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                           onChevronTap: () {
                             Navigator.of(context).push<void>(
                               MaterialPageRoute<void>(
-                                builder: (_) => const _GrowthBlankScreen(),
+                                builder: (_) => _GrowthBlankScreen(
+                                  monthlyScores: widget.monthlyScores,
+                                ),
                               ),
                             );
                           },
@@ -526,7 +528,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 12),
                     Expanded(
                       child: GridView.builder(
                         padding: const EdgeInsets.only(bottom: 140),
@@ -604,8 +606,36 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
   }
 }
 
-class _GrowthBlankScreen extends StatelessWidget {
-  const _GrowthBlankScreen();
+class _GrowthBlankScreen extends StatefulWidget {
+  const _GrowthBlankScreen({required this.monthlyScores});
+
+  final Map<String, _MonthlyScore> monthlyScores;
+
+  @override
+  State<_GrowthBlankScreen> createState() => _GrowthBlankScreenState();
+}
+
+class _GrowthBlankScreenState extends State<_GrowthBlankScreen> {
+  late int _year;
+
+  @override
+  void initState() {
+    super.initState();
+    _year = DateTime.now().year;
+  }
+
+  void _changeYear(int delta) {
+    setState(() {
+      _year += delta;
+    });
+  }
+
+  _MonthlyScore? _scoreForMonth(int year, int month) {
+    final String key = '$year-${month.toString().padLeft(2, '0')}';
+    final _MonthlyScore? score = widget.monthlyScores[key];
+    if (score == null || !score.hasData) return null;
+    return score;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -619,18 +649,303 @@ class _GrowthBlankScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: const EdgeInsets.only(left: 8, top: 8),
-              child: IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(
-                  Icons.chevron_left_rounded,
-                  size: 40,
-                  color: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints.tightFor(
+                        width: 40,
+                        height: 40,
+                      ),
+                      icon: const Icon(
+                        Icons.chevron_left_rounded,
+                        size: 40,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'あなたの推移',
+                      style: TextStyle(
+                        fontSize: 25,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFFF3F6FB),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 8),
+                Center(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        onPressed: () => _changeYear(-1),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 30,
+                          height: 30,
+                        ),
+                        icon: const Icon(
+                          Icons.chevron_left_rounded,
+                          size: 24,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '$_year年',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFFF3F6FB),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => _changeYear(1),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 30,
+                          height: 30,
+                        ),
+                        icon: const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 24,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (BuildContext context, BoxConstraints constraints) {
+                      final double crossSpacing = 8;
+                      final double mainSpacing = 8;
+                      final double gridHeight = constraints.maxHeight * 0.9;
+                      final double tileHeight =
+                          (gridHeight - (mainSpacing * 5)) / 6;
+                      final double tileWidth =
+                          (constraints.maxWidth - crossSpacing) / 2;
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                          height: gridHeight,
+                          child: GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: 12,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: crossSpacing,
+                                  mainAxisSpacing: mainSpacing,
+                                  childAspectRatio: tileWidth / tileHeight,
+                                ),
+                            itemBuilder: (BuildContext context, int index) {
+                              final int month = index + 1;
+                              final _MonthlyScore? monthScore = _scoreForMonth(
+                                _year,
+                                month,
+                              );
+                              final bool hasData = monthScore != null;
+                              final int? overall = monthScore?.overallAvg;
+                              final int? potential = monthScore?.potentialAvg;
+                              final int? delta =
+                                  (overall != null && potential != null)
+                                  ? (potential - overall)
+                                  : null;
+                              final String overallText =
+                                  overall?.toString() ?? '-';
+                              final String potentialText =
+                                  potential?.toString() ?? '-';
+                              final String? deltaText =
+                                  delta == null || delta == 0
+                                  ? null
+                                  : (delta > 0 ? '+$delta' : '$delta');
+                              final double overallProgress =
+                                  ((overall ?? 0) / 100).clamp(0.0, 1.0);
+                              final double potentialWidthFactor =
+                                  ((potential ?? 0) - (overall ?? 0)).clamp(
+                                    0,
+                                    100,
+                                  ) /
+                                  100;
+
+                              return AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF1E2A3E,
+                                  ).withValues(alpha: 0.56),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.16),
+                                  ),
+                                  boxShadow: null,
+                                ),
+                                padding: const EdgeInsets.fromLTRB(
+                                  10,
+                                  8,
+                                  10,
+                                  8,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      '$month月',
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFFB9C0CF),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    if (!hasData)
+                                      const Expanded(
+                                        child: Center(
+                                          child: Text(
+                                            '-',
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF8190A9),
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    else ...[
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            overallText,
+                                            style: const TextStyle(
+                                              fontSize: 30,
+                                              height: 1,
+                                              fontWeight: FontWeight.w900,
+                                              color: Color(0xFFF3F6FB),
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                potentialText,
+                                                style: const TextStyle(
+                                                  fontSize: 22,
+                                                  height: 1,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: Color(0xFFD6DDF0),
+                                                ),
+                                              ),
+                                              if (deltaText != null)
+                                                Text(
+                                                  deltaText,
+                                                  style: const TextStyle(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w800,
+                                                    color: Color(0xFF9C73FF),
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        child: SizedBox(
+                                          height: 4,
+                                          child: LayoutBuilder(
+                                            builder:
+                                                (
+                                                  BuildContext context,
+                                                  BoxConstraints constraints,
+                                                ) {
+                                                  final double total =
+                                                      constraints.maxWidth;
+                                                  final double overallWidth =
+                                                      total * overallProgress;
+                                                  final double potentialWidth =
+                                                      total *
+                                                      potentialWidthFactor;
+                                                  return Stack(
+                                                    children: [
+                                                      Container(
+                                                        color:
+                                                            const Color(
+                                                              0xFFD5DAE2,
+                                                            ).withValues(
+                                                              alpha: 0.45,
+                                                            ),
+                                                      ),
+                                                      Container(
+                                                        width: overallWidth,
+                                                        decoration:
+                                                            const BoxDecoration(
+                                                              gradient: LinearGradient(
+                                                                colors: <Color>[
+                                                                  Color(
+                                                                    0xFF7CC5EA,
+                                                                  ),
+                                                                  Color(
+                                                                    0xFF2C59E2,
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                      ),
+                                                      if (potentialWidth > 0)
+                                                        Positioned(
+                                                          left: overallWidth,
+                                                          child: Container(
+                                                            width:
+                                                                potentialWidth,
+                                                            height: 4,
+                                                            decoration: const BoxDecoration(
+                                                              gradient: LinearGradient(
+                                                                colors: <Color>[
+                                                                  Color(
+                                                                    0xFF8A4DFF,
+                                                                  ),
+                                                                  Color(
+                                                                    0xFF5A16F4,
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  );
+                                                },
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
         ),
