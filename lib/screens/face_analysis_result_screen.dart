@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -46,6 +47,7 @@ class FaceAnalysisResultScreen extends StatefulWidget {
     required this.imagePath,
     this.sideImagePath,
     this.result,
+    this.persistSummary = true,
   });
 
   final String imagePath;
@@ -53,6 +55,7 @@ class FaceAnalysisResultScreen extends StatefulWidget {
 
   // AI導線用: 後でAPIレスポンスをここへ渡せばUIはそのまま使える。
   final FaceAnalysisResult? result;
+  final bool persistSummary;
 
   @override
   State<FaceAnalysisResultScreen> createState() =>
@@ -63,6 +66,17 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     with SingleTickerProviderStateMixin {
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultCardImageKey = 'latest_result_card_image';
+  static const String _latestResultOverallScoreKey = 'latest_result_overall_score';
+  static const String _latestResultPotentialScoreKey =
+      'latest_result_potential_score';
+  static const String _resultOverallSumKey = 'result_overall_sum';
+  static const String _resultPotentialSumKey = 'result_potential_sum';
+  static const String _resultCountKey = 'result_count';
+  static const String _lastAggregatedResultIdKey = 'last_aggregated_result_id';
+  static const String _resultFrontImageHistoryKey = 'result_front_image_history';
+  static const String _resultFrontImageHistoryMetaKey =
+      'result_front_image_history_meta';
+  static const String _resultMonthlyScoresKey = 'result_monthly_scores';
   static const double _resultCardHeight = 500;
   int _currentPageIndex = 0;
   final GlobalKey _cardCaptureKey = GlobalKey();
@@ -149,6 +163,100 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     }
   }
 
+  Future<void> _persistLatestSummaryScores() async {
+    final FaceAnalysisResult viewData =
+        widget.result ?? FaceAnalysisResult.dummy();
+    final List<FaceMetricScore> metrics = List<FaceMetricScore>.from(
+      viewData.metrics,
+    );
+    if (metrics.isEmpty) return;
+    final int overallScore = viewData.overall.clamp(0, 100);
+    final int potentialScore = metrics.first.value.clamp(0, 100);
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    await box.put(_latestResultOverallScoreKey, overallScore.toString());
+    await box.put(_latestResultPotentialScoreKey, potentialScore.toString());
+
+    final String resultId = '${widget.imagePath}|$overallScore|$potentialScore';
+    final String? lastAggregatedId = box.get(_lastAggregatedResultIdKey);
+    if (lastAggregatedId == resultId) return;
+
+    final int currentOverallSum = int.tryParse(box.get(_resultOverallSumKey) ?? '') ?? 0;
+    final int currentPotentialSum =
+        int.tryParse(box.get(_resultPotentialSumKey) ?? '') ?? 0;
+    final int currentCount = int.tryParse(box.get(_resultCountKey) ?? '') ?? 0;
+
+    await box.put(_resultOverallSumKey, (currentOverallSum + overallScore).toString());
+    await box.put(
+      _resultPotentialSumKey,
+      (currentPotentialSum + potentialScore).toString(),
+    );
+    await box.put(_resultCountKey, (currentCount + 1).toString());
+    await box.put(_lastAggregatedResultIdKey, resultId);
+
+    final DateTime now = DateTime.now();
+    final String monthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final String monthlyRaw = box.get(_resultMonthlyScoresKey) ?? '{}';
+    Map<String, dynamic> monthlyMap;
+    try {
+      monthlyMap = Map<String, dynamic>.from(
+        jsonDecode(monthlyRaw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      monthlyMap = <String, dynamic>{};
+    }
+    final Map<String, dynamic> monthData = Map<String, dynamic>.from(
+      monthlyMap[monthKey] as Map? ?? <String, dynamic>{},
+    );
+    final int monthOverallSum =
+        (monthData['overallSum'] is num ? monthData['overallSum'] as num : 0)
+            .toInt();
+    final int monthPotentialSum =
+        (monthData['potentialSum'] is num ? monthData['potentialSum'] as num : 0)
+            .toInt();
+    final int monthCount =
+        (monthData['count'] is num ? monthData['count'] as num : 0).toInt();
+    monthlyMap[monthKey] = <String, dynamic>{
+      'overallSum': monthOverallSum + overallScore,
+      'potentialSum': monthPotentialSum + potentialScore,
+      'count': monthCount + 1,
+    };
+    await box.put(_resultMonthlyScoresKey, jsonEncode(monthlyMap));
+
+    final String historyRaw = box.get(_resultFrontImageHistoryKey) ?? '';
+    final List<String> history = historyRaw
+        .split('\n')
+        .where((String p) => p.isNotEmpty)
+        .toList();
+    history.remove(widget.imagePath);
+    history.insert(0, widget.imagePath);
+    if (history.length > 120) {
+      history.removeRange(120, history.length);
+    }
+    await box.put(_resultFrontImageHistoryKey, history.join('\n'));
+
+    final String metaRaw = box.get(_resultFrontImageHistoryMetaKey) ?? '[]';
+    List<dynamic> metaList;
+    try {
+      metaList = jsonDecode(metaRaw) as List<dynamic>;
+    } catch (_) {
+      metaList = <dynamic>[];
+    }
+    final List<Map<String, dynamic>> normalized = metaList
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    normalized.removeWhere((Map<String, dynamic> item) {
+      return item['path'] == widget.imagePath;
+    });
+    normalized.insert(0, <String, dynamic>{
+      'path': widget.imagePath,
+      'addedAt': DateTime.now().toIso8601String(),
+    });
+    if (normalized.length > 120) {
+      normalized.removeRange(120, normalized.length);
+    }
+    await box.put(_resultFrontImageHistoryMetaKey, jsonEncode(normalized));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -158,7 +266,9 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     );
     _cardBackImagePath = widget.imagePath;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!widget.persistSummary) return;
       _persistLatestCardThumbnail();
+      _persistLatestSummaryScores();
     });
   }
 
