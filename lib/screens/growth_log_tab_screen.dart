@@ -466,51 +466,63 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Center(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              onPressed: _goToPreviousMonth,
-                              icon: const Icon(
-                                Icons.chevron_left_rounded,
-                                color: Colors.white,
+                        child: Transform.translate(
+                          offset: const Offset(0, -8),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                onPressed: _goToPreviousMonth,
+                                icon: const Icon(
+                                  Icons.chevron_left_rounded,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                            Text(
-                              '${selectedMonth.year}年${selectedMonth.month}月',
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFFE9EEF7),
+                              Text(
+                                '${selectedMonth.year}年${selectedMonth.month}月',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFFE9EEF7),
+                                ),
                               ),
-                            ),
-                            IconButton(
-                              onPressed: _goToNextMonth,
-                              icon: const Icon(
-                                Icons.chevron_right_rounded,
-                                color: Colors.white,
+                              IconButton(
+                                onPressed: _goToNextMonth,
+                                icon: const Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: Colors.white,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 0),
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _ProgressSummaryCard(
-                        overallText: overallText,
-                        potentialText: potentialText,
-                        potentialDeltaText: potentialDeltaText,
-                        hasScores: hasScores,
-                        overallScore: overallScore,
-                        potentialScore: potentialScore,
-                        imagePath: selectedMonthLatestImagePath,
-                        onChevronTap: null,
-                        showChevron: false,
+                      child: Transform.translate(
+                        offset: const Offset(0, -8),
+                        child: _ProgressSummaryCard(
+                          overallText: overallText,
+                          potentialText: potentialText,
+                          potentialDeltaText: potentialDeltaText,
+                          hasScores: hasScores,
+                          overallScore: overallScore,
+                          potentialScore: potentialScore,
+                          imagePath: selectedMonthLatestImagePath,
+                          onChevronTap: () {
+                            Navigator.of(context).push<void>(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const _GrowthBlankScreen(),
+                              ),
+                            );
+                          },
+                          showChevron: true,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 6),
                     Expanded(
                       child: GridView.builder(
                         padding: const EdgeInsets.only(bottom: 140),
@@ -580,6 +592,41 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
               ),
               const _FloatingAddButton(bottom: 112),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GrowthBlankScreen extends StatelessWidget {
+  const _GrowthBlankScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF10151D), Color(0xFF222C3B), Color(0xFF364B68)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 8, top: 8),
+              child: IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(
+                  Icons.chevron_left_rounded,
+                  size: 40,
+                  color: Colors.white,
+                ),
+              ),
+            ),
           ),
         ),
       ),
