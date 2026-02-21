@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ChatTabScreen extends StatefulWidget {
   const ChatTabScreen({super.key});
@@ -8,9 +10,11 @@ class ChatTabScreen extends StatefulWidget {
 }
 
 class _ChatTabScreenState extends State<ChatTabScreen> {
+  static const MethodChannel _hapticChannel = MethodChannel('facey/haptics');
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _inputScrollController = ScrollController();
   bool _showOverflowScrollbar = false;
+  bool _didTriggerScrollbarGrabHaptic = false;
 
   @override
   void initState() {
@@ -54,6 +58,11 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
     }
   }
 
+  void _triggerScrollbarGrabHaptic() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
+    _hapticChannel.invokeMethod<void>('softImpact').catchError((Object _) {});
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -80,7 +89,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                     ),
                   ),
                   Transform.translate(
-                    offset: const Offset(4, 3),
+                    offset: const Offset(5, 4),
                     child: IconButton(
                       onPressed: null,
                       padding: EdgeInsets.zero,
@@ -90,8 +99,8 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                       ),
                       icon: Image.asset(
                         'assets/images/manto.png',
-                        width: 40,
-                        height: 40,
+                        width: 37,
+                        height: 37,
                         color: const Color.fromARGB(255, 215, 214, 214),
                         colorBlendMode: BlendMode.srcIn,
                       ),
@@ -186,76 +195,119 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                           borderRadius: BorderRadius.circular(24),
                           child: Stack(
                             children: [
-                              RawScrollbar(
-                                controller: _inputScrollController,
-                                thumbVisibility: _showOverflowScrollbar,
-                                interactive: true,
-                                thickness: 4,
-                                radius: const Radius.circular(999),
-                                mainAxisMargin: 20,
-                                crossAxisMargin: 6,
-                                minThumbLength: 12,
-                                thumbColor: Colors.white.withValues(
-                                  alpha: 0.68,
-                                ),
-                                child: TextField(
-                                  controller: _messageController,
-                                  scrollController: _inputScrollController,
-                                  minLines: 1,
-                                  maxLines: 5,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  cursorColor: Colors.white.withValues(
-                                    alpha: 0.85,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'メッセージを入力',
-                                    hintStyle: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.45,
-                                      ),
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    filled: true,
-                                    fillColor: Colors.white.withValues(
-                                      alpha: 0.1,
-                                    ),
-                                    contentPadding: const EdgeInsets.only(
-                                      left: 12,
-                                      right: 52,
-                                      top: 14,
-                                      bottom: 14,
-                                    ),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                      borderSide: BorderSide(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.15,
+                              Builder(
+                                builder: (BuildContext scrollbarContext) =>
+                                    Listener(
+                                      behavior: HitTestBehavior.translucent,
+                                      onPointerDown: (PointerDownEvent event) {
+                                        if (_didTriggerScrollbarGrabHaptic ||
+                                            !_showOverflowScrollbar ||
+                                            !_inputScrollController
+                                                .hasClients) {
+                                          return;
+                                        }
+                                        final double maxExtent =
+                                            _inputScrollController
+                                                .position
+                                                .maxScrollExtent;
+                                        if (maxExtent <= 0) return;
+                                        final RenderBox? box =
+                                            scrollbarContext.findRenderObject()
+                                                as RenderBox?;
+                                        final double fieldWidth =
+                                            box?.size.width ?? 0;
+                                        if (fieldWidth <= 0) return;
+                                        if (event.localPosition.dx >=
+                                            fieldWidth - 24) {
+                                          _didTriggerScrollbarGrabHaptic = true;
+                                          _triggerScrollbarGrabHaptic();
+                                        }
+                                      },
+                                      onPointerUp: (_) {
+                                        _didTriggerScrollbarGrabHaptic = false;
+                                      },
+                                      onPointerCancel: (_) {
+                                        _didTriggerScrollbarGrabHaptic = false;
+                                      },
+                                      child: RawScrollbar(
+                                        controller: _inputScrollController,
+                                        thumbVisibility: _showOverflowScrollbar,
+                                        interactive: true,
+                                        thickness: 4,
+                                        radius: const Radius.circular(999),
+                                        mainAxisMargin: 20,
+                                        crossAxisMargin: 6,
+                                        minThumbLength: 12,
+                                        thumbColor: Colors.white.withValues(
+                                          alpha: 0.68,
+                                        ),
+                                        child: TextField(
+                                          controller: _messageController,
+                                          scrollController:
+                                              _inputScrollController,
+                                          minLines: 1,
+                                          maxLines: 5,
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.9,
+                                            ),
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                          cursorColor: Colors.white.withValues(
+                                            alpha: 0.85,
+                                          ),
+                                          decoration: InputDecoration(
+                                            hintText: 'メッセージを入力',
+                                            hintStyle: TextStyle(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.45,
+                                              ),
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                            filled: true,
+                                            fillColor: Colors.white.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.only(
+                                                  left: 12,
+                                                  right: 52,
+                                                  top: 14,
+                                                  bottom: 14,
+                                                ),
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(24),
+                                              borderSide: BorderSide(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                              ),
+                                            ),
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(24),
+                                              borderSide: BorderSide(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.15,
+                                                ),
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(24),
+                                              borderSide: BorderSide(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.24,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                      borderSide: BorderSide(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.15,
-                                        ),
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                      borderSide: BorderSide(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.24,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               ),
                               Positioned(
                                 right: 12,
