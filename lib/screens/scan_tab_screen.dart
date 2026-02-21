@@ -344,7 +344,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                     right: imageWidth * 0.06,
                     bottom: imageWidth * 0.28,
                     child: const Text(
-                      'あなたの顔を分析して\n改善点を提案',
+                      'あなたの顔を分析して\n変化を追跡',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xF2FFFFFF),
@@ -548,7 +548,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                 child: const Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'あなたの魅力と改善点を分析',
+                    'あなたの魅力と伸ばし方を分析',
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w500,
