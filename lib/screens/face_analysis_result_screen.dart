@@ -247,10 +247,14 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     normalized.removeWhere((Map<String, dynamic> item) {
       return item['path'] == widget.imagePath;
     });
-    normalized.insert(0, <String, dynamic>{
+    final Map<String, dynamic> metaItem = <String, dynamic>{
       'path': widget.imagePath,
       'addedAt': DateTime.now().toIso8601String(),
-    });
+    };
+    if (widget.sideImagePath != null && widget.sideImagePath!.isNotEmpty) {
+      metaItem['sidePath'] = widget.sideImagePath;
+    }
+    normalized.insert(0, metaItem);
     if (normalized.length > 120) {
       normalized.removeRange(120, normalized.length);
     }

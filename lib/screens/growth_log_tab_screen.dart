@@ -60,11 +60,15 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
           .whereType<Map<String, dynamic>>()
           .map((Map<String, dynamic> item) {
             final String path = (item['path'] ?? '').toString();
+            final String sidePath = (item['sidePath'] ?? '').toString();
             final String addedAtRaw = (item['addedAt'] ?? '').toString();
             final DateTime? addedAt = DateTime.tryParse(addedAtRaw);
             if (path.isEmpty || !File(path).existsSync()) return null;
             return _FrontImageEntry(
               path: path,
+              sidePath: sidePath.isNotEmpty && File(sidePath).existsSync()
+                  ? sidePath
+                  : null,
               addedAt: addedAt ?? DateTime.now(),
             );
           })
@@ -550,6 +554,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                                 MaterialPageRoute<void>(
                                   builder: (_) => FaceAnalysisResultScreen(
                                     imagePath: entry.path,
+                                    sideImagePath: entry.sidePath,
                                     result: _resultForScore(openScore),
                                     persistSummary: false,
                                   ),
@@ -677,9 +682,14 @@ String _dateText(DateTime date) {
 }
 
 class _FrontImageEntry {
-  const _FrontImageEntry({required this.path, required this.addedAt});
+  const _FrontImageEntry({
+    required this.path,
+    required this.addedAt,
+    this.sidePath,
+  });
 
   final String path;
+  final String? sidePath;
   final DateTime addedAt;
 }
 
