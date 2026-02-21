@@ -9,6 +9,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'screens/activity_tab_screen.dart';
 import 'screens/chat_tab_screen.dart';
 import 'screens/coach_settings_screen.dart';
+import 'screens/growth_log_tab_screen.dart';
 import 'screens/scan_tab_screen.dart';
 import 'widgets/yomu_gender_two_choice.dart';
 
@@ -119,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   static const List<String> _bottomLabels = <String>[
     'scan',
     'activity',
-    'growth',
+    '成長ログ',
     'daily',
     'coach',
   ];
@@ -239,7 +240,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         : isSecondTab
         ? const SafeArea(child: ActivityTabScreen())
         : isThirdTab
-        ? const SizedBox.expand()
+        ? const SafeArea(child: GrowthLogTabScreen())
         : isChatTab
         ? const SafeArea(child: ChatTabScreen())
         : isCoachTab

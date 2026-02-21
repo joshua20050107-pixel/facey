@@ -224,7 +224,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF08090C),
+        color: const Color(0xFF0B0F14),
         borderRadius: BorderRadius.circular(34),
         border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
       ),
@@ -1452,7 +1452,7 @@ class _MetricPairCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF101218),
+        color: const Color(0xFF0B0F14),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
       ),
