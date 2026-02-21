@@ -5,7 +5,7 @@ import '../widgets/top_header.dart';
 class ActivityTabScreen extends StatefulWidget {
   const ActivityTabScreen({
     super.key,
-    this.title = '今日のコンディション',
+    this.title = 'Condition',
     this.subtitle = '今日のあなたの状態を観測します',
   });
 
@@ -259,7 +259,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                 width: imageWidth,
                                 height: cardHeight,
                                 child: _buildCard(
-                                  imagePath: 'assets/images/oaks.png',
+                                  imagePath: 'assets/images/pamiko.png',
                                   title: 'あなたの状態を分析',
                                   buttonLabel: 'コンディションを見る',
                                   imageWidth: imageWidth,

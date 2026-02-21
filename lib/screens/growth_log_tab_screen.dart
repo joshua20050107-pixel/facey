@@ -158,7 +158,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      '成長ログ',
+                      'Growth',
                       style: TextStyle(
                         fontSize: 25,
                         fontWeight: FontWeight.w900,

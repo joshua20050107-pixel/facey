@@ -233,7 +233,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
 
     final String imagePath = widget.selectedGender == YomuGender.female
         ? 'assets/images/plaos.png'
-        : 'assets/images/oaks.png';
+        : 'assets/images/pamiko.png';
     final double firstPageImageHeight = (imageWidth / (1045 / 1629)) * 0.95;
     final String? latestFrontPath = _latestResultFrontImagePath;
     final String? thumbnailPath =
@@ -537,7 +537,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           child: Column(
             children: [
               const TopHeader(
-                title: '顔の分析',
+                title: 'Home',
                 titleStyle: TextStyle(
                   fontSize: 25,
                   fontWeight: FontWeight.w900,
