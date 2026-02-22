@@ -66,14 +66,16 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     with SingleTickerProviderStateMixin {
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultCardImageKey = 'latest_result_card_image';
-  static const String _latestResultOverallScoreKey = 'latest_result_overall_score';
+  static const String _latestResultOverallScoreKey =
+      'latest_result_overall_score';
   static const String _latestResultPotentialScoreKey =
       'latest_result_potential_score';
   static const String _resultOverallSumKey = 'result_overall_sum';
   static const String _resultPotentialSumKey = 'result_potential_sum';
   static const String _resultCountKey = 'result_count';
   static const String _lastAggregatedResultIdKey = 'last_aggregated_result_id';
-  static const String _resultFrontImageHistoryKey = 'result_front_image_history';
+  static const String _resultFrontImageHistoryKey =
+      'result_front_image_history';
   static const String _resultFrontImageHistoryMetaKey =
       'result_front_image_history_meta';
   static const String _resultMonthlyScoresKey = 'result_monthly_scores';
@@ -180,12 +182,16 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     final String? lastAggregatedId = box.get(_lastAggregatedResultIdKey);
     if (lastAggregatedId == resultId) return;
 
-    final int currentOverallSum = int.tryParse(box.get(_resultOverallSumKey) ?? '') ?? 0;
+    final int currentOverallSum =
+        int.tryParse(box.get(_resultOverallSumKey) ?? '') ?? 0;
     final int currentPotentialSum =
         int.tryParse(box.get(_resultPotentialSumKey) ?? '') ?? 0;
     final int currentCount = int.tryParse(box.get(_resultCountKey) ?? '') ?? 0;
 
-    await box.put(_resultOverallSumKey, (currentOverallSum + overallScore).toString());
+    await box.put(
+      _resultOverallSumKey,
+      (currentOverallSum + overallScore).toString(),
+    );
     await box.put(
       _resultPotentialSumKey,
       (currentPotentialSum + potentialScore).toString(),
@@ -194,7 +200,8 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     await box.put(_lastAggregatedResultIdKey, resultId);
 
     final DateTime now = DateTime.now();
-    final String monthKey = '${now.year}-${now.month.toString().padLeft(2, '0')}';
+    final String monthKey =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}';
     final String monthlyRaw = box.get(_resultMonthlyScoresKey) ?? '{}';
     Map<String, dynamic> monthlyMap;
     try {
@@ -211,7 +218,9 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
         (monthData['overallSum'] is num ? monthData['overallSum'] as num : 0)
             .toInt();
     final int monthPotentialSum =
-        (monthData['potentialSum'] is num ? monthData['potentialSum'] as num : 0)
+        (monthData['potentialSum'] is num
+                ? monthData['potentialSum'] as num
+                : 0)
             .toInt();
     final int monthCount =
         (monthData['count'] is num ? monthData['count'] as num : 0).toInt();
@@ -444,11 +453,11 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
         title: Transform.translate(
           offset: Offset(0, 2),
           child: Text(
-            '分析結果',
+            'スキャン結果',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w900,
+              fontSize: 27,
+              fontWeight: FontWeight.w800,
               fontFamily: 'Hiragino Sans',
             ),
           ),

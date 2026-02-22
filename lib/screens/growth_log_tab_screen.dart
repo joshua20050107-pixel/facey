@@ -32,6 +32,8 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   Map<String, _MonthlyScore> _monthlyScores = <String, _MonthlyScore>{};
   List<_HabitItem> _habits = <_HabitItem>[];
   final Map<String, double> _habitSwipeOffsets = <String, double>{};
+  final Set<String> _removingHabitIds = <String>{};
+  final Object _habitTapRegionGroup = Object();
 
   @override
   void initState() {
@@ -154,127 +156,117 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     final TextEditingController controller = TextEditingController();
     final List<String> emojis = <String>['💧', '🧴', '😴', '🏃', '🥗', '🧘'];
     String selectedEmoji = emojis.first;
-    final _HabitItem? created = await showModalBottomSheet<_HabitItem>(
+    final _HabitItem? created = await showDialog<_HabitItem>(
       context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      useSafeArea: true,
-      backgroundColor: Colors.transparent,
+      barrierDismissible: true,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setModalState) {
-            return Padding(
+            return AnimatedPadding(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
               padding: EdgeInsets.only(
                 left: 14,
                 right: 14,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 14,
-                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-              child: SingleChildScrollView(
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF121B2A),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2),
+              child: Dialog(
+                backgroundColor: Colors.transparent,
+                insetPadding: const EdgeInsets.symmetric(horizontal: 14),
+                child: SingleChildScrollView(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF121B2A),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.2),
+                      ),
                     ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 42,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.3),
-                            borderRadius: BorderRadius.circular(999),
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '習慣を追加しよう！',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFFF3F6FB),
                           ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        '習慣を追加',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFFF3F6FB),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        children: emojis.map((String emoji) {
-                          final bool active = emoji == selectedEmoji;
-                          return ChoiceChip(
-                            label: Text(
-                              emoji,
-                              style: const TextStyle(fontSize: 18),
-                            ),
-                            selected: active,
-                            onSelected: (_) {
-                              setModalState(() => selectedEmoji = emoji);
-                            },
-                            backgroundColor: const Color(0xFF1E2A3E),
-                            selectedColor: const Color(0xFF304766),
-                            side: BorderSide(
-                              color: Colors.white.withValues(alpha: 0.18),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: controller,
-                        autofocus: true,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          hintText: '例: 水を2L飲む',
-                          hintStyle: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                          ),
-                          filled: true,
-                          fillColor: const Color(0xFF1A2435),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton(
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF80C5FF),
-                            foregroundColor: const Color(0xFF0D1420),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                          ),
-                          onPressed: () {
-                            final String title = controller.text.trim();
-                            if (title.isEmpty) return;
-                            Navigator.of(context).pop(
-                              _HabitItem(
-                                id: DateTime.now().microsecondsSinceEpoch
-                                    .toString(),
-                                title: title,
-                                emoji: selectedEmoji,
-                                isDone: false,
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          children: emojis.map((String emoji) {
+                            final bool active = emoji == selectedEmoji;
+                            return ChoiceChip(
+                              label: Text(
+                                emoji,
+                                style: const TextStyle(fontSize: 18),
+                              ),
+                              selected: active,
+                              onSelected: (_) {
+                                setModalState(() => selectedEmoji = emoji);
+                              },
+                              backgroundColor: const Color(0xFF1E2A3E),
+                              selectedColor: const Color(0xFF304766),
+                              side: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.18),
                               ),
                             );
-                          },
-                          child: const Text(
-                            '追加する',
-                            style: TextStyle(fontWeight: FontWeight.w800),
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: controller,
+                          autofocus: true,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: '例: 水を2L飲む',
+                            hintStyle: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.45),
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF1A2435),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide.none,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: const Color(0xFF80C5FF),
+                              foregroundColor: const Color(0xFF0D1420),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                            ),
+                            onPressed: () {
+                              final String title = controller.text.trim();
+                              if (title.isEmpty) return;
+                              Navigator.of(context).pop(
+                                _HabitItem(
+                                  id: DateTime.now().microsecondsSinceEpoch
+                                      .toString(),
+                                  title: title,
+                                  emoji: selectedEmoji,
+                                  isDone: false,
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              '追加する',
+                              style: TextStyle(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -301,17 +293,43 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   }
 
   Future<void> _deleteHabit(String id) async {
+    if (_removingHabitIds.contains(id)) return;
+    setState(() {
+      _removingHabitIds.add(id);
+    });
+    await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted) return;
     setState(() {
       _habits.removeWhere((_HabitItem item) => item.id == id);
       _habitSwipeOffsets.remove(id);
+      _removingHabitIds.remove(id);
     });
     await _persistHabits();
+  }
+
+  void _closeHabitActions() {
+    if (_habitSwipeOffsets.isEmpty) return;
+    bool changed = false;
+    final Map<String, double> next = <String, double>{};
+    _habitSwipeOffsets.forEach((String id, double value) {
+      if (value != 0) changed = true;
+      next[id] = 0;
+    });
+    if (!changed) return;
+    setState(() {
+      _habitSwipeOffsets
+        ..clear()
+        ..addAll(next);
+    });
   }
 
   void _onHabitDragUpdate(String id, DragUpdateDetails details) {
     final double current = _habitSwipeOffsets[id] ?? 0;
     final double next = (current + details.delta.dx).clamp(-86.0, 0.0);
     setState(() {
+      _habitSwipeOffsets.updateAll(
+        (String key, double value) => key == id ? value : 0,
+      );
       _habitSwipeOffsets[id] = next;
     });
   }
@@ -437,7 +455,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                             ),
                           ),
                           child: Text(
-                            '右下の + で習慣を追加',
+                            '+ボタンで新しい習慣を追加',
                             style: TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
@@ -448,160 +466,195 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                       else
                         Column(
                           children: _habits.map((_HabitItem habit) {
+                            final bool isRemoving = _removingHabitIds.contains(
+                              habit.id,
+                            );
                             final double offsetX =
                                 _habitSwipeOffsets[habit.id] ?? 0;
                             final double revealWidth = (-offsetX).clamp(
                               0.0,
                               86.0,
                             );
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: Container(
-                                height: 54,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF111A28),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.2),
+                            final Widget habitRow = TapRegion(
+                              key: ValueKey<String>('habit-${habit.id}'),
+                              groupId: _habitTapRegionGroup,
+                              onTapOutside: (_) => _closeHabitActions(),
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: Container(
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF111A28),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Stack(
-                                    children: [
-                                      Positioned(
-                                        top: 0,
-                                        bottom: 0,
-                                        right: 0,
-                                        width: revealWidth,
-                                        child: DecoratedBox(
-                                          decoration: const BoxDecoration(
-                                            color: Color(0xFFE03A3A),
-                                            borderRadius: BorderRadius.only(
-                                              topRight: Radius.circular(16),
-                                              bottomRight: Radius.circular(16),
-                                            ),
-                                          ),
-                                          child: revealWidth >= 42
-                                              ? const Icon(
-                                                  Icons.delete_rounded,
-                                                  color: Colors.white,
-                                                  size: 26,
-                                                )
-                                              : null,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onHorizontalDragUpdate: (details) =>
-                                            _onHabitDragUpdate(
-                                              habit.id,
-                                              details,
-                                            ),
-                                        onHorizontalDragEnd: (_) =>
-                                            _onHabitDragEnd(habit.id),
-                                        child: AnimatedContainer(
-                                          duration: const Duration(
-                                            milliseconds: 160,
-                                          ),
-                                          transform: Matrix4.translationValues(
-                                            offsetX,
-                                            0,
-                                            0,
-                                          ),
-                                          color: const Color(0xFF111A28),
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 10,
-                                          ),
-                                          child: Row(
-                                            children: [
-                                              Text(
-                                                habit.emoji,
-                                                style: const TextStyle(
-                                                  fontSize: 24,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 10),
-                                              Expanded(
-                                                child: Text(
-                                                  habit.title,
-                                                  style: TextStyle(
-                                                    fontSize: 17,
-                                                    fontWeight: FontWeight.w600,
-                                                    color: habit.isDone
-                                                        ? Colors.white
-                                                              .withValues(
-                                                                alpha: 0.58,
-                                                              )
-                                                        : const Color(
-                                                            0xFFF0F5FF,
-                                                          ),
-                                                    decoration: habit.isDone
-                                                        ? TextDecoration
-                                                              .lineThrough
-                                                        : TextDecoration.none,
-                                                    decorationColor: Colors
-                                                        .white
-                                                        .withValues(
-                                                          alpha: 0.45,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                              GestureDetector(
-                                                onTap: () =>
-                                                    _toggleHabit(habit.id),
-                                                child: AnimatedContainer(
-                                                  duration: const Duration(
-                                                    milliseconds: 150,
-                                                  ),
-                                                  width: 34,
-                                                  height: 34,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: habit.isDone
-                                                        ? const Color(
-                                                            0xFF80C5FF,
-                                                          )
-                                                        : Colors.white
-                                                              .withValues(
-                                                                alpha: 0.25,
-                                                              ),
-                                                    border: Border.all(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.6,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  child: habit.isDone
-                                                      ? const Icon(
-                                                          Icons.check_rounded,
-                                                          size: 20,
-                                                          color: Color(
-                                                            0xFF0C1522,
-                                                          ),
-                                                        )
-                                                      : null,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      if (revealWidth >= 42)
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Stack(
+                                      children: [
                                         Positioned(
                                           top: 0,
                                           bottom: 0,
                                           right: 0,
-                                          width: 86,
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => _deleteHabit(habit.id),
+                                          width: revealWidth,
+                                          child: DecoratedBox(
+                                            decoration: const BoxDecoration(
+                                              color: Color(0xFFE03A3A),
+                                              borderRadius: BorderRadius.only(
+                                                topRight: Radius.circular(16),
+                                                bottomRight: Radius.circular(
+                                                  16,
+                                                ),
+                                              ),
+                                            ),
+                                            child: revealWidth >= 42
+                                                ? const Icon(
+                                                    Icons.delete_rounded,
+                                                    color: Colors.white,
+                                                    size: 26,
+                                                  )
+                                                : null,
                                           ),
                                         ),
-                                    ],
+                                        GestureDetector(
+                                          behavior: HitTestBehavior.opaque,
+                                          onHorizontalDragUpdate: (details) =>
+                                              _onHabitDragUpdate(
+                                                habit.id,
+                                                details,
+                                              ),
+                                          onHorizontalDragEnd: (_) =>
+                                              _onHabitDragEnd(habit.id),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 160,
+                                            ),
+                                            transform:
+                                                Matrix4.translationValues(
+                                                  offsetX,
+                                                  0,
+                                                  0,
+                                                ),
+                                            color: const Color(0xFF111A28),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                Text(
+                                                  habit.emoji,
+                                                  style: const TextStyle(
+                                                    fontSize: 24,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    habit.title,
+                                                    style: TextStyle(
+                                                      fontSize: 17,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: habit.isDone
+                                                          ? Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.58,
+                                                                )
+                                                          : const Color(
+                                                              0xFFF0F5FF,
+                                                            ),
+                                                      decoration: habit.isDone
+                                                          ? TextDecoration
+                                                                .lineThrough
+                                                          : TextDecoration.none,
+                                                      decorationColor: Colors
+                                                          .white
+                                                          .withValues(
+                                                            alpha: 0.45,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                GestureDetector(
+                                                  onTap: () =>
+                                                      _toggleHabit(habit.id),
+                                                  child: AnimatedContainer(
+                                                    duration: const Duration(
+                                                      milliseconds: 150,
+                                                    ),
+                                                    width: 34,
+                                                    height: 34,
+                                                    decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: habit.isDone
+                                                          ? const Color(
+                                                              0xFF80C5FF,
+                                                            )
+                                                          : Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.25,
+                                                                ),
+                                                      border: Border.all(
+                                                        color: Colors.white
+                                                            .withValues(
+                                                              alpha: 0.6,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    child: habit.isDone
+                                                        ? const Icon(
+                                                            Icons.check_rounded,
+                                                            size: 20,
+                                                            color: Color(
+                                                              0xFF0C1522,
+                                                            ),
+                                                          )
+                                                        : null,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                        if (revealWidth >= 42)
+                                          Positioned(
+                                            top: 0,
+                                            bottom: 0,
+                                            right: 0,
+                                            width: 86,
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.opaque,
+                                              onTap: () =>
+                                                  _deleteHabit(habit.id),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                            return ClipRect(
+                              child: AnimatedSize(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeInOut,
+                                alignment: Alignment.topCenter,
+                                child: SizedBox(
+                                  height: isRemoving ? 0 : 64,
+                                  child: IgnorePointer(
+                                    ignoring: isRemoving,
+                                    child: AnimatedOpacity(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      opacity: isRemoving ? 0 : 1,
+                                      child: habitRow,
+                                    ),
                                   ),
                                 ),
                               ),
