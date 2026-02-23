@@ -114,13 +114,13 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
             Expanded(
               child: Center(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
-                        width: 92,
-                        height: 92,
+                        width: 56,
+                        height: 56,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(22),
                           gradient: LinearGradient(
@@ -144,27 +144,27 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                         ),
                         child: const Icon(
                           Icons.chat_rounded,
-                          size: 42,
+                          size: 22,
                           color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 16),
                       Text(
-                        'チャットを開始できます',
+                        '外見の改善や戦略を相談',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.94),
-                          fontSize: 41 * 0.58,
+                          fontSize: 19,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        '質問・相談・日々の記録をここでまとめて管理できます',
+                        '改善点やこれからの行動・気になることを\n相談してみてください',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.56),
-                          fontSize: 18,
+                          fontSize: 13,
                           fontWeight: FontWeight.w500,
                           height: 1.35,
                         ),

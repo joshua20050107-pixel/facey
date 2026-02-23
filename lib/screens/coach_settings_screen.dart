@@ -89,6 +89,7 @@ class CoachSettingsScreen extends StatelessWidget {
           const TopHeader(
             title: '設定',
             titleStyle: TextStyle(fontSize: 30, fontWeight: FontWeight.w600),
+            showKeke: false,
           ),
           const SizedBox(height: 10),
           Expanded(
