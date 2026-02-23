@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
@@ -11,7 +12,82 @@ import 'package:hive/hive.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:photo_view/photo_view.dart';
+import 'package:photo_view/photo_view_gallery.dart';
 import 'package:share_plus/share_plus.dart';
+
+class ImageViewerRoute<T> extends PageRoute<T> {
+  ImageViewerRoute({
+    required this.page,
+    required Duration transitionDuration,
+    required Duration reverseTransitionDuration,
+  }) : _transitionDuration = transitionDuration,
+       _reverseTransitionDuration = reverseTransitionDuration;
+
+  final Widget page;
+  final Duration _transitionDuration;
+  Duration _reverseTransitionDuration;
+
+  void setReverseDuration(Duration duration) {
+    _reverseTransitionDuration = duration;
+  }
+
+  @override
+  bool get opaque => false;
+
+  @override
+  bool get barrierDismissible => false;
+
+  @override
+  Color? get barrierColor => Colors.transparent;
+
+  @override
+  String? get barrierLabel => null;
+
+  @override
+  bool get maintainState => true;
+
+  @override
+  Duration get transitionDuration => _transitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration => _reverseTransitionDuration;
+
+  @override
+  Widget buildPage(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+  ) {
+    return page;
+  }
+
+  @override
+  Widget buildTransitions(
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    return FadeTransition(opacity: animation, child: child);
+  }
+}
+
+Route<void> imageViewerRouteSwipe(Widget page) {
+  return ImageViewerRoute<void>(
+    page: page,
+    transitionDuration: const Duration(milliseconds: 180),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+  );
+}
+
+Route<void> imageViewerRouteClose(Widget page) {
+  return ImageViewerRoute<void>(
+    page: page,
+    transitionDuration: const Duration(milliseconds: 180),
+    reverseTransitionDuration: const Duration(milliseconds: 320),
+  );
+}
 
 class FaceMetricScore {
   const FaceMetricScore({required this.label, required this.value});
@@ -314,27 +390,17 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       }
     }
     await Navigator.of(context).push<void>(
-      PageRouteBuilder<void>(
-        opaque: false,
-        barrierDismissible: true,
-        barrierColor: Colors.black.withValues(alpha: 0.9),
-        transitionDuration: const Duration(milliseconds: 360),
-        reverseTransitionDuration: const Duration(milliseconds: 420),
-        pageBuilder: (BuildContext context, _, __) {
-          return _BackImagePreviewScreen(
-            previewImagePaths: uniquePreviewImagePaths,
-            heroTagForPath: _heroTagForPath,
-            onWillClose: (String selectedPath) {
-              if (!mounted || _cardBackImagePath == selectedPath) return;
-              setState(() {
-                _cardBackImagePath = selectedPath;
-              });
-            },
-          );
-        },
-        transitionsBuilder: (BuildContext context, _, __, Widget child) {
-          return child;
-        },
+      imageViewerRouteClose(
+        _BackImagePreviewScreen(
+          previewImagePaths: uniquePreviewImagePaths,
+          heroTagForPath: _heroTagForPath,
+          onWillClose: (String selectedPath) {
+            if (!mounted || _cardBackImagePath == selectedPath) return;
+            setState(() {
+              _cardBackImagePath = selectedPath;
+            });
+          },
+        ),
       ),
     );
   }
@@ -453,12 +519,13 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
         title: Transform.translate(
           offset: Offset(0, 2),
           child: Text(
-            'スキャン結果',
+            '総合評価',
             style: TextStyle(
               color: Colors.white,
               fontSize: 27,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w700,
               fontFamily: 'Hiragino Sans',
+              letterSpacing: 1,
             ),
           ),
         ),
@@ -1363,26 +1430,172 @@ class _BackImagePreviewScreen extends StatefulWidget {
       _BackImagePreviewScreenState();
 }
 
-class _BackImagePreviewScreenState extends State<_BackImagePreviewScreen> {
-  late final PageController _pageController;
-  int _currentIndex = 0;
-  double _dragOffsetY = 0;
-  bool _isDragging = false;
+class _BackImagePreviewScreenState extends State<_BackImagePreviewScreen>
+    with SingleTickerProviderStateMixin {
+  late final PageController _page;
+  int _index = 0;
+  double _dragY = 0;
+
+  late final AnimationController _resetCtrl;
+  Animation<double>? _backAnim;
+  VoidCallback? _backListener;
+
+  late final int _initialIndex;
+  late final String _initialPath;
+  late final String _fixedHeroTag;
+  bool _popping = false;
+
+  late final List<PhotoViewController> _pvCtrls;
+  late final List<StreamSubscription<PhotoViewControllerValue>> _pvSubs;
+  late final List<double?> _baseScale;
+  late final List<bool> _atBaseScale;
+
+  int _pointerCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _pageController = PageController(initialPage: 0);
+    final int total = widget.previewImagePaths.length;
+    _initialIndex = 0;
+    _initialPath = widget.previewImagePaths[_initialIndex];
+    _fixedHeroTag = widget.heroTagForPath(_initialPath);
+    _index = _initialIndex;
+    _page = PageController(initialPage: _index);
+
+    _resetCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 140),
+    );
+
+    _pvCtrls = List<PhotoViewController>.generate(
+      total,
+      (_) => PhotoViewController(),
+    );
+    _pvSubs = <StreamSubscription<PhotoViewControllerValue>>[];
+    _baseScale = List<double?>.filled(total, null);
+    _atBaseScale = List<bool>.filled(total, true);
+
+    for (int i = 0; i < total; i++) {
+      _pvSubs.add(
+        _pvCtrls[i].outputStateStream.listen((PhotoViewControllerValue value) {
+          final double? scale = value.scale;
+          if (scale == null) return;
+
+          _baseScale[i] ??= scale;
+          final double base = _baseScale[i] ?? scale;
+          final bool atBase = scale <= base * 1.02;
+
+          if (_atBaseScale[i] == atBase) return;
+          _atBaseScale[i] = atBase;
+          if (mounted && i == _index) setState(() {});
+        }),
+      );
+    }
   }
 
   @override
   void dispose() {
-    _pageController.dispose();
+    _page.dispose();
+    for (final StreamSubscription<PhotoViewControllerValue> sub in _pvSubs) {
+      sub.cancel();
+    }
+    for (final PhotoViewController controller in _pvCtrls) {
+      controller.dispose();
+    }
+    if (_backListener != null) {
+      _resetCtrl.removeListener(_backListener!);
+    }
+    _resetCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _closePreview() async {
-    final String selectedPath = widget.previewImagePaths[_currentIndex];
+  bool get _canDragDismiss {
+    if (_pointerCount >= 2) return false;
+    return _atBaseScale[_index];
+  }
+
+  bool get _canPageSwipe {
+    return _atBaseScale[_index] && _pointerCount < 2 && !_popping;
+  }
+
+  void _animateBack() {
+    _resetCtrl.stop();
+    _resetCtrl.value = 0;
+
+    if (_backListener != null) {
+      _resetCtrl.removeListener(_backListener!);
+      _backListener = null;
+    }
+
+    final double start = _dragY;
+    _backAnim = Tween<double>(
+      begin: start,
+      end: 0,
+    ).animate(CurvedAnimation(parent: _resetCtrl, curve: Curves.easeOutCubic));
+
+    _backListener = () {
+      if (!mounted) return;
+      final Animation<double>? animation = _backAnim;
+      if (animation == null) return;
+      setState(() => _dragY = animation.value);
+    };
+
+    _resetCtrl.addListener(_backListener!);
+    _resetCtrl.forward().whenComplete(() {
+      if (_backListener != null) {
+        _resetCtrl.removeListener(_backListener!);
+        _backListener = null;
+      }
+      _backAnim = null;
+    });
+  }
+
+  void _setPopSpeed(Duration reverseDuration) {
+    final ModalRoute<dynamic>? route = ModalRoute.of(context);
+    if (route is ImageViewerRoute) {
+      route.setReverseDuration(reverseDuration);
+    }
+  }
+
+  void _popByCloseButton() {
+    if (_popping) return;
+    _popping = true;
+
+    _setPopSpeed(const Duration(milliseconds: 320));
+    _pvCtrls[_index].reset();
+    _dragY = 0;
+
+    if (_index != _initialIndex) {
+      _page.jumpToPage(_initialIndex);
+      setState(() => _index = _initialIndex);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _closePreview();
+    });
+  }
+
+  void _popSmoothToOrigin() {
+    if (_popping) return;
+    _popping = true;
+
+    _setPopSpeed(const Duration(milliseconds: 200));
+    _pvCtrls[_index].reset();
+
+    if (_index != _initialIndex) {
+      _page.jumpToPage(_initialIndex);
+      setState(() => _index = _initialIndex);
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _closePreview();
+    });
+  }
+
+  void _closePreview() {
+    final String selectedPath = widget.previewImagePaths[_index];
     widget.onWillClose(selectedPath);
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -1390,113 +1603,149 @@ class _BackImagePreviewScreenState extends State<_BackImagePreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final int total = widget.previewImagePaths.length;
+    final double topPad = MediaQuery.of(context).padding.top;
+    final double bottomPad = MediaQuery.of(context).padding.bottom;
+
+    final double t = (_dragY / 260).clamp(0.0, 1.0);
+    final double dim = ui.lerpDouble(0.42, 0.0, t)!;
+    final double dragScale = (1.0 - t * 0.06).clamp(0.94, 1.0);
+    final double radius = 18.0 * t;
+
     return Material(
       color: Colors.transparent,
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onVerticalDragUpdate: (DragUpdateDetails details) {
-              setState(() {
-                _isDragging = true;
-                _dragOffsetY = (_dragOffsetY + details.delta.dy).clamp(
-                  0.0,
-                  220.0,
-                );
-              });
-            },
-            onVerticalDragEnd: (DragEndDetails details) {
-              final double velocity = details.primaryVelocity ?? 0;
-              final bool shouldDismiss = _dragOffsetY > 90 || velocity > 650;
-              if (shouldDismiss) {
-                _closePreview();
-                return;
-              }
-              setState(() {
-                _isDragging = false;
-                _dragOffsetY = 0;
-              });
-            },
-            onVerticalDragCancel: () {
-              setState(() {
-                _isDragging = false;
-                _dragOffsetY = 0;
-              });
-            },
-            child: AnimatedContainer(
-              duration: _isDragging
-                  ? Duration.zero
-                  : const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              transform: Matrix4.translationValues(0, _dragOffsetY, 0),
-              child: Column(
-                children: [
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(18),
-                      child: PageView.builder(
-                        controller: _pageController,
-                        itemCount: widget.previewImagePaths.length,
-                        onPageChanged: (int index) {
-                          setState(() {
-                            _currentIndex = index;
-                          });
-                        },
-                        itemBuilder: (BuildContext context, int index) {
-                          final String imagePath =
-                              widget.previewImagePaths[index];
-                          final Widget imageWidget = Image.file(
-                            File(imagePath),
-                            fit: BoxFit.contain,
-                          );
-                          return InteractiveViewer(
-                            minScale: 1,
-                            maxScale: 4,
-                            child: Hero(
-                              tag: widget.heroTagForPath(imagePath),
-                              child: imageWidget,
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  if (widget.previewImagePaths.length > 1) ...[
-                    const SizedBox(height: 12),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List<Widget>.generate(
-                        widget.previewImagePaths.length,
-                        (int index) {
-                          final bool active = _currentIndex == index;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: active
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.35),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _closePreview,
-                    child: const Text(
-                      '閉じる',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ),
-                ],
+      child: Listener(
+        onPointerDown: (_) => _pointerCount++,
+        onPointerUp: (_) => _pointerCount = math.max(0, _pointerCount - 1),
+        onPointerCancel: (_) => _pointerCount = math.max(0, _pointerCount - 1),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragUpdate: (DragUpdateDetails details) {
+            if (!_canDragDismiss) return;
+            final double next = (_dragY + details.delta.dy).clamp(0.0, 500.0);
+            setState(() => _dragY = next);
+          },
+          onVerticalDragEnd: (DragEndDetails details) {
+            if (!_canDragDismiss) {
+              if (_dragY != 0) setState(() => _dragY = 0);
+              return;
+            }
+            final double velocity = details.primaryVelocity ?? 0.0;
+            final bool shouldClose = (velocity > 250) || (_dragY > 60);
+            if (shouldClose) {
+              _popSmoothToOrigin();
+            } else {
+              _animateBack();
+            }
+          },
+          child: Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: BackdropFilter(
+                  filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(color: Colors.black.withValues(alpha: dim)),
+                ),
               ),
-            ),
+              Transform.translate(
+                offset: Offset(0, _dragY),
+                child: Transform.scale(
+                  scale: dragScale,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(radius),
+                    child: PhotoViewGallery.builder(
+                      pageController: _page,
+                      itemCount: total,
+                      backgroundDecoration: const BoxDecoration(
+                        color: Colors.transparent,
+                      ),
+                      scrollPhysics: _canPageSwipe
+                          ? const BouncingScrollPhysics()
+                          : const NeverScrollableScrollPhysics(),
+                      onPageChanged: (int index) {
+                        setState(() {
+                          _index = index;
+                          _dragY = 0;
+                        });
+                      },
+                      loadingBuilder:
+                          (BuildContext context, ImageChunkEvent? progress) =>
+                              const Center(
+                                child: SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                      builder: (BuildContext context, int i) {
+                        final String path = widget.previewImagePaths[i];
+                        return PhotoViewGalleryPageOptions(
+                          imageProvider: FileImage(File(path)),
+                          controller: _pvCtrls[i],
+                          initialScale: PhotoViewComputedScale.contained,
+                          minScale: PhotoViewComputedScale.contained,
+                          maxScale: PhotoViewComputedScale.contained * 3.0,
+                          basePosition: Alignment.center,
+                          scaleStateCycle: (PhotoViewScaleState state) =>
+                              PhotoViewScaleState.initial,
+                          heroAttributes: i == _index
+                              ? PhotoViewHeroAttributes(tag: _fixedHeroTag)
+                              : null,
+                          errorBuilder:
+                              (
+                                BuildContext context,
+                                Object error,
+                                StackTrace? stackTrace,
+                              ) => const Center(
+                                child: Text(
+                                  '画像を読み込めませんでした',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                              ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: topPad + 8,
+                right: 8,
+                child: IconButton(
+                  onPressed: _popByCloseButton,
+                  icon: const Icon(Icons.close_rounded),
+                  color: Colors.white,
+                  iconSize: 30,
+                  splashRadius: 22,
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 10 + bottomPad,
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                    child: Text(
+                      '${_index + 1} / $total',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),

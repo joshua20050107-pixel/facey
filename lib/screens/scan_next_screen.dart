@@ -126,7 +126,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
-          '正面からの画像をアップロード',
+          '正面からの写真をアップロード',
           style: TextStyle(
             color: Colors.white,
             fontSize: 18,
