@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:facey/screens/face_analysis_result_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 class GrowthLogTabScreen extends StatefulWidget {
@@ -34,6 +35,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   final Map<String, double> _habitSwipeOffsets = <String, double>{};
   final Set<String> _removingHabitIds = <String>{};
   final Object _habitTapRegionGroup = Object();
+  final RegExp _dateKeyPattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
 
   @override
   void initState() {
@@ -41,7 +43,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     _loadLatestScores();
   }
 
-  void _loadLatestScores() {
+  Future<void> _loadLatestScores() async {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
     final int overallSum =
         int.tryParse(box.get(_resultOverallSumKey) ?? '') ?? 0;
@@ -133,6 +135,11 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     } catch (_) {
       habits = <_HabitItem>[];
     }
+    habits = habits.map(_normalizeHabit).toList();
+    final String normalizedHabitsRaw = jsonEncode(
+      habits.map((e) => e.toJson()).toList(),
+    );
+
     if (!mounted) return;
     setState(() {
       _overallScore = overallParsed?.clamp(0, 100);
@@ -142,6 +149,46 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
       _monthlyScores = monthlyScores;
       _habits = habits;
     });
+    if (normalizedHabitsRaw != habitsRaw) {
+      await box.put(_growthHabitsKey, normalizedHabitsRaw);
+    }
+  }
+
+  bool _isValidDateKey(String key) {
+    if (!_dateKeyPattern.hasMatch(key)) return false;
+    return DateTime.tryParse(key) != null;
+  }
+
+  List<String> _normalizedDateKeys(Iterable<String> rawKeys) {
+    final Set<String> unique = <String>{};
+    for (final String key in rawKeys) {
+      if (_isValidDateKey(key)) unique.add(key);
+    }
+    final List<String> sorted = unique.toList()..sort();
+    return sorted;
+  }
+
+  String _latestDateKey(Iterable<String> dateKeys) {
+    final List<String> sorted = _normalizedDateKeys(dateKeys);
+    if (sorted.isEmpty) return '';
+    return sorted.last;
+  }
+
+  _HabitItem _normalizeHabit(_HabitItem item) {
+    final String todayKey = _todayKey();
+    final List<String> seedDates = <String>[
+      ...item.achievedDates,
+      if (item.lastAchievedDate.isNotEmpty) item.lastAchievedDate,
+    ];
+    final List<String> dates = _normalizedDateKeys(seedDates);
+    final String correctedLastDate = _latestDateKey(dates);
+    final bool doneToday = dates.contains(todayKey);
+    return item.copyWith(
+      achievedDays: dates.length,
+      lastAchievedDate: correctedLastDate,
+      achievedDates: dates,
+      isDone: doneToday,
+    );
   }
 
   Future<void> _persistHabits() async {
@@ -154,124 +201,137 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
 
   Future<void> _showAddHabitSheet() async {
     final TextEditingController controller = TextEditingController();
-    final List<String> emojis = <String>['💧', '🧴', '😴', '🏃', '🥗', '🧘'];
-    String selectedEmoji = emojis.first;
+    final TextEditingController goalController = TextEditingController();
     final _HabitItem? created = await showDialog<_HabitItem>(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setModalState) {
-            return AnimatedPadding(
-              duration: const Duration(milliseconds: 180),
-              curve: Curves.easeOut,
-              padding: EdgeInsets.only(
-                left: 14,
-                right: 14,
-                bottom: MediaQuery.of(context).viewInsets.bottom,
-              ),
-              child: Dialog(
-                backgroundColor: Colors.transparent,
-                insetPadding: const EdgeInsets.symmetric(horizontal: 14),
-                child: SingleChildScrollView(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF121B2A),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '習慣を追加しよう！',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFFF3F6FB),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          children: emojis.map((String emoji) {
-                            final bool active = emoji == selectedEmoji;
-                            return ChoiceChip(
-                              label: Text(
-                                emoji,
-                                style: const TextStyle(fontSize: 18),
-                              ),
-                              selected: active,
-                              onSelected: (_) {
-                                setModalState(() => selectedEmoji = emoji);
-                              },
-                              backgroundColor: const Color(0xFF1E2A3E),
-                              selectedColor: const Color(0xFF304766),
-                              side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.18),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: controller,
-                          autofocus: true,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: '例: 水を2L飲む',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.45),
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFF1A2435),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(14),
-                              borderSide: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            style: FilledButton.styleFrom(
-                              backgroundColor: const Color(0xFF80C5FF),
-                              foregroundColor: const Color(0xFF0D1420),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                            ),
-                            onPressed: () {
-                              final String title = controller.text.trim();
-                              if (title.isEmpty) return;
-                              Navigator.of(context).pop(
-                                _HabitItem(
-                                  id: DateTime.now().microsecondsSinceEpoch
-                                      .toString(),
-                                  title: title,
-                                  emoji: selectedEmoji,
-                                  isDone: false,
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              '追加する',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+        return AnimatedPadding(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.only(
+            left: 14,
+            right: 14,
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 14),
+            child: SingleChildScrollView(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF121B2A),
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.2),
                   ),
                 ),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      '習慣を追加してください',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFF3F6FB),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: controller,
+                      autofocus: true,
+                      minLines: 1,
+                      maxLines: 2,
+                      inputFormatters: <TextInputFormatter>[
+                        LengthLimitingTextInputFormatter(25),
+                      ],
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: '例: 水を2L飲む',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF1A2435),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      '目標',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFFF3F6FB),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: goalController,
+                      minLines: 1,
+                      maxLines: 2,
+                      inputFormatters: <TextInputFormatter>[
+                        LengthLimitingTextInputFormatter(25),
+                      ],
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: '例: 肌を綺麗にする',
+                        hintStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                        ),
+                        filled: true,
+                        fillColor: const Color(0xFF1A2435),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF80C5FF),
+                          foregroundColor: const Color(0xFF0D1420),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        onPressed: () {
+                          final String title = controller.text.trim();
+                          if (title.isEmpty) return;
+                          Navigator.of(context).pop(
+                            _HabitItem(
+                              id: DateTime.now().microsecondsSinceEpoch
+                                  .toString(),
+                              title: title,
+                              goal: goalController.text.trim(),
+                              achievedDays: 0,
+                              lastAchievedDate: '',
+                              achievedDates: const <String>[],
+                              emoji: '',
+                              isDone: false,
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          '追加する',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -283,10 +343,24 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   }
 
   Future<void> _toggleHabit(String id) async {
+    final String todayKey = _todayKey();
     setState(() {
       _habits = _habits.map((_HabitItem item) {
         if (item.id != id) return item;
-        return item.copyWith(isDone: !item.isDone);
+        final List<String> dates = _normalizedDateKeys(item.achievedDates);
+        final bool hasToday = dates.contains(todayKey);
+        if (hasToday) {
+          dates.remove(todayKey);
+        } else {
+          dates.add(todayKey);
+          dates.sort();
+        }
+        return item.copyWith(
+          isDone: !hasToday,
+          achievedDays: dates.length,
+          lastAchievedDate: _latestDateKey(dates),
+          achievedDates: dates,
+        );
       }).toList();
     });
     await _persistHabits();
@@ -339,6 +413,33 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     setState(() {
       _habitSwipeOffsets[id] = current <= -36 ? -86 : 0;
     });
+  }
+
+  void _onHabitReorder(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
+    setState(() {
+      if (newIndex > oldIndex) {
+        newIndex -= 1;
+      }
+      if (newIndex < 0 || newIndex >= _habits.length) return;
+      final _HabitItem moved = _habits.removeAt(oldIndex);
+      _habits.insert(newIndex, moved);
+      _habitSwipeOffsets.updateAll((String key, double value) => 0);
+    });
+    _persistHabits();
+  }
+
+  String _todayKey() {
+    final DateTime now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  void _openHabitPage(_HabitItem habit) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => _HabitPlaceholderScreen(habit: habit),
+      ),
+    );
   }
 
   @override
@@ -434,7 +535,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                         child: Text(
                           '習慣リスト',
                           style: TextStyle(
-                            fontSize: 25,
+                            fontSize: 24,
                             fontWeight: FontWeight.w900,
                             color: Color(0xFFE9EEF7),
                           ),
@@ -464,8 +565,51 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                           ),
                         )
                       else
-                        Column(
-                          children: _habits.map((_HabitItem habit) {
+                        ReorderableListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          padding: EdgeInsets.zero,
+                          buildDefaultDragHandles: false,
+                          itemCount: _habits.length,
+                          onReorderStart: (_) => HapticFeedback.mediumImpact(),
+                          onReorder: _onHabitReorder,
+                          proxyDecorator:
+                              (
+                                Widget child,
+                                int index,
+                                Animation<double> animation,
+                              ) {
+                                return AnimatedBuilder(
+                                  animation: animation,
+                                  child: child,
+                                  builder:
+                                      (
+                                        BuildContext context,
+                                        Widget? proxyChild,
+                                      ) {
+                                        final double t = Curves.easeOut
+                                            .transform(animation.value);
+                                        return Transform.scale(
+                                          scale: 1.0 + (0.02 * t),
+                                          child: DecoratedBox(
+                                            decoration: BoxDecoration(
+                                              boxShadow: <BoxShadow>[
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(alpha: 0.28),
+                                                  blurRadius: 18,
+                                                  offset: const Offset(0, 8),
+                                                ),
+                                              ],
+                                            ),
+                                            child: proxyChild,
+                                          ),
+                                        );
+                                      },
+                                );
+                              },
+                          itemBuilder: (BuildContext context, int index) {
+                            final _HabitItem habit = _habits[index];
                             final bool isRemoving = _removingHabitIds.contains(
                               habit.id,
                             );
@@ -482,14 +626,26 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                               child: Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: Container(
-                                  height: 54,
+                                  height: 84,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF111A28),
+                                    gradient: habit.isDone
+                                        ? const LinearGradient(
+                                            colors: <Color>[
+                                              Color(0xFF203651),
+                                              Color(0xFF2C4A6A),
+                                            ],
+                                            begin: Alignment.centerLeft,
+                                            end: Alignment.centerRight,
+                                          )
+                                        : null,
+                                    color: habit.isDone
+                                        ? null
+                                        : const Color(0xFF111A28),
                                     borderRadius: BorderRadius.circular(16),
                                     border: Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
+                                      color: habit.isDone
+                                          ? Colors.white.withValues(alpha: 0.27)
+                                          : Colors.white.withValues(alpha: 0.2),
                                     ),
                                   ),
                                   child: ClipRRect(
@@ -522,6 +678,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                                         ),
                                         GestureDetector(
                                           behavior: HitTestBehavior.opaque,
+                                          onTap: () => _openHabitPage(habit),
                                           onHorizontalDragUpdate: (details) =>
                                               _onHabitDragUpdate(
                                                 habit.id,
@@ -539,83 +696,169 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                                                   0,
                                                   0,
                                                 ),
-                                            color: const Color(0xFF111A28),
+                                            decoration: BoxDecoration(
+                                              gradient: habit.isDone
+                                                  ? const LinearGradient(
+                                                      colors: <Color>[
+                                                        Color(0xFF203651),
+                                                        Color(0xFF2C4A6A),
+                                                      ],
+                                                      begin:
+                                                          Alignment.centerLeft,
+                                                      end:
+                                                          Alignment.centerRight,
+                                                    )
+                                                  : null,
+                                              color: habit.isDone
+                                                  ? null
+                                                  : const Color(0xFF111A28),
+                                            ),
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 12,
                                               vertical: 10,
                                             ),
-                                            child: Row(
+                                            child: Stack(
                                               children: [
-                                                Text(
-                                                  habit.emoji,
-                                                  style: const TextStyle(
-                                                    fontSize: 24,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 10),
-                                                Expanded(
-                                                  child: Text(
-                                                    habit.title,
-                                                    style: TextStyle(
-                                                      fontSize: 17,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      color: habit.isDone
-                                                          ? Colors.white
-                                                                .withValues(
-                                                                  alpha: 0.58,
-                                                                )
-                                                          : const Color(
-                                                              0xFFF0F5FF,
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: Column(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          Text(
+                                                            habit.title,
+                                                            style: TextStyle(
+                                                              fontSize: 17,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              color:
+                                                                  habit.isDone
+                                                                  ? const Color(
+                                                                      0xFFE7F0FF,
+                                                                    )
+                                                                  : const Color(
+                                                                      0xFFF0F5FF,
+                                                                    ),
+                                                              decoration:
+                                                                  TextDecoration
+                                                                      .none,
                                                             ),
-                                                      decoration: habit.isDone
-                                                          ? TextDecoration
-                                                                .lineThrough
-                                                          : TextDecoration.none,
-                                                      decorationColor: Colors
-                                                          .white
-                                                          .withValues(
-                                                            alpha: 0.45,
                                                           ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                GestureDetector(
-                                                  onTap: () =>
-                                                      _toggleHabit(habit.id),
-                                                  child: AnimatedContainer(
-                                                    duration: const Duration(
-                                                      milliseconds: 150,
-                                                    ),
-                                                    width: 34,
-                                                    height: 34,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: habit.isDone
-                                                          ? const Color(
-                                                              0xFF80C5FF,
-                                                            )
-                                                          : Colors.white
-                                                                .withValues(
-                                                                  alpha: 0.25,
-                                                                ),
-                                                      border: Border.all(
-                                                        color: Colors.white
-                                                            .withValues(
-                                                              alpha: 0.6,
-                                                            ),
+                                                        ],
                                                       ),
                                                     ),
-                                                    child: habit.isDone
-                                                        ? const Icon(
-                                                            Icons.check_rounded,
-                                                            size: 20,
-                                                            color: Color(
-                                                              0xFF0C1522,
+                                                    const SizedBox(width: 8),
+                                                    Transform.translate(
+                                                      offset: const Offset(
+                                                        -10,
+                                                        0,
+                                                      ),
+                                                      child: SizedBox(
+                                                        width: 84,
+                                                        child: Stack(
+                                                          clipBehavior:
+                                                              Clip.none,
+                                                          children: [
+                                                            Positioned(
+                                                              left: 40,
+                                                              top: 4,
+                                                              child: IgnorePointer(
+                                                                child: Row(
+                                                                  mainAxisSize:
+                                                                      MainAxisSize
+                                                                          .min,
+                                                                  children: [
+                                                                    const Icon(
+                                                                      Icons
+                                                                          .local_fire_department_rounded,
+                                                                      size: 13,
+                                                                      color: Color(
+                                                                        0xFFFFA439,
+                                                                      ),
+                                                                    ),
+                                                                    Text(
+                                                                      '${habit.achievedDays}',
+                                                                      style: TextStyle(
+                                                                        fontSize:
+                                                                            12,
+                                                                        fontWeight:
+                                                                            FontWeight.w700,
+                                                                        color: Colors
+                                                                            .white
+                                                                            .withValues(
+                                                                              alpha: 0.86,
+                                                                            ),
+                                                                      ),
+                                                                    ),
+                                                                  ],
+                                                                ),
+                                                              ),
                                                             ),
-                                                          )
-                                                        : null,
-                                                  ),
+                                                            Positioned(
+                                                              left: 0,
+                                                              top: 15,
+                                                              child: GestureDetector(
+                                                                onTap: () =>
+                                                                    _toggleHabit(
+                                                                      habit.id,
+                                                                    ),
+                                                                child: AnimatedContainer(
+                                                                  duration:
+                                                                      const Duration(
+                                                                        milliseconds:
+                                                                            150,
+                                                                      ),
+                                                                  width: 34,
+                                                                  height: 34,
+                                                                  decoration: BoxDecoration(
+                                                                    shape: BoxShape
+                                                                        .circle,
+                                                                    color:
+                                                                        habit
+                                                                            .isDone
+                                                                        ? const Color(
+                                                                            0xFF80C5FF,
+                                                                          )
+                                                                        : Colors.white.withValues(
+                                                                            alpha:
+                                                                                0.25,
+                                                                          ),
+                                                                    border: Border.all(
+                                                                      color: Colors
+                                                                          .white
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.6,
+                                                                          ),
+                                                                    ),
+                                                                  ),
+                                                                  child:
+                                                                      habit
+                                                                          .isDone
+                                                                      ? const Icon(
+                                                                          Icons
+                                                                              .check_rounded,
+                                                                          size:
+                                                                              20,
+                                                                          color: Color(
+                                                                            0xFF0C1522,
+                                                                          ),
+                                                                        )
+                                                                      : null,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                               ],
                                             ),
@@ -639,27 +882,33 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                                 ),
                               ),
                             );
-                            return ClipRect(
-                              child: AnimatedSize(
-                                duration: const Duration(milliseconds: 220),
-                                curve: Curves.easeInOut,
-                                alignment: Alignment.topCenter,
-                                child: SizedBox(
-                                  height: isRemoving ? 0 : 64,
-                                  child: IgnorePointer(
-                                    ignoring: isRemoving,
-                                    child: AnimatedOpacity(
-                                      duration: const Duration(
-                                        milliseconds: 180,
+                            return ReorderableDelayedDragStartListener(
+                              key: ValueKey<String>(
+                                'habit-reorder-${habit.id}',
+                              ),
+                              index: index,
+                              child: ClipRect(
+                                child: AnimatedSize(
+                                  duration: const Duration(milliseconds: 220),
+                                  curve: Curves.easeInOut,
+                                  alignment: Alignment.topCenter,
+                                  child: SizedBox(
+                                    height: isRemoving ? 0 : 94,
+                                    child: IgnorePointer(
+                                      ignoring: isRemoving,
+                                      child: AnimatedOpacity(
+                                        duration: const Duration(
+                                          milliseconds: 180,
+                                        ),
+                                        opacity: isRemoving ? 0 : 1,
+                                        child: habitRow,
                                       ),
-                                      opacity: isRemoving ? 0 : 1,
-                                      child: habitRow,
                                     ),
                                   ),
                                 ),
                               ),
                             );
-                          }).toList(),
+                          },
                         ),
                     ],
                   ),
@@ -700,6 +949,385 @@ class _GrowthProgressPicsScreen extends StatefulWidget {
   @override
   State<_GrowthProgressPicsScreen> createState() =>
       _GrowthProgressPicsScreenState();
+}
+
+class _HabitPlaceholderScreen extends StatefulWidget {
+  const _HabitPlaceholderScreen({required this.habit});
+
+  final _HabitItem habit;
+
+  @override
+  State<_HabitPlaceholderScreen> createState() =>
+      _HabitPlaceholderScreenState();
+}
+
+class _HabitPlaceholderScreenState extends State<_HabitPlaceholderScreen> {
+  late DateTime _visibleMonth;
+
+  int _daysInMonth(DateTime month) {
+    return DateTime(month.year, month.month + 1, 0).day;
+  }
+
+  DateTime? _parseDateKey(String raw) {
+    if (raw.isEmpty) return null;
+    return DateTime.tryParse(raw);
+  }
+
+  Set<DateTime> _achievementDates() {
+    return widget.habit.achievedDates
+        .map(_parseDateKey)
+        .whereType<DateTime>()
+        .map((DateTime d) => DateTime(d.year, d.month, d.day))
+        .toSet();
+  }
+
+  Set<int> _activeDays(DateTime month) {
+    final Set<DateTime> dates = _achievementDates();
+    final Set<int> active = <int>{};
+    for (final DateTime date in dates) {
+      if (date.year == month.year && date.month == month.month) {
+        active.add(date.day);
+      }
+    }
+    return active;
+  }
+
+  int _monthlyCount(DateTime month) {
+    return _activeDays(month).length;
+  }
+
+  int _streakDays(DateTime today) {
+    final Set<DateTime> dates = _achievementDates();
+    int streak = 0;
+    DateTime cursor = DateTime(today.year, today.month, today.day);
+    while (dates.contains(cursor)) {
+      streak += 1;
+      cursor = cursor.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  String _monthLabel(DateTime month) {
+    return '${month.year}年${month.month}月';
+  }
+
+  void _goToPreviousMonth() {
+    setState(() {
+      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
+    });
+  }
+
+  void _goToNextMonth() {
+    final DateTime now = DateTime.now();
+    if (_visibleMonth.year == now.year && _visibleMonth.month == now.month) {
+      return;
+    }
+    setState(() {
+      _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final DateTime now = DateTime.now();
+    _visibleMonth = DateTime(now.year, now.month);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime currentMonth = DateTime.now();
+    final int daysInMonth = _daysInMonth(_visibleMonth);
+    final Set<int> activeDays = _activeDays(_visibleMonth);
+    final int monthlyValue = _monthlyCount(currentMonth);
+    final int allTimeValue = widget.habit.achievedDays;
+    final int streakValue = _streakDays(DateTime.now());
+    return Scaffold(
+      backgroundColor: const Color(0xFF0E1421),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: <Color>[
+              Color(0xFF0E1421),
+              Color(0xFF253550),
+              Color(0xFF354C6E),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _HabitInfoCard(
+                        label: '習慣タイトル',
+                        value: widget.habit.title,
+                      ),
+                      const SizedBox(height: 10),
+                      _HabitInfoCard(
+                        label: '目標',
+                        value: widget.habit.goal.isEmpty
+                            ? '-'
+                            : widget.habit.goal,
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _HabitStatCard(
+                              icon: Icons.all_inclusive_rounded,
+                              label: '累計',
+                              value: '$allTimeValue',
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _HabitStatCard(
+                              icon: Icons.calendar_month_outlined,
+                              label: '今月',
+                              value: '$monthlyValue',
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: _HabitStatCard(
+                              icon: Icons.local_fire_department_rounded,
+                              label: '連続',
+                              value: '$streakValue',
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.fromLTRB(14, 14, 14, 18),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: <Color>[
+                              const Color(0xFF243551).withValues(alpha: 0.7),
+                              const Color(0xFF2D4162).withValues(alpha: 0.62),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.24),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    onPressed: _goToPreviousMonth,
+                                    icon: const Icon(
+                                      Icons.chevron_left_rounded,
+                                      color: Color(0xFFE5EEFC),
+                                    ),
+                                  ),
+                                  Text(
+                                    _monthLabel(_visibleMonth),
+                                    style: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFFF0F5FF),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: _goToNextMonth,
+                                    icon: const Icon(
+                                      Icons.chevron_right_rounded,
+                                      color: Color(0xFFE5EEFC),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            GridView.builder(
+                              itemCount: daysInMonth,
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: 8,
+                                    mainAxisSpacing: 10,
+                                    crossAxisSpacing: 10,
+                                    childAspectRatio: 0.72,
+                                  ),
+                              itemBuilder: (BuildContext context, int index) {
+                                final int day = index + 1;
+                                final bool isActive = activeDays.contains(day);
+                                return Column(
+                                  children: [
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isActive
+                                            ? const Color(0xFF80C5FF)
+                                            : const Color(
+                                                0xFFE8F0FF,
+                                              ).withValues(alpha: 0.84),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '$day',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(
+                                          0xFFEAF1FF,
+                                        ).withValues(alpha: 0.82),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HabitStatCard extends StatelessWidget {
+  const _HabitStatCard({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 124,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: <Color>[
+            const Color(0xFF243551).withValues(alpha: 0.7),
+            const Color(0xFF2D4162).withValues(alpha: 0.62),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 31, color: Colors.white.withValues(alpha: 0.88)),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  value,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    fontSize: 43,
+                    height: 0.85,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFFF5F7FF),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white.withValues(alpha: 0.82),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HabitInfoCard extends StatelessWidget {
+  const _HabitInfoCard({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF20314B).withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: Colors.white.withValues(alpha: 0.72),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFFF3F7FF),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
@@ -1460,24 +2088,40 @@ class _HabitItem {
   const _HabitItem({
     required this.id,
     required this.title,
+    this.goal = '',
+    this.achievedDays = 0,
+    this.lastAchievedDate = '',
+    this.achievedDates = const <String>[],
     required this.emoji,
     required this.isDone,
   });
 
   final String id;
   final String title;
+  final String goal;
+  final int achievedDays;
+  final String lastAchievedDate;
+  final List<String> achievedDates;
   final String emoji;
   final bool isDone;
 
   _HabitItem copyWith({
     String? id,
     String? title,
+    String? goal,
+    int? achievedDays,
+    String? lastAchievedDate,
+    List<String>? achievedDates,
     String? emoji,
     bool? isDone,
   }) {
     return _HabitItem(
       id: id ?? this.id,
       title: title ?? this.title,
+      goal: goal ?? this.goal,
+      achievedDays: achievedDays ?? this.achievedDays,
+      lastAchievedDate: lastAchievedDate ?? this.lastAchievedDate,
+      achievedDates: achievedDates ?? this.achievedDates,
       emoji: emoji ?? this.emoji,
       isDone: isDone ?? this.isDone,
     );
@@ -1486,14 +2130,29 @@ class _HabitItem {
   Map<String, dynamic> toJson() => <String, dynamic>{
     'id': id,
     'title': title,
+    'goal': goal,
+    'achievedDays': achievedDays,
+    'lastAchievedDate': lastAchievedDate,
+    'achievedDates': achievedDates,
     'emoji': emoji,
     'isDone': isDone,
   };
 
   static _HabitItem fromJson(Map<String, dynamic> json) {
+    final List<String> parsedDates =
+        (json['achievedDates'] as List<dynamic>? ?? const <dynamic>[])
+            .map((dynamic e) => e.toString())
+            .where((String e) => e.isNotEmpty)
+            .toList();
     return _HabitItem(
       id: (json['id'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
+      goal: (json['goal'] ?? '').toString(),
+      achievedDays:
+          (json['achievedDays'] is num ? json['achievedDays'] as num : 0)
+              .toInt(),
+      lastAchievedDate: (json['lastAchievedDate'] ?? '').toString(),
+      achievedDates: parsedDates,
       emoji: (json['emoji'] ?? '✨').toString(),
       isDone: json['isDone'] == true,
     );
