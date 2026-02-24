@@ -11,6 +11,7 @@ import 'screens/chat_tab_screen.dart';
 import 'screens/coach_settings_screen.dart';
 import 'screens/growth_log_tab_screen.dart';
 import 'screens/scan_tab_screen.dart';
+import 'services/notification_permission_service.dart';
 import 'widgets/yomu_gender_two_choice.dart';
 
 Future<void> main() async {
@@ -48,6 +49,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   static const String _prefsBoxName = 'app_prefs';
   static const String _genderKey = 'selected_gender';
+  static const String _notificationEnabledKey = 'settings_notification_enabled';
   static final SpringDescription _bottomIconSpring =
       SpringDescription.withDampingRatio(mass: 1, stiffness: 200, ratio: 0.5);
   static final SpringDescription _bottomTargetSlideSpring =
@@ -78,6 +80,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       value: 1.0,
     );
     _loadSavedGender();
+    _loadSavedNotificationEnabled();
   }
 
   @override
@@ -107,6 +110,64 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _saveGender(YomuGender value) async {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
     await box.put(_genderKey, value.name);
+  }
+
+  void _loadSavedNotificationEnabled() {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final String? saved = box.get(_notificationEnabledKey);
+    final bool enabled = saved == 'true';
+    _settingsNotificationEnabled = enabled;
+    if (enabled) {
+      _syncNotificationPermissionWithSetting();
+    }
+  }
+
+  Future<void> _saveNotificationEnabled(bool value) async {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    await box.put(_notificationEnabledKey, value ? 'true' : 'false');
+  }
+
+  Future<void> _syncNotificationPermissionWithSetting() async {
+    final bool granted = await NotificationPermissionService.isEnabled();
+    if (!mounted) return;
+    if (_settingsNotificationEnabled == granted) return;
+    setState(() {
+      _settingsNotificationEnabled = granted;
+    });
+    await _saveNotificationEnabled(granted);
+  }
+
+  Future<void> _handleNotificationChanged(bool value) async {
+    final ScaffoldMessengerState? messenger = ScaffoldMessenger.maybeOf(
+      context,
+    );
+    if (!value) {
+      setState(() {
+        _settingsNotificationEnabled = false;
+      });
+      await _saveNotificationEnabled(false);
+      return;
+    }
+
+    final bool granted = await NotificationPermissionService.requestEnable();
+    if (!mounted) return;
+    setState(() {
+      _settingsNotificationEnabled = granted;
+    });
+    await _saveNotificationEnabled(granted);
+
+    if (granted) return;
+    messenger?.showSnackBar(
+      SnackBar(
+        content: const Text('通知を有効にするには設定で許可してください'),
+        action: SnackBarAction(
+          label: '設定を開く',
+          onPressed: () {
+            NotificationPermissionService.openSettings();
+          },
+        ),
+      ),
+    );
   }
 
   static const List<IconData> _bottomIcons = <IconData>[
@@ -247,11 +308,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         ? SafeArea(
             child: CoachSettingsScreen(
               notificationEnabled: _settingsNotificationEnabled,
-              onNotificationChanged: (bool value) {
-                setState(() {
-                  _settingsNotificationEnabled = value;
-                });
-              },
+              onNotificationChanged: _handleNotificationChanged,
               selectedGender: _selectedGender,
               onGenderChanged: (YomuGender value) {
                 setState(() {

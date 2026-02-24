@@ -18,7 +18,7 @@ class CoachSettingsScreen extends StatelessWidget {
   });
 
   final bool notificationEnabled;
-  final ValueChanged<bool> onNotificationChanged;
+  final Future<void> Function(bool) onNotificationChanged;
   final YomuGender selectedGender;
   final ValueChanged<YomuGender> onGenderChanged;
   static final Uri _privacyPolicyUrl = Uri.parse(
@@ -100,8 +100,10 @@ class CoachSettingsScreen extends StatelessWidget {
                   label: '通知',
                   trailing: Switch(
                     value: notificationEnabled,
-                    onChanged: onNotificationChanged,
-                    activeColor: Colors.white,
+                    onChanged: (bool value) {
+                      onNotificationChanged(value);
+                    },
+                    activeThumbColor: Colors.white,
                     activeTrackColor: luxuryPurple,
                     inactiveThumbColor: Colors.white.withValues(alpha: 0.92),
                     inactiveTrackColor: luxuryPurpleDark.withValues(

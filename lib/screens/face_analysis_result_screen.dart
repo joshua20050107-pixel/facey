@@ -141,6 +141,7 @@ class FaceAnalysisResultScreen extends StatefulWidget {
 class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     with SingleTickerProviderStateMixin {
   static const String _prefsBoxName = 'app_prefs';
+  static const String _genderKey = 'selected_gender';
   static const String _latestResultCardImageKey = 'latest_result_card_image';
   static const String _latestResultOverallScoreKey =
       'latest_result_overall_score';
@@ -407,6 +408,25 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
 
   String _heroTagForPath(String path) => 'face_analysis_preview_$path';
 
+  bool _isFemaleSelected() {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    return box.get(_genderKey) == 'female';
+  }
+
+  String _metricLabelForGender(String label, bool isFemale) {
+    if (!isFemale) return label;
+    if (label == '性的魅力') return '色気';
+    if (label == '骨格') return '骨格バランス';
+    if (label == '自信') return '上品さ';
+    if (label == 'シャープさ') return '目元';
+    if (label == '目力') return '透明感';
+    if (label == '親しみやすさ') return '小顔度';
+    if (label == '顎ライン') return 'フェイスライン';
+    if (label == '眉') return '雰囲気';
+    if (label == '男性らしさ') return '女性らしさ';
+    return label;
+  }
+
   Widget _buildResultCardFrame({
     required Widget child,
     EdgeInsetsGeometry padding = const EdgeInsets.fromLTRB(14, 14, 14, 14),
@@ -486,21 +506,44 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
 
   @override
   Widget build(BuildContext context) {
+    final bool isFemale = _isFemaleSelected();
     final FaceAnalysisResult viewData =
         widget.result ?? FaceAnalysisResult.dummy();
-    final List<FaceMetricScore> metrics = List<FaceMetricScore>.from(
-      viewData.metrics,
-    );
+    final List<FaceMetricScore> metrics = viewData.metrics
+        .map(
+          (FaceMetricScore metric) => FaceMetricScore(
+            label: _metricLabelForGender(metric.label, isFemale),
+            value: metric.value,
+          ),
+        )
+        .toList();
     final List<FaceMetricScore> secondPageMetrics = <FaceMetricScore>[
-      const FaceMetricScore(label: '男性らしさ', value: 92),
-      const FaceMetricScore(label: '自信', value: 83),
-      const FaceMetricScore(label: '親しみやすさ', value: 76),
-      const FaceMetricScore(label: '髪の毛', value: 68),
-      const FaceMetricScore(label: 'シャープさ', value: 58),
-      const FaceMetricScore(label: '目力', value: 47),
-      const FaceMetricScore(label: '顎ライン', value: 37),
-      const FaceMetricScore(label: '眉', value: 25),
+      FaceMetricScore(
+        label: _metricLabelForGender('男性らしさ', isFemale),
+        value: 92,
+      ),
+      FaceMetricScore(label: _metricLabelForGender('自信', isFemale), value: 83),
+      FaceMetricScore(
+        label: _metricLabelForGender('親しみやすさ', isFemale),
+        value: 76,
+      ),
+      FaceMetricScore(label: _metricLabelForGender('髪の毛', isFemale), value: 68),
+      FaceMetricScore(
+        label: _metricLabelForGender('シャープさ', isFemale),
+        value: 58,
+      ),
+      FaceMetricScore(label: _metricLabelForGender('目力', isFemale), value: 47),
+      FaceMetricScore(
+        label: _metricLabelForGender('顎ライン', isFemale),
+        value: 37,
+      ),
+      FaceMetricScore(label: _metricLabelForGender('眉', isFemale), value: 25),
     ];
+    if (isFemale) {
+      final FaceMetricScore temp = secondPageMetrics[2];
+      secondPageMetrics[2] = secondPageMetrics[5];
+      secondPageMetrics[5] = temp;
+    }
     while (metrics.length < 6) {
       metrics.add(const FaceMetricScore(label: '-', value: 0));
     }
