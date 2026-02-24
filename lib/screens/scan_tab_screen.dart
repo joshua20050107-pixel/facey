@@ -340,15 +340,15 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                     ),
                   ),
                   Positioned(
-                    left: imageWidth * 0.06,
-                    right: imageWidth * 0.06,
-                    bottom: imageWidth * 0.28,
+                    left: imageWidth * 0.002,
+                    right: imageWidth * 0.002,
+                    bottom: imageWidth * 0.30,
                     child: const Text(
-                      'あなたの顔を分析して\n変化を追跡',
+                      'あなたの魅力を分析して\n変化を追跡',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xF2FFFFFF),
-                        fontSize: 29,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
                         fontFamily: 'Hiragino Kaku Gothic ProN',
                         letterSpacing: 0.0,
@@ -469,7 +469,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                         Positioned(
                           left: 0,
                           right: 0,
-                          bottom: imageWidth * 0.36,
+                          bottom: imageWidth * 0.38,
                           child: Text(
                             _todayDateText(),
                             textAlign: TextAlign.center,
