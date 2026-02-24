@@ -109,9 +109,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   }
 
   Widget _buildStartAnalysisButton(double scale) {
-    final double buttonHeight = (58 * scale).clamp(44.0, 62.0);
-    final double buttonRadius = (38 * scale).clamp(28.0, 40.0);
-    final double textSize = (22 * scale).clamp(18.0, 24.0);
+    final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
+    final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
+    final double textSize = (25 * scale).clamp(21.0, 27.0);
 
     return SizedBox(
       width: double.infinity,
@@ -165,9 +165,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   }
 
   Widget _buildOpenLatestResultButton(double scale) {
-    final double buttonHeight = (58 * scale).clamp(44.0, 62.0);
-    final double buttonRadius = (38 * scale).clamp(28.0, 40.0);
-    final double textSize = (22 * scale).clamp(18.0, 24.0);
+    final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
+    final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
+    final double textSize = (25 * scale).clamp(21.0, 27.0);
     final String? path = _latestResultFrontImagePath;
     final bool enabled =
         path != null && path.isNotEmpty && File(path).existsSync();
@@ -363,9 +363,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                     ),
                   ),
                   Positioned(
-                    left: imageWidth * 0.16,
-                    right: imageWidth * 0.16,
-                    bottom: imageWidth * 0.09,
+                    left: imageWidth * 0.055,
+                    right: imageWidth * 0.055,
+                    bottom: imageWidth * 0.055,
                     child: _buildStartAnalysisButton(scale),
                   ),
                 ],
@@ -461,9 +461,9 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                           ),
                         ),
                         Positioned(
-                          left: imageWidth * 0.16,
-                          right: imageWidth * 0.16,
-                          bottom: imageWidth * 0.09,
+                          left: imageWidth * 0.055,
+                          right: imageWidth * 0.055,
+                          bottom: imageWidth * 0.055,
                           child: _buildOpenLatestResultButton(scale),
                         ),
                         Positioned(

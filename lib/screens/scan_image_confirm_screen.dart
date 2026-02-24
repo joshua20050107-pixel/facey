@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../routes/no_swipe_back_material_page_route.dart';
 import '../widgets/yomu_gender_two_choice.dart';
@@ -121,7 +122,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
     );
   }
 
-  Widget _buildContinueButton(BuildContext context) {
+  Widget _buildContinueButton() {
     return SizedBox(
       width: double.infinity,
       height: 58,
@@ -139,25 +140,37 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
           ),
         ),
         child: TextButton(
-          onPressed: () {
+          onPressed: () async {
             if (widget.goToSideProfileStepOnContinue) {
+              final String persistentFrontImagePath = await _persistScanImage(
+                _currentImagePath,
+                prefix: 'front',
+              );
+              if (!mounted) return;
               Navigator.of(context).push(
                 NoSwipeBackMaterialPageRoute<void>(
                   builder: (_) => SideProfileUploadScreen(
                     selectedGender: widget.selectedGender,
-                    frontImagePath: _currentImagePath,
+                    frontImagePath: persistentFrontImagePath,
                   ),
                 ),
               );
               return;
             }
-            final String laserImagePath =
-                widget.laserThumbnailPath ?? _currentImagePath;
+            final String laserImagePath = await _persistScanImage(
+              widget.laserThumbnailPath ?? _currentImagePath,
+              prefix: 'front',
+            );
+            final String sideImagePath = await _persistScanImage(
+              _currentImagePath,
+              prefix: 'side',
+            );
+            if (!mounted) return;
             Navigator.of(context).push(
               NoSwipeBackMaterialPageRoute<void>(
                 builder: (_) => LaserAnalyzeShell(
                   imagePath: laserImagePath,
-                  sideImagePath: _currentImagePath,
+                  sideImagePath: sideImagePath,
                 ),
               ),
             );
@@ -177,6 +190,27 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
         ),
       ),
     );
+  }
+
+  Future<String> _persistScanImage(
+    String sourcePath, {
+    required String prefix,
+  }) async {
+    final File source = File(sourcePath);
+    if (!source.existsSync()) return sourcePath;
+    final Directory appDir = await getApplicationDocumentsDirectory();
+    final Directory imageDir = Directory('${appDir.path}/scan_results');
+    if (!await imageDir.exists()) {
+      await imageDir.create(recursive: true);
+    }
+    final int dotIndex = sourcePath.lastIndexOf('.');
+    final String ext = dotIndex >= 0
+        ? sourcePath.substring(dotIndex).toLowerCase()
+        : '.jpg';
+    final String targetPath =
+        '${imageDir.path}/${prefix}_${DateTime.now().millisecondsSinceEpoch}$ext';
+    await source.copy(targetPath);
+    return targetPath;
   }
 
   @override
@@ -235,7 +269,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
                 const SizedBox(height: 22),
                 _buildUseAnotherButton(context),
                 const SizedBox(height: 14),
-                _buildContinueButton(context),
+                _buildContinueButton(),
               ],
             ),
           ),
