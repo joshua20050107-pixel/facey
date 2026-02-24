@@ -450,18 +450,18 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   }) {
     return Expanded(
       child: SizedBox(
-        height: 56,
+        height: 66,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(33),
           ),
           child: TextButton.icon(
             onPressed: onTap,
             style: TextButton.styleFrom(
               iconAlignment: IconAlignment.end,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(28),
+                borderRadius: BorderRadius.circular(33),
               ),
             ),
             icon: Icon(icon, size: 24, color: const Color(0xFF111216)),
@@ -596,7 +596,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
           ColoredBox(color: Colors.black.withValues(alpha: 0.9)),
           SafeArea(
             child: Transform.translate(
-              offset: const Offset(0, 10),
+              offset: const Offset(0, 28),
               child: Column(
                 children: [
                   Expanded(
@@ -754,7 +754,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 14),
                               Row(
                                 children: [
                                   _buildActionButton(
@@ -820,7 +820,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 14),
                               Row(
                                 children: [
                                   _buildActionButton(
@@ -940,7 +940,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 14),
                               Row(
                                 children: [
                                   _buildActionButton(
@@ -1060,7 +1060,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 14),
                               Row(
                                 children: [
                                   _buildActionButton(
@@ -1166,7 +1166,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 14),
                               Row(
                                 children: [
                                   _buildActionButton(
@@ -1272,7 +1272,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 22),
+                              const SizedBox(height: 14),
                               Row(
                                 children: [
                                   _buildActionButton(
@@ -1426,7 +1426,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                     ),
                   ),
                   Transform.translate(
-                    offset: const Offset(0, -58),
+                    offset: const Offset(0, -44),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: List<Widget>.generate(7, (int index) {
