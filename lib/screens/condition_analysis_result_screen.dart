@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
@@ -27,7 +28,8 @@ class ConditionAnalysisResultScreen extends StatefulWidget {
 }
 
 class _ConditionAnalysisResultScreenState
-    extends State<ConditionAnalysisResultScreen> {
+    extends State<ConditionAnalysisResultScreen>
+    with SingleTickerProviderStateMixin {
   static const double _resultCardHeight = 500;
   final PageController _pageController = PageController();
   final List<GlobalKey> _cardCaptureKeys = <GlobalKey>[
@@ -35,8 +37,66 @@ class _ConditionAnalysisResultScreenState
     GlobalKey(),
     GlobalKey(),
   ];
+  late final AnimationController _flipController;
+  late String _cardBackImagePath;
 
   int _currentPageIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _flipController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _cardBackImagePath = widget.imagePath;
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _flipController.dispose();
+    super.dispose();
+  }
+
+  void _toggleCardFlip() {
+    if (_flipController.isAnimating) return;
+    if (_flipController.value >= 0.5) {
+      _flipController.reverse();
+    } else {
+      _flipController.forward();
+    }
+  }
+
+  Future<void> _showImagePreview() async {
+    if (_flipController.value < 0.5) return;
+    final List<String> previewImagePaths = <String>[
+      _cardBackImagePath,
+      widget.imagePath,
+    ];
+    final List<String> uniquePreviewImagePaths = <String>[];
+    for (final String path in previewImagePaths) {
+      if (!uniquePreviewImagePaths.contains(path)) {
+        uniquePreviewImagePaths.add(path);
+      }
+    }
+    await Navigator.of(context).push<void>(
+      imageViewerRouteClose(
+        BackImagePreviewScreen(
+          previewImagePaths: uniquePreviewImagePaths,
+          heroTagForPath: _heroTagForPath,
+          onWillClose: (String selectedPath) {
+            if (!mounted || _cardBackImagePath == selectedPath) return;
+            setState(() {
+              _cardBackImagePath = selectedPath;
+            });
+          },
+        ),
+      ),
+    );
+  }
+
+  String _heroTagForPath(String path) => 'condition_analysis_preview_$path';
 
   Future<Uint8List?> _captureCurrentCardAsPng() async {
     final GlobalKey captureKey =
@@ -195,6 +255,103 @@ class _ConditionAnalysisResultScreenState
     );
   }
 
+  Widget _buildFlippableConditionCard({
+    required FaceAnalysisResult viewData,
+    required List<String> labels,
+    required List<int> values,
+  }) {
+    final Widget frontCardContent = Column(
+      children: [
+        _OverallHeaderSection(
+          imagePath: widget.imagePath,
+          score: viewData.overall.clamp(0, 100),
+          title: 'コンディション',
+        ),
+        const SizedBox(height: 22),
+        _MetricPairCard(
+          left: FaceMetricScore(label: labels[0], value: values[0]),
+          right: FaceMetricScore(label: labels[1], value: values[1]),
+        ),
+        const SizedBox(height: 10),
+        _MetricPairCard(
+          left: FaceMetricScore(label: labels[2], value: values[2]),
+          right: FaceMetricScore(label: labels[3], value: values[3]),
+        ),
+        const SizedBox(height: 10),
+        _MetricPairCard(
+          left: FaceMetricScore(label: labels[4], value: values[4]),
+          right: FaceMetricScore(label: labels[5], value: values[5]),
+        ),
+        const SizedBox(height: 4),
+      ],
+    );
+
+    return GestureDetector(
+      onTap: _toggleCardFlip,
+      onLongPress: _showImagePreview,
+      child: AnimatedBuilder(
+        animation: _flipController,
+        builder: (BuildContext context, _) {
+          final double angle = _flipController.value * math.pi;
+          final bool showFront = angle <= (math.pi / 2);
+          return Transform(
+            alignment: Alignment.center,
+            transform: Matrix4.identity()
+              ..setEntry(3, 2, 0.0012)
+              ..rotateY(angle),
+            child: SizedBox(
+              height: _resultCardHeight,
+              child: showFront
+                  ? _buildCardWithFaceyOverlay(
+                      _buildResultCardFrame(child: frontCardContent),
+                    )
+                  : Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()..rotateY(math.pi),
+                      child: _buildResultCardFrame(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Hero(
+                              tag: _heroTagForPath(_cardBackImagePath),
+                              child: Image.file(
+                                File(_cardBackImagePath),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            ColoredBox(
+                              color: Colors.black.withValues(alpha: 0.2),
+                            ),
+                            Align(
+                              alignment: Alignment.bottomCenter,
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                                color: Colors.black.withValues(alpha: 0.35),
+                                child: const Text(
+                                  '長押しでプレビュー',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final FaceAnalysisResult viewData =
@@ -273,58 +430,10 @@ class _ConditionAnalysisResultScreenState
                                     ),
                                     child: RepaintBoundary(
                                       key: _cardCaptureKeys[0],
-                                      child: SizedBox(
-                                        height: _resultCardHeight,
-                                        child: _buildCardWithFaceyOverlay(
-                                          _buildResultCardFrame(
-                                            child: Column(
-                                              children: [
-                                                _OverallHeaderSection(
-                                                  imagePath: widget.imagePath,
-                                                  score: viewData.overall.clamp(
-                                                    0,
-                                                    100,
-                                                  ),
-                                                  title: 'コンディション',
-                                                ),
-                                                const SizedBox(height: 22),
-                                                _MetricPairCard(
-                                                  left: FaceMetricScore(
-                                                    label: labels[0],
-                                                    value: values[0],
-                                                  ),
-                                                  right: FaceMetricScore(
-                                                    label: labels[1],
-                                                    value: values[1],
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                _MetricPairCard(
-                                                  left: FaceMetricScore(
-                                                    label: labels[2],
-                                                    value: values[2],
-                                                  ),
-                                                  right: FaceMetricScore(
-                                                    label: labels[3],
-                                                    value: values[3],
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 10),
-                                                _MetricPairCard(
-                                                  left: FaceMetricScore(
-                                                    label: labels[4],
-                                                    value: values[4],
-                                                  ),
-                                                  right: FaceMetricScore(
-                                                    label: labels[5],
-                                                    value: values[5],
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
+                                      child: _buildFlippableConditionCard(
+                                        viewData: viewData,
+                                        labels: labels,
+                                        values: values,
                                       ),
                                     ),
                                   ),
@@ -478,9 +587,8 @@ class _ConditionAnalysisResultScreenState
                                                         alignment: Alignment
                                                             .centerLeft,
                                                         child: Text(
-                                                          '・保湿を朝夜で固定して肌の安定感を維持する\n'
-                                                          '・眉下ラインを少し整えて目元の印象を締める\n'
-                                                          '・前髪の重さを少し軽くして顔全体に抜け感を作る',
+                                                          '朝夜の保湿を固定して、肌の安定感を維持しましょう。'
+                                                          '眉下ラインを少し整えると目元の印象が締まり、前髪の重さを少し軽くすると顔全体に自然な抜け感が出ます。',
                                                           style: TextStyle(
                                                             color: Colors.white
                                                                 .withValues(

@@ -392,7 +392,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     }
     await Navigator.of(context).push<void>(
       imageViewerRouteClose(
-        _BackImagePreviewScreen(
+        BackImagePreviewScreen(
           previewImagePaths: uniquePreviewImagePaths,
           heroTagForPath: _heroTagForPath,
           onWillClose: (String selectedPath) {
@@ -667,86 +667,92 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                 ..rotateY(angle),
                                               child: SizedBox(
                                                 height: _resultCardHeight,
-                                                child: _buildCardWithFaceyOverlay(
-                                                  showFront
-                                                      ? _buildResultCardFrame(
+                                                child: showFront
+                                                    ? _buildCardWithFaceyOverlay(
+                                                        _buildResultCardFrame(
                                                           child:
                                                               frontCardContent,
-                                                        )
-                                                      : Transform(
-                                                          alignment:
-                                                              Alignment.center,
-                                                          transform:
-                                                              Matrix4.identity()
-                                                                ..rotateY(
-                                                                  math.pi,
-                                                                ),
-                                                          child: _buildResultCardFrame(
-                                                            child: Stack(
-                                                              children: [
-                                                                Opacity(
-                                                                  opacity: 0,
-                                                                  child:
-                                                                      frontCardContent,
-                                                                ),
-                                                                Positioned.fill(
-                                                                  child: Stack(
-                                                                    fit: StackFit
-                                                                        .expand,
-                                                                    children: [
-                                                                      Hero(
-                                                                        tag: _heroTagForPath(
+                                                        ),
+                                                      )
+                                                    : Transform(
+                                                        alignment:
+                                                            Alignment.center,
+                                                        transform:
+                                                            Matrix4.identity()
+                                                              ..rotateY(
+                                                                math.pi,
+                                                              ),
+                                                        child: _buildResultCardFrame(
+                                                          child: Stack(
+                                                            children: [
+                                                              Opacity(
+                                                                opacity: 0,
+                                                                child:
+                                                                    frontCardContent,
+                                                              ),
+                                                              Positioned.fill(
+                                                                child: Stack(
+                                                                  fit: StackFit
+                                                                      .expand,
+                                                                  children: [
+                                                                    Hero(
+                                                                      tag: _heroTagForPath(
+                                                                        _cardBackImagePath,
+                                                                      ),
+                                                                      child: Image.file(
+                                                                        File(
                                                                           _cardBackImagePath,
                                                                         ),
-                                                                        child: Image.file(
-                                                                          File(
-                                                                            _cardBackImagePath,
-                                                                          ),
-                                                                          fit: BoxFit
-                                                                              .cover,
-                                                                        ),
+                                                                        fit: BoxFit
+                                                                            .cover,
                                                                       ),
-                                                                      ColoredBox(
+                                                                    ),
+                                                                    ColoredBox(
+                                                                      color: Colors
+                                                                          .black
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                0.2,
+                                                                          ),
+                                                                    ),
+                                                                    Align(
+                                                                      alignment:
+                                                                          Alignment
+                                                                              .bottomCenter,
+                                                                      child: Container(
+                                                                        width: double
+                                                                            .infinity,
+                                                                        padding: const EdgeInsets.symmetric(
+                                                                          vertical:
+                                                                              12,
+                                                                        ),
                                                                         color: Colors
                                                                             .black
                                                                             .withValues(
-                                                                              alpha: 0.2,
+                                                                              alpha: 0.35,
                                                                             ),
-                                                                      ),
-                                                                      Align(
-                                                                        alignment:
-                                                                            Alignment.bottomCenter,
-                                                                        child: Container(
-                                                                          width:
-                                                                              double.infinity,
-                                                                          padding: const EdgeInsets.symmetric(
-                                                                            vertical:
-                                                                                12,
-                                                                          ),
-                                                                          color: Colors.black.withValues(
-                                                                            alpha:
-                                                                                0.35,
-                                                                          ),
-                                                                          child: const Text(
-                                                                            '長押しでプレビュー',
-                                                                            textAlign:
-                                                                                TextAlign.center,
-                                                                            style: TextStyle(
-                                                                              color: Colors.white,
-                                                                              fontSize: 14,
-                                                                              fontWeight: FontWeight.w600,
-                                                                            ),
+                                                                        child: const Text(
+                                                                          '長押しでプレビュー',
+                                                                          textAlign:
+                                                                              TextAlign.center,
+                                                                          style: TextStyle(
+                                                                            color:
+                                                                                Colors.white,
+                                                                            fontSize:
+                                                                                14,
+                                                                            fontWeight:
+                                                                                FontWeight.w600,
                                                                           ),
                                                                         ),
                                                                       ),
-                                                                    ],
-                                                                  ),
+                                                                    ),
+                                                                  ],
                                                                 ),
-                                                              ],
-                                                            ),
+                                                              ),
+                                                            ],
                                                           ),
                                                         ),
-                                                ),
+                                                      ),
                                               ),
                                             );
                                           },
@@ -1353,10 +1359,10 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                       alignment:
                                                           Alignment.centerLeft,
                                                       child: Text(
-                                                        '・明日から1週間、朝と夜で保湿を固定して肌の質感を安定させる\n'
-                                                        '・次のヘアカットでは「前髪は少し軽め、サイドはボリュームを抑える」でオーダーする\n'
-                                                        '・眉は上ラインを触りすぎず、下側の産毛だけ整えて目元をシャープに見せる\n'
-                                                        '・写真を撮るときは正面よりやや斜め（10〜15度）で、自然光の近くを選ぶ',
+                                                        '明日から1週間は朝と夜の保湿を固定し、肌の質感を安定させましょう。'
+                                                        '次のヘアカットでは前髪を少し軽めにし、サイドのボリュームを抑えると全体のバランスが整います。'
+                                                        '眉は上ラインを触りすぎず下側の産毛だけを整えることで、目元を自然にシャープに見せられます。'
+                                                        '写真は正面よりやや斜め（10〜15度）で、自然光の近くで撮ると印象がより良く見えます。',
                                                         style: TextStyle(
                                                           color: Colors.white
                                                               .withValues(
@@ -1461,8 +1467,9 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   }
 }
 
-class _BackImagePreviewScreen extends StatefulWidget {
-  const _BackImagePreviewScreen({
+class BackImagePreviewScreen extends StatefulWidget {
+  const BackImagePreviewScreen({
+    super.key,
     required this.previewImagePaths,
     required this.heroTagForPath,
     required this.onWillClose,
@@ -1473,11 +1480,10 @@ class _BackImagePreviewScreen extends StatefulWidget {
   final ValueChanged<String> onWillClose;
 
   @override
-  State<_BackImagePreviewScreen> createState() =>
-      _BackImagePreviewScreenState();
+  State<BackImagePreviewScreen> createState() => _BackImagePreviewScreenState();
 }
 
-class _BackImagePreviewScreenState extends State<_BackImagePreviewScreen>
+class _BackImagePreviewScreenState extends State<BackImagePreviewScreen>
     with SingleTickerProviderStateMixin {
   late final PageController _page;
   int _index = 0;
