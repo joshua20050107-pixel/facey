@@ -16,6 +16,7 @@ class ScanImageConfirmScreen extends StatefulWidget {
     required this.initialImagePath,
     required this.selectedGender,
     required this.goToSideProfileStepOnContinue,
+    this.isConditionFlow = false,
     this.appBarTitle = '正面からの画像をアップロード',
     this.laserThumbnailPath,
   });
@@ -23,6 +24,7 @@ class ScanImageConfirmScreen extends StatefulWidget {
   final String initialImagePath;
   final YomuGender selectedGender;
   final bool goToSideProfileStepOnContinue;
+  final bool isConditionFlow;
   final String appBarTitle;
   final String? laserThumbnailPath;
 
@@ -161,16 +163,19 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
               widget.laserThumbnailPath ?? _currentImagePath,
               prefix: 'front',
             );
-            final String sideImagePath = await _persistScanImage(
-              _currentImagePath,
-              prefix: 'side',
-            );
+            final bool hasSeparateSideImage =
+                widget.laserThumbnailPath != null &&
+                widget.laserThumbnailPath!.isNotEmpty;
+            final String? sideImagePath = hasSeparateSideImage
+                ? await _persistScanImage(_currentImagePath, prefix: 'side')
+                : null;
             if (!mounted) return;
             Navigator.of(context).push(
               NoSwipeBackMaterialPageRoute<void>(
                 builder: (_) => LaserAnalyzeShell(
                   imagePath: laserImagePath,
                   sideImagePath: sideImagePath,
+                  isConditionFlow: widget.isConditionFlow,
                 ),
               ),
             );
@@ -218,12 +223,19 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text(
-          widget.appBarTitle,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
+        title: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.7,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              widget.appBarTitle,
+              maxLines: 1,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
         ),
         centerTitle: true,

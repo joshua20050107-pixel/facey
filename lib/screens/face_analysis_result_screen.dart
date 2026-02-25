@@ -509,7 +509,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     final bool isFemale = _isFemaleSelected();
     final FaceAnalysisResult viewData =
         widget.result ?? FaceAnalysisResult.dummy();
-    final List<FaceMetricScore> metrics = viewData.metrics
+    List<FaceMetricScore> metrics = viewData.metrics
         .map(
           (FaceMetricScore metric) => FaceMetricScore(
             label: _metricLabelForGender(metric.label, isFemale),
@@ -550,6 +550,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     final int potentialScore = metrics.first.value.clamp(0, 100);
     final int betterThan = (viewData.overall + 20).clamp(0, 99).toInt();
     final int potentialBetterThan = (potentialScore + 2).clamp(0, 99).toInt();
+    final int visiblePageCount = 7;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -638,6 +639,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                       imagePath:
                                                           widget.imagePath,
                                                       score: viewData.overall,
+                                                      title: '総合スコア',
                                                     ),
                                                     const SizedBox(height: 22),
                                                     _MetricPairCard(
@@ -881,7 +883,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                 ),
                                                 child: Column(
                                                   children: [
-                                                    const Align(
+                                                    Align(
                                                       alignment:
                                                           Alignment.centerLeft,
                                                       child: Text(
@@ -1121,12 +1123,12 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                 ),
                                                 child: Column(
                                                   children: [
-                                                    const Align(
+                                                    Align(
                                                       alignment:
                                                           Alignment.centerLeft,
                                                       child: Text(
                                                         'あなたの魅力',
-                                                        style: TextStyle(
+                                                        style: const TextStyle(
                                                           color: Colors.white,
                                                           fontSize: 31,
                                                           fontWeight:
@@ -1333,12 +1335,12 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                 ),
                                                 child: Column(
                                                   children: [
-                                                    const Align(
+                                                    Align(
                                                       alignment:
                                                           Alignment.centerLeft,
                                                       child: Text(
                                                         '次の一手',
-                                                        style: TextStyle(
+                                                        style: const TextStyle(
                                                           color: Colors.white,
                                                           fontSize: 31,
                                                           fontWeight:
@@ -1429,7 +1431,9 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                     offset: const Offset(0, -44),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List<Widget>.generate(7, (int index) {
+                      children: List<Widget>.generate(visiblePageCount, (
+                        int index,
+                      ) {
                         final bool active = _currentPageIndex == index;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
@@ -1797,10 +1801,15 @@ class _BackImagePreviewScreenState extends State<_BackImagePreviewScreen>
 }
 
 class _OverallHeaderSection extends StatelessWidget {
-  const _OverallHeaderSection({required this.imagePath, required this.score});
+  const _OverallHeaderSection({
+    required this.imagePath,
+    required this.score,
+    this.title = '総合スコア',
+  });
 
   final String imagePath;
   final int score;
+  final String title;
 
   @override
   Widget build(BuildContext context) {
@@ -1813,9 +1822,9 @@ class _OverallHeaderSection extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    '総合スコア',
-                    style: TextStyle(
+                  Text(
+                    title,
+                    style: const TextStyle(
                       color: Color(0xFFF1F5FF),
                       fontSize: 24,
                       fontWeight: FontWeight.w600,

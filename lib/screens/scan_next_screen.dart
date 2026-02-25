@@ -7,9 +7,16 @@ import '../widgets/yomu_gender_two_choice.dart';
 import 'scan_image_confirm_screen.dart';
 
 class ScanNextScreen extends StatefulWidget {
-  const ScanNextScreen({super.key, required this.selectedGender});
+  const ScanNextScreen({
+    super.key,
+    required this.selectedGender,
+    this.goToSideProfileStepOnContinue = true,
+    this.isConditionFlow = false,
+  });
 
   final YomuGender selectedGender;
+  final bool goToSideProfileStepOnContinue;
+  final bool isConditionFlow;
 
   @override
   State<ScanNextScreen> createState() => _ScanNextScreenState();
@@ -30,7 +37,8 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
         builder: (_) => ScanImageConfirmScreen(
           initialImagePath: file.path,
           selectedGender: widget.selectedGender,
-          goToSideProfileStepOnContinue: true,
+          goToSideProfileStepOnContinue: widget.goToSideProfileStepOnContinue,
+          isConditionFlow: widget.isConditionFlow,
         ),
       ),
     );
@@ -125,12 +133,19 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
-          '正面からの写真をアップロード',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
+        title: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.7,
+          child: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '正面からの写真をアップロード',
+              maxLines: 1,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
         ),
         centerTitle: true,

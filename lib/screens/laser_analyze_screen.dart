@@ -1,8 +1,9 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
+import 'condition_analysis_result_screen.dart';
 import 'face_analysis_result_screen.dart';
 
 class LaserAnalyzeSpec {
@@ -22,11 +23,13 @@ class LaserAnalyzeShell extends StatefulWidget {
     super.key,
     required this.imagePath,
     this.sideImagePath,
+    this.isConditionFlow = false,
     this.spec = const LaserAnalyzeSpec(),
   });
 
   final String imagePath;
   final String? sideImagePath;
+  final bool isConditionFlow;
   final LaserAnalyzeSpec spec;
 
   @override
@@ -38,6 +41,10 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultFrontImageKey = 'latest_result_front_image';
   static const String _latestResultSideImageKey = 'latest_result_side_image';
+  static const String _conditionLatestResultFrontImageKey =
+      'condition_latest_result_front_image';
+  static const String _conditionLatestResultSideImageKey =
+      'condition_latest_result_side_image';
   late final AnimationController _laserController;
   late final Animation<double> _laserProgress;
   late final AnimationController _resultController;
@@ -89,6 +96,7 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
 
   Future<void> _completeAnalyze() async {
     if (!mounted || _didNavigate) return;
+    final NavigatorState navigator = Navigator.of(context);
     _laserController.stop();
     setState(() {
       _showLaser = false;
@@ -96,23 +104,40 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
     await _resultController.forward();
     if (!mounted || _didNavigate) return;
     final Box<String> prefs = Hive.box<String>(_prefsBoxName);
-    await prefs.put(_latestResultFrontImageKey, widget.imagePath);
+    final String frontKey = widget.isConditionFlow
+        ? _conditionLatestResultFrontImageKey
+        : _latestResultFrontImageKey;
+    final String sideKey = widget.isConditionFlow
+        ? _conditionLatestResultSideImageKey
+        : _latestResultSideImageKey;
+    await prefs.put(frontKey, widget.imagePath);
     if (widget.sideImagePath != null) {
-      await prefs.put(_latestResultSideImageKey, widget.sideImagePath!);
+      await prefs.put(sideKey, widget.sideImagePath!);
     } else {
-      await prefs.delete(_latestResultSideImageKey);
+      await prefs.delete(sideKey);
     }
     _didNavigate = true;
-    Navigator.of(context).pushAndRemoveUntil(
+    navigator.pushAndRemoveUntil(
       PageRouteBuilder<void>(
         transitionDuration: const Duration(milliseconds: 240),
         reverseTransitionDuration: const Duration(milliseconds: 180),
-        pageBuilder: (BuildContext context, _, __) {
-          return FaceAnalysisResultScreen(
-            imagePath: widget.imagePath,
-            sideImagePath: widget.sideImagePath,
-          );
-        },
+        pageBuilder:
+            (
+              BuildContext context,
+              Animation<double> animation,
+              Animation<double> secondaryAnimation,
+            ) {
+              if (widget.isConditionFlow) {
+                return ConditionAnalysisResultScreen(
+                  imagePath: widget.imagePath,
+                );
+              }
+              return FaceAnalysisResultScreen(
+                imagePath: widget.imagePath,
+                sideImagePath: widget.sideImagePath,
+                persistSummary: true,
+              );
+            },
         transitionsBuilder:
             (
               BuildContext context,
@@ -121,26 +146,31 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
               Widget child,
             ) {
               if (animation.status == AnimationStatus.reverse) {
-                final Animation<Offset> reverseOffsetAnimation = Tween<Offset>(
-                  begin: Offset.zero,
-                  end: const Offset(0, 1),
-                ).animate(
-                  CurvedAnimation(
-                    parent: ReverseAnimation(animation),
-                    curve: Curves.easeOutCubic,
-                  ),
-                );
+                final Animation<Offset> reverseOffsetAnimation =
+                    Tween<Offset>(
+                      begin: Offset.zero,
+                      end: const Offset(0, 1),
+                    ).animate(
+                      CurvedAnimation(
+                        parent: ReverseAnimation(animation),
+                        curve: Curves.easeOutCubic,
+                      ),
+                    );
                 return SlideTransition(
                   position: reverseOffsetAnimation,
                   child: child,
                 );
               }
-              final Animation<Offset> forwardOffsetAnimation = Tween<Offset>(
-                begin: const Offset(1, 0),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutCubic),
-              );
+              final Animation<Offset> forwardOffsetAnimation =
+                  Tween<Offset>(
+                    begin: const Offset(1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  );
               return SlideTransition(
                 position: forwardOffsetAnimation,
                 child: child,

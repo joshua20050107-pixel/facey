@@ -1,5 +1,9 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+
+import 'condition_analysis_result_screen.dart';
 import '../routes/no_swipe_back_material_page_route.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
@@ -9,7 +13,7 @@ class ActivityTabScreen extends StatefulWidget {
   const ActivityTabScreen({
     super.key,
     this.title = 'Condition',
-    this.subtitle = '今日のあなたの状態を観測します',
+    this.subtitle = '現在のあなたの状態を観測します',
     required this.selectedGender,
   });
 
@@ -22,13 +26,91 @@ class ActivityTabScreen extends StatefulWidget {
 }
 
 class _ActivityTabScreenState extends State<ActivityTabScreen> {
+  static const String _prefsBoxName = 'app_prefs';
+  static const String _conditionLatestResultFrontImageKey =
+      'condition_latest_result_front_image';
   final PageController _pageController = PageController(viewportFraction: 0.93);
   int _currentPageIndex = 0;
+  String? _latestConditionFrontImagePath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestConditionResult();
+  }
 
   @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _loadLatestConditionResult() {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final String? frontPath = box.get(_conditionLatestResultFrontImageKey);
+    if (!mounted) return;
+    setState(() {
+      _latestConditionFrontImagePath =
+          frontPath != null &&
+              frontPath.isNotEmpty &&
+              File(frontPath).existsSync()
+          ? frontPath
+          : null;
+    });
+  }
+
+  Route<void> _buildResultScreenRoute({required String imagePath}) {
+    return PageRouteBuilder<void>(
+      transitionDuration: const Duration(milliseconds: 320),
+      reverseTransitionDuration: const Duration(milliseconds: 420),
+      pageBuilder:
+          (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+          ) {
+            return ConditionAnalysisResultScreen(imagePath: imagePath);
+          },
+      transitionsBuilder:
+          (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+            Widget child,
+          ) {
+            if (animation.status == AnimationStatus.reverse) {
+              final Animation<Offset> reverseOffsetAnimation =
+                  Tween<Offset>(
+                    begin: Offset.zero,
+                    end: const Offset(0, 1),
+                  ).animate(
+                    CurvedAnimation(
+                      parent: ReverseAnimation(animation),
+                      curve: Curves.easeInOutCubic,
+                    ),
+                  );
+              return SlideTransition(
+                position: reverseOffsetAnimation,
+                child: child,
+              );
+            }
+
+            final Animation<Offset> forwardOffsetAnimation =
+                Tween<Offset>(
+                  begin: const Offset(1, 0),
+                  end: Offset.zero,
+                ).animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeInOutCubic,
+                  ),
+                );
+            return SlideTransition(
+              position: forwardOffsetAnimation,
+              child: child,
+            );
+          },
+    );
   }
 
   Widget _buildActionButton(
@@ -88,6 +170,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
     required double imageWidth,
     required double scale,
     required VoidCallback? onButtonTap,
+    bool useHomeTitleStyle = false,
+    bool applyDarkOverlay = false,
   }) {
     return Stack(
       alignment: Alignment.center,
@@ -122,6 +206,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
               fit: StackFit.expand,
               children: [
                 Image.asset(imagePath, fit: BoxFit.cover),
+                if (applyDarkOverlay)
+                  const ColoredBox(color: Color(0x66000000)),
                 IgnorePointer(
                   child: Align(
                     alignment: Alignment.bottomCenter,
@@ -157,18 +243,38 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
           ),
         ),
         Positioned(
-          left: 24,
-          right: 24,
-          bottom: 120,
+          left: useHomeTitleStyle ? imageWidth * 0.002 : 24,
+          right: useHomeTitleStyle ? imageWidth * 0.002 : 24,
+          bottom: useHomeTitleStyle ? imageWidth * 0.30 : 120,
           child: Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xF2FFFFFF),
-              fontSize: 29,
-              fontWeight: FontWeight.w900,
-              fontFamily: 'Hiragino Kaku Gothic ProN',
-            ),
+            style: useHomeTitleStyle
+                ? const TextStyle(
+                    color: Color(0xF2FFFFFF),
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Hiragino Kaku Gothic ProN',
+                    letterSpacing: 0.0,
+                    shadows: <Shadow>[
+                      Shadow(
+                        color: Color(0xAA000000),
+                        blurRadius: 14,
+                        offset: Offset(0, 3),
+                      ),
+                      Shadow(
+                        color: Color(0x66000000),
+                        blurRadius: 4,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  )
+                : const TextStyle(
+                    color: Color(0xF2FFFFFF),
+                    fontSize: 29,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'Hiragino Kaku Gothic ProN',
+                  ),
           ),
         ),
         Positioned(
@@ -274,18 +380,22 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                       widget.selectedGender == YomuGender.female
                                       ? 'assets/images/plaos.png'
                                       : 'assets/images/pamiko.png',
-                                  title: 'あなたの状態を分析',
+                                  title: '現在のあなたの\nコンディションを分析',
                                   buttonLabel: 'スキャンする',
                                   imageWidth: imageWidth,
                                   scale: scale,
-                                  onButtonTap: () {
-                                    Navigator.of(context).push(
+                                  useHomeTitleStyle: true,
+                                  onButtonTap: () async {
+                                    await Navigator.of(context).push(
                                       NoSwipeBackMaterialPageRoute<void>(
                                         builder: (_) => ScanNextScreen(
                                           selectedGender: widget.selectedGender,
+                                          goToSideProfileStepOnContinue: false,
+                                          isConditionFlow: true,
                                         ),
                                       ),
                                     );
+                                    _loadLatestConditionResult();
                                   },
                                 ),
                               ),
@@ -297,17 +407,39 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                               child: SizedBox(
                                 width: imageWidth,
                                 height: cardHeight,
-                                child: const Center(
-                                  child: Text(
-                                    '分析結果が表示されます',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Color(0xFFAEB7C8),
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
+                                child: _latestConditionFrontImagePath == null
+                                    ? const Center(
+                                        child: Text(
+                                          '分析結果が表示されます',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Color(0xFFAEB7C8),
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      )
+                                    : _buildCard(
+                                        imagePath:
+                                            _latestConditionFrontImagePath!,
+                                        title: '分析結果',
+                                        buttonLabel: '結果を見る',
+                                        imageWidth: imageWidth,
+                                        scale: scale,
+                                        applyDarkOverlay: true,
+                                        onButtonTap: () {
+                                          final String? path =
+                                              _latestConditionFrontImagePath;
+                                          if (path == null || path.isEmpty) {
+                                            return;
+                                          }
+                                          Navigator.of(context).push(
+                                            _buildResultScreenRoute(
+                                              imagePath: path,
+                                            ),
+                                          );
+                                        },
+                                      ),
                               ),
                             ),
                           ),

@@ -344,7 +344,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                     right: imageWidth * 0.002,
                     bottom: imageWidth * 0.30,
                     child: const Text(
-                      'あなたの魅力を分析して\n変化を追跡',
+                      'あなたの魅力を\n分析して変化を追跡',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xF2FFFFFF),
@@ -354,9 +354,14 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                         letterSpacing: 0.0,
                         shadows: <Shadow>[
                           Shadow(
+                            color: Color(0xAA000000),
+                            blurRadius: 14,
+                            offset: Offset(0, 3),
+                          ),
+                          Shadow(
                             color: Color(0x66000000),
-                            blurRadius: 8,
-                            offset: Offset(0, 2),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
                           ),
                         ],
                       ),

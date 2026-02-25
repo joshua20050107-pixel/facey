@@ -137,7 +137,7 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
           '横顔をアップロード',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 18,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
           ),
         ),
