@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 
+import '../routes/no_swipe_back_material_page_route.dart';
+import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
+import '../widgets/yomu_gender_two_choice.dart';
 
 class ActivityTabScreen extends StatefulWidget {
   const ActivityTabScreen({
     super.key,
     this.title = 'Condition',
     this.subtitle = '今日のあなたの状態を観測します',
+    required this.selectedGender,
   });
 
   final String title;
   final String subtitle;
+  final YomuGender selectedGender;
 
   @override
   State<ActivityTabScreen> createState() => _ActivityTabScreenState();
@@ -26,7 +31,11 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
     super.dispose();
   }
 
-  Widget _buildDisabledActionButton(String label, double scale) {
+  Widget _buildActionButton(
+    String label,
+    double scale, {
+    required VoidCallback? onTap,
+  }) {
     final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
     final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
     final double textSize = (25 * scale).clamp(21.0, 27.0);
@@ -51,8 +60,9 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
           ],
         ),
         child: TextButton(
-          onPressed: null,
+          onPressed: onTap,
           style: TextButton.styleFrom(
+            foregroundColor: Colors.white,
             disabledForegroundColor: Colors.white.withValues(alpha: 0.95),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(buttonRadius),
@@ -77,6 +87,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
     required String buttonLabel,
     required double imageWidth,
     required double scale,
+    required VoidCallback? onButtonTap,
   }) {
     return Stack(
       alignment: Alignment.center,
@@ -164,7 +175,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
           left: imageWidth * 0.055,
           right: imageWidth * 0.055,
           bottom: imageWidth * 0.055,
-          child: _buildDisabledActionButton(buttonLabel, scale),
+          child: _buildActionButton(buttonLabel, scale, onTap: onButtonTap),
         ),
       ],
     );
@@ -259,11 +270,23 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                 width: imageWidth,
                                 height: cardHeight,
                                 child: _buildCard(
-                                  imagePath: 'assets/images/pamiko.png',
+                                  imagePath:
+                                      widget.selectedGender == YomuGender.female
+                                      ? 'assets/images/plaos.png'
+                                      : 'assets/images/pamiko.png',
                                   title: 'あなたの状態を分析',
-                                  buttonLabel: 'コンディションを見る',
+                                  buttonLabel: 'スキャンする',
                                   imageWidth: imageWidth,
                                   scale: scale,
+                                  onButtonTap: () {
+                                    Navigator.of(context).push(
+                                      NoSwipeBackMaterialPageRoute<void>(
+                                        builder: (_) => ScanNextScreen(
+                                          selectedGender: widget.selectedGender,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ),
@@ -274,12 +297,16 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                               child: SizedBox(
                                 width: imageWidth,
                                 height: cardHeight,
-                                child: _buildCard(
-                                  imagePath: 'assets/images/plaos.png',
-                                  title: '今日の改善ポイント',
-                                  buttonLabel: '提案を見る',
-                                  imageWidth: imageWidth,
-                                  scale: scale,
+                                child: const Center(
+                                  child: Text(
+                                    '分析結果が表示されます',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Color(0xFFAEB7C8),
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),

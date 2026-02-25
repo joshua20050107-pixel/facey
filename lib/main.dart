@@ -299,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final Widget tabBody = isScanTab
         ? SafeArea(child: ScanTabScreen(selectedGender: _selectedGender))
         : isSecondTab
-        ? const SafeArea(child: ActivityTabScreen())
+        ? SafeArea(child: ActivityTabScreen(selectedGender: _selectedGender))
         : isThirdTab
         ? const SafeArea(child: GrowthLogTabScreen())
         : isChatTab

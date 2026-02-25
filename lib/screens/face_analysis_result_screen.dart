@@ -596,7 +596,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
           ColoredBox(color: Colors.black.withValues(alpha: 0.9)),
           SafeArea(
             child: Transform.translate(
-              offset: const Offset(0, 28),
+              offset: const Offset(0, 20),
               child: Column(
                 children: [
                   Expanded(

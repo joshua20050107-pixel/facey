@@ -174,8 +174,14 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     return sorted.last;
   }
 
+  String _truncateToMaxChars(String raw, int maxChars) {
+    return String.fromCharCodes(raw.runes.take(maxChars));
+  }
+
   _HabitItem _normalizeHabit(_HabitItem item) {
     final String todayKey = _todayKey();
+    final String normalizedTitle = _truncateToMaxChars(item.title, 25);
+    final String normalizedGoal = _truncateToMaxChars(item.goal, 25);
     final List<String> seedDates = <String>[
       ...item.achievedDates,
       if (item.lastAchievedDate.isNotEmpty) item.lastAchievedDate,
@@ -184,6 +190,8 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     final String correctedLastDate = _latestDateKey(dates);
     final bool doneToday = dates.contains(todayKey);
     return item.copyWith(
+      title: normalizedTitle,
+      goal: normalizedGoal,
       achievedDays: dates.length,
       lastAchievedDate: correctedLastDate,
       achievedDates: dates,
@@ -245,12 +253,23 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                       autofocus: true,
                       minLines: 1,
                       maxLines: 2,
+                      maxLength: 25,
+                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
                       inputFormatters: <TextInputFormatter>[
                         LengthLimitingTextInputFormatter(25),
                       ],
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         hintText: '例: 水を2L飲む',
+                        helperText: '25文字まで',
+                        helperStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.58),
+                          fontSize: 12,
+                        ),
+                        counterStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.62),
+                          fontSize: 12,
+                        ),
                         hintStyle: TextStyle(
                           color: Colors.white.withValues(alpha: 0.45),
                         ),
@@ -276,12 +295,23 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                       controller: goalController,
                       minLines: 1,
                       maxLines: 2,
+                      maxLength: 25,
+                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
                       inputFormatters: <TextInputFormatter>[
                         LengthLimitingTextInputFormatter(25),
                       ],
                       style: const TextStyle(color: Colors.white),
                       decoration: InputDecoration(
                         hintText: '例: 肌を綺麗にする',
+                        helperText: '25文字まで',
+                        helperStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.58),
+                          fontSize: 12,
+                        ),
+                        counterStyle: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.62),
+                          fontSize: 12,
+                        ),
                         hintStyle: TextStyle(
                           color: Colors.white.withValues(alpha: 0.45),
                         ),
@@ -305,14 +335,21 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                           ),
                         ),
                         onPressed: () {
-                          final String title = controller.text.trim();
+                          final String title = _truncateToMaxChars(
+                            controller.text.trim(),
+                            25,
+                          );
                           if (title.isEmpty) return;
+                          final String goal = _truncateToMaxChars(
+                            goalController.text.trim(),
+                            25,
+                          );
                           Navigator.of(context).pop(
                             _HabitItem(
                               id: DateTime.now().microsecondsSinceEpoch
                                   .toString(),
                               title: title,
-                              goal: goalController.text.trim(),
+                              goal: goal,
                               achievedDays: 0,
                               lastAchievedDate: '',
                               achievedDates: const <String>[],
@@ -732,6 +769,10 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                                                         children: [
                                                           Text(
                                                             habit.title,
+                                                            maxLines: 2,
+                                                            overflow:
+                                                                TextOverflow
+                                                                    .ellipsis,
                                                             style: TextStyle(
                                                               fontSize: 17,
                                                               fontWeight:
@@ -998,8 +1039,17 @@ class _HabitPlaceholderScreenState extends State<_HabitPlaceholderScreen> {
 
   int _streakDays(DateTime today) {
     final Set<DateTime> dates = _achievementDates();
+    final DateTime todayDate = DateTime(today.year, today.month, today.day);
+    final DateTime yesterdayDate = todayDate.subtract(const Duration(days: 1));
+    DateTime? start;
+    if (dates.contains(todayDate)) {
+      start = todayDate;
+    } else if (dates.contains(yesterdayDate)) {
+      start = yesterdayDate;
+    }
+    if (start == null) return 0;
     int streak = 0;
-    DateTime cursor = DateTime(today.year, today.month, today.day);
+    DateTime cursor = start;
     while (dates.contains(cursor)) {
       streak += 1;
       cursor = cursor.subtract(const Duration(days: 1));
@@ -1018,10 +1068,6 @@ class _HabitPlaceholderScreenState extends State<_HabitPlaceholderScreen> {
   }
 
   void _goToNextMonth() {
-    final DateTime now = DateTime.now();
-    if (_visibleMonth.year == now.year && _visibleMonth.month == now.month) {
-      return;
-    }
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
     });
