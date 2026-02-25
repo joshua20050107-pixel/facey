@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+
+import 'custom_image_picker_screen.dart';
+import 'face_analysis_result_screen.dart';
 
 class ChatTabScreen extends StatefulWidget {
   const ChatTabScreen({super.key});
@@ -12,86 +16,120 @@ class ChatTabScreen extends StatefulWidget {
 }
 
 class _ChatTabScreenState extends State<ChatTabScreen> {
-  static const MethodChannel _hapticChannel = MethodChannel('facey/haptics');
   static const String _fixedAssistantReply =
       'いいですね。まずは睡眠・食事・運動の3つを1週間だけ整えて、変化を記録してみましょう。';
+  static const int _maxComposerImages = 5;
+  static const TextStyle _userBubbleTextStyle = TextStyle(
+    color: Color(0xFF0C1220),
+    fontSize: 14,
+    fontWeight: FontWeight.w500,
+    height: 1.35,
+  );
+
   final TextEditingController _messageController = TextEditingController();
-  final ScrollController _inputScrollController = ScrollController();
   final ScrollController _chatScrollController = ScrollController();
+  final ImagePicker _picker = ImagePicker();
+  final List<XFile> _composerImages = <XFile>[];
   final List<_ChatMessage> _messages = <_ChatMessage>[];
-  bool _showOverflowScrollbar = false;
-  bool _didTriggerScrollbarGrabHaptic = false;
 
   @override
   void initState() {
     super.initState();
     _messageController.addListener(_handleMessageChanged);
-    _inputScrollController.addListener(_handleInputScrolled);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateScrollbarVisibility();
-    });
   }
 
   @override
   void dispose() {
     _messageController.removeListener(_handleMessageChanged);
-    _inputScrollController.removeListener(_handleInputScrolled);
     _messageController.dispose();
-    _inputScrollController.dispose();
     _chatScrollController.dispose();
     super.dispose();
   }
 
   void _handleMessageChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _updateScrollbarVisibility();
-    });
+    if (!mounted) return;
+    setState(() {});
   }
 
-  void _handleInputScrolled() {
-    _updateScrollbarVisibility();
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
-  void _updateScrollbarVisibility() {
-    if (!mounted || !_inputScrollController.hasClients) return;
-    final bool shouldShow = _inputScrollController.position.maxScrollExtent > 0;
-    if (shouldShow != _showOverflowScrollbar) {
-      setState(() {
-        _showOverflowScrollbar = shouldShow;
-      });
-    }
-  }
-
-  void _triggerScrollbarGrabHaptic() {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
-    _hapticChannel.invokeMethod<void>('softImpact').catchError((Object _) {});
-  }
-
-  bool get _isSendEnabled => _messageController.text.trim().isNotEmpty;
+  bool get _isSendEnabled =>
+      _messageController.text.trim().isNotEmpty || _composerImages.isNotEmpty;
+  bool get _canAddMoreImages => _composerImages.length < _maxComposerImages;
 
   void _refreshChat() {
     setState(() {
       _messages.clear();
       _messageController.clear();
+      _composerImages.clear();
     });
     if (_chatScrollController.hasClients) {
       _chatScrollController.jumpTo(0);
     }
   }
 
+  Future<void> _pickFromGallery() async {
+    if (!_canAddMoreImages) return;
+    if (kIsWeb) {
+      final List<XFile> picked = await _picker.pickMultiImage(imageQuality: 90);
+      if (!mounted || picked.isEmpty) return;
+      _addPickedFiles(picked);
+      return;
+    }
+
+    final List<String>? selectedPaths =
+        await showModalBottomSheet<List<String>>(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          backgroundColor: Colors.transparent,
+          builder: (BuildContext context) {
+            final double maxHeight = MediaQuery.sizeOf(context).height * 0.86;
+            return SizedBox(
+              height: maxHeight,
+              child: CustomImagePickerScreen(
+                maxSelection: _maxComposerImages - _composerImages.length,
+              ),
+            );
+          },
+        );
+    if (!mounted || selectedPaths == null || selectedPaths.isEmpty) return;
+    _addPickedFiles(selectedPaths.map((String path) => XFile(path)).toList());
+  }
+
+  void _addPickedFiles(List<XFile> picked) {
+    if (picked.isEmpty) return;
+    final int remaining = _maxComposerImages - _composerImages.length;
+    if (remaining <= 0) return;
+
+    final List<XFile> filesToAdd = picked.take(remaining).toList();
+    setState(() {
+      _composerImages.addAll(filesToAdd);
+    });
+  }
+
+  void _removeComposerImage(int index) {
+    if (index < 0 || index >= _composerImages.length) return;
+    setState(() {
+      _composerImages.removeAt(index);
+    });
+  }
+
   Future<void> _sendMessage() async {
     final String inputText = _messageController.text.trim();
-    if (inputText.isEmpty) return;
+    final List<String> imagePaths = _composerImages
+        .map((XFile file) => file.path)
+        .toList();
+    if (inputText.isEmpty && imagePaths.isEmpty) return;
 
     setState(() {
-      _messages.add(_ChatMessage(role: _ChatRole.user, text: inputText));
+      _messages.add(
+        _ChatMessage(
+          role: _ChatRole.user,
+          text: inputText,
+          imagePaths: imagePaths,
+        ),
+      );
       _messageController.clear();
+      _composerImages.clear();
     });
     _scrollChatToBottom();
 
@@ -118,6 +156,92 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
         curve: Curves.easeOut,
       );
     });
+  }
+
+  String _heroTagForPath(String path) => 'chat_preview_$path';
+
+  Future<void> _openImageReview(
+    List<String> imagePaths, {
+    int initialIndex = 0,
+  }) async {
+    if (imagePaths.isEmpty) return;
+    final int safeInitialIndex = initialIndex.clamp(0, imagePaths.length - 1);
+    await Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 180),
+        reverseTransitionDuration: const Duration(milliseconds: 160),
+        pageBuilder:
+            (
+              BuildContext context,
+              Animation<double> animation,
+              Animation<double> secondaryAnimation,
+            ) => BackImagePreviewScreen(
+              previewImagePaths: imagePaths,
+              initialIndex: safeInitialIndex,
+              heroTagForPath: _heroTagForPath,
+              onWillClose: (_) {},
+            ),
+        transitionsBuilder:
+            (
+              BuildContext context,
+              Animation<double> animation,
+              Animation<double> secondaryAnimation,
+              Widget child,
+            ) => FadeTransition(opacity: animation, child: child),
+      ),
+    );
+  }
+
+  Widget _buildUserImageWrap(_ChatMessage message) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      alignment: WrapAlignment.end,
+      children: List<Widget>.generate(message.imagePaths.length, (
+        int imageIndex,
+      ) {
+        final String path = message.imagePaths[imageIndex];
+        return GestureDetector(
+          onTap: () =>
+              _openImageReview(message.imagePaths, initialIndex: imageIndex),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: _PreviewImage(path: path, width: 110, height: 110),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildUserMessage(_ChatMessage message) {
+    Widget buildTextBubble() {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Text(message.text, style: _userBubbleTextStyle),
+        ),
+      );
+    }
+
+    if (message.imagePaths.isNotEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          _buildUserImageWrap(message),
+          if (message.text.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            buildTextBubble(),
+          ],
+        ],
+      );
+    }
+
+    return buildTextBubble();
   }
 
   Widget _buildEmptyState() {
@@ -186,6 +310,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
     if (_messages.isEmpty) {
       return _buildEmptyState();
     }
+
     return ListView.builder(
       controller: _chatScrollController,
       physics: const AlwaysScrollableScrollPhysics(
@@ -204,6 +329,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
             : roleChanged
             ? 18
             : 8;
+
         return Padding(
           padding: EdgeInsets.only(top: topSpacing),
           child: Row(
@@ -214,33 +340,13 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
               ConstrainedBox(
                 constraints: BoxConstraints(
                   maxWidth:
-                      MediaQuery.sizeOf(context).width * (isUser ? 0.7 : 0.8),
+                      MediaQuery.sizeOf(context).width *
+                      (isUser
+                          ? (message.imagePaths.isNotEmpty ? 0.9 : 0.7)
+                          : 0.8),
                 ),
                 child: isUser
-                    ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.94),
-                          borderRadius: BorderRadius.circular(18),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
-                          ),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          child: Text(
-                            message.text,
-                            style: const TextStyle(
-                              color: Color(0xFF0C1220),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              height: 1.35,
-                            ),
-                          ),
-                        ),
-                      )
+                    ? _buildUserMessage(message)
                     : Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 4,
@@ -261,6 +367,147 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildComposer() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: 48, maxHeight: 260),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_composerImages.isNotEmpty)
+              SizedBox(
+                height: 104,
+                child: ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _composerImages.length,
+                  separatorBuilder: (BuildContext context, int index) =>
+                      const SizedBox(width: 8),
+                  itemBuilder: (BuildContext context, int index) {
+                    final XFile file = _composerImages[index];
+                    return SizedBox(
+                      width: 92,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: _PreviewImage(
+                              path: file.path,
+                              width: 92,
+                              height: 92,
+                            ),
+                          ),
+                          Positioned(
+                            top: -5,
+                            right: -5,
+                            child: Material(
+                              color: Colors.white,
+                              shape: const CircleBorder(),
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: () => _removeComposerImage(index),
+                                child: const SizedBox(
+                                  width: 24,
+                                  height: 24,
+                                  child: Icon(
+                                    Icons.close_rounded,
+                                    size: 16,
+                                    color: Color(0xFF111216),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            Stack(
+              children: [
+                TextField(
+                  controller: _messageController,
+                  minLines: 1,
+                  maxLines: 5,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  cursorColor: Colors.white.withValues(alpha: 0.85),
+                  decoration: InputDecoration(
+                    hintText: '質問してみましょう',
+                    hintStyle: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.1),
+                    contentPadding: const EdgeInsets.only(
+                      left: 12,
+                      right: 52,
+                      top: 14,
+                      bottom: 14,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.15),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.24),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: 12,
+                  bottom: 8,
+                  child: SizedBox(
+                    width: 34,
+                    height: 34,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: _isSendEnabled ? Colors.white : Colors.black,
+                        shape: BoxShape.circle,
+                      ),
+                      child: IconButton(
+                        onPressed: _isSendEnabled ? _sendMessage : null,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        icon: Icon(
+                          Icons.arrow_upward_rounded,
+                          size: 23,
+                          color: _isSendEnabled
+                              ? const Color(0xFF0D1524)
+                              : Colors.white,
+                        ),
+                        disabledColor: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -318,172 +565,16 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
               child: Transform.translate(
                 offset: const Offset(0, 2),
                 child: Row(
+                  crossAxisAlignment: _composerImages.isNotEmpty
+                      ? CrossAxisAlignment.end
+                      : CrossAxisAlignment.center,
                   children: [
                     _CircleActionButton(
                       icon: Icons.add_rounded,
-                      onPressed: null,
+                      onPressed: _canAddMoreImages ? _pickFromGallery : null,
                     ),
                     const SizedBox(width: 10),
-                    Expanded(
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minHeight: 48,
-                          maxHeight: 168,
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: Stack(
-                            children: [
-                              Builder(
-                                builder: (BuildContext scrollbarContext) =>
-                                    Listener(
-                                      behavior: HitTestBehavior.translucent,
-                                      onPointerDown: (PointerDownEvent event) {
-                                        if (_didTriggerScrollbarGrabHaptic ||
-                                            !_showOverflowScrollbar ||
-                                            !_inputScrollController
-                                                .hasClients) {
-                                          return;
-                                        }
-                                        final double maxExtent =
-                                            _inputScrollController
-                                                .position
-                                                .maxScrollExtent;
-                                        if (maxExtent <= 0) return;
-                                        final RenderBox? box =
-                                            scrollbarContext.findRenderObject()
-                                                as RenderBox?;
-                                        final double fieldWidth =
-                                            box?.size.width ?? 0;
-                                        if (fieldWidth <= 0) return;
-                                        if (event.localPosition.dx >=
-                                            fieldWidth - 24) {
-                                          _didTriggerScrollbarGrabHaptic = true;
-                                          _triggerScrollbarGrabHaptic();
-                                        }
-                                      },
-                                      onPointerUp: (_) {
-                                        _didTriggerScrollbarGrabHaptic = false;
-                                      },
-                                      onPointerCancel: (_) {
-                                        _didTriggerScrollbarGrabHaptic = false;
-                                      },
-                                      child: RawScrollbar(
-                                        controller: _inputScrollController,
-                                        thumbVisibility: _showOverflowScrollbar,
-                                        interactive: true,
-                                        thickness: 4,
-                                        radius: const Radius.circular(999),
-                                        mainAxisMargin: 20,
-                                        crossAxisMargin: 6,
-                                        minThumbLength: 12,
-                                        thumbColor: Colors.white.withValues(
-                                          alpha: 0.68,
-                                        ),
-                                        child: TextField(
-                                          controller: _messageController,
-                                          scrollController:
-                                              _inputScrollController,
-                                          minLines: 1,
-                                          maxLines: 5,
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.9,
-                                            ),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                          cursorColor: Colors.white.withValues(
-                                            alpha: 0.85,
-                                          ),
-                                          decoration: InputDecoration(
-                                            hintText: 'メッセージを入力',
-                                            hintStyle: TextStyle(
-                                              color: Colors.white.withValues(
-                                                alpha: 0.45,
-                                              ),
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500,
-                                            ),
-                                            filled: true,
-                                            fillColor: Colors.white.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            contentPadding:
-                                                const EdgeInsets.only(
-                                                  left: 12,
-                                                  right: 52,
-                                                  top: 14,
-                                                  bottom: 14,
-                                                ),
-                                            border: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(24),
-                                              borderSide: BorderSide(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.15,
-                                                ),
-                                              ),
-                                            ),
-                                            enabledBorder: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(24),
-                                              borderSide: BorderSide(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.15,
-                                                ),
-                                              ),
-                                            ),
-                                            focusedBorder: OutlineInputBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(24),
-                                              borderSide: BorderSide(
-                                                color: Colors.white.withValues(
-                                                  alpha: 0.24,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                              ),
-                              Positioned(
-                                right: 12,
-                                bottom: 8,
-                                child: SizedBox(
-                                  width: 34,
-                                  height: 34,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: _isSendEnabled
-                                          ? Colors.white
-                                          : Colors.black,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: IconButton(
-                                      onPressed: _isSendEnabled
-                                          ? _sendMessage
-                                          : null,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      icon: Icon(
-                                        Icons.arrow_upward_rounded,
-                                        size: 23,
-                                        color: _isSendEnabled
-                                            ? const Color(0xFF0D1524)
-                                            : Colors.white,
-                                      ),
-                                      disabledColor: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                    Expanded(child: _buildComposer()),
                   ],
                 ),
               ),
@@ -498,10 +589,45 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 enum _ChatRole { user, assistant }
 
 class _ChatMessage {
-  const _ChatMessage({required this.role, required this.text});
+  const _ChatMessage({
+    required this.role,
+    required this.text,
+    this.imagePaths = const <String>[],
+  });
 
   final _ChatRole role;
   final String text;
+  final List<String> imagePaths;
+}
+
+class _PreviewImage extends StatelessWidget {
+  const _PreviewImage({
+    required this.path,
+    required this.width,
+    required this.height,
+  });
+
+  final String path;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    if (kIsWeb) {
+      return Image.network(
+        path,
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+      );
+    }
+    return Image.file(
+      File(path),
+      width: width,
+      height: height,
+      fit: BoxFit.cover,
+    );
+  }
 }
 
 class _CircleActionButton extends StatelessWidget {

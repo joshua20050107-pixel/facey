@@ -291,35 +291,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final bool isScanTab = _selectedBottomIndex == 0;
-    final bool isSecondTab = _selectedBottomIndex == 1;
-    final bool isThirdTab = _selectedBottomIndex == 2;
-    final bool isChatTab = _selectedBottomIndex == 3;
-    final bool isCoachTab = _selectedBottomIndex == 4;
-    final Widget tabBody = isScanTab
-        ? SafeArea(child: ScanTabScreen(selectedGender: _selectedGender))
-        : isSecondTab
-        ? SafeArea(child: ActivityTabScreen(selectedGender: _selectedGender))
-        : isThirdTab
-        ? const SafeArea(child: GrowthLogTabScreen())
-        : isChatTab
-        ? const SafeArea(child: ChatTabScreen())
-        : isCoachTab
-        ? SafeArea(
-            child: CoachSettingsScreen(
-              notificationEnabled: _settingsNotificationEnabled,
-              onNotificationChanged: _handleNotificationChanged,
-              selectedGender: _selectedGender,
-              onGenderChanged: (YomuGender value) {
-                setState(() {
-                  _selectedGender = value;
-                });
-                _saveGender(value);
-              },
-            ),
-          )
-        : const SizedBox.expand();
-
     return Scaffold(
       extendBody: true,
       bottomNavigationBar: SafeArea(
@@ -412,7 +383,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             end: Alignment.bottomRight,
           ),
         ),
-        child: tabBody,
+        child: IndexedStack(
+          index: _selectedBottomIndex,
+          children: [
+            SafeArea(child: ScanTabScreen(selectedGender: _selectedGender)),
+            SafeArea(child: ActivityTabScreen(selectedGender: _selectedGender)),
+            const SafeArea(child: GrowthLogTabScreen()),
+            const SafeArea(child: ChatTabScreen()),
+            SafeArea(
+              child: CoachSettingsScreen(
+                notificationEnabled: _settingsNotificationEnabled,
+                onNotificationChanged: _handleNotificationChanged,
+                selectedGender: _selectedGender,
+                onGenderChanged: (YomuGender value) {
+                  setState(() {
+                    _selectedGender = value;
+                  });
+                  _saveGender(value);
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

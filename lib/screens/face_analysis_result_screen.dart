@@ -1473,11 +1473,13 @@ class BackImagePreviewScreen extends StatefulWidget {
     required this.previewImagePaths,
     required this.heroTagForPath,
     required this.onWillClose,
+    this.initialIndex = 0,
   });
 
   final List<String> previewImagePaths;
   final String Function(String path) heroTagForPath;
   final ValueChanged<String> onWillClose;
+  final int initialIndex;
 
   @override
   State<BackImagePreviewScreen> createState() => _BackImagePreviewScreenState();
@@ -1509,7 +1511,7 @@ class _BackImagePreviewScreenState extends State<BackImagePreviewScreen>
   void initState() {
     super.initState();
     final int total = widget.previewImagePaths.length;
-    _initialIndex = 0;
+    _initialIndex = widget.initialIndex.clamp(0, total - 1);
     _initialPath = widget.previewImagePaths[_initialIndex];
     _fixedHeroTag = widget.heroTagForPath(_initialPath);
     _index = _initialIndex;
