@@ -36,6 +36,7 @@ class _ConditionAnalysisResultScreenState
     GlobalKey(),
     GlobalKey(),
     GlobalKey(),
+    GlobalKey(),
   ];
   late final AnimationController _flipController;
   late String _cardBackImagePath;
@@ -100,7 +101,7 @@ class _ConditionAnalysisResultScreenState
 
   Future<Uint8List?> _captureCurrentCardAsPng() async {
     final GlobalKey captureKey =
-        _cardCaptureKeys[_currentPageIndex.clamp(0, 2)];
+        _cardCaptureKeys[_currentPageIndex.clamp(0, 3)];
     for (int i = 0; i < 8; i++) {
       await SchedulerBinding.instance.endOfFrame;
       final RenderObject? renderObject = captureKey.currentContext
@@ -550,6 +551,94 @@ class _ConditionAnalysisResultScreenState
                                         height: _resultCardHeight,
                                         child: _buildCardWithFaceyOverlay(
                                           _buildResultCardFrame(
+                                            padding: const EdgeInsets.fromLTRB(
+                                              18,
+                                              18,
+                                              18,
+                                              22,
+                                            ),
+                                            child: Column(
+                                              children: [
+                                                Row(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    const Expanded(
+                                                      child: Text(
+                                                        '周囲からの印象',
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 31,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    ClipOval(
+                                                      child: Image.file(
+                                                        File(widget.imagePath),
+                                                        width: 82,
+                                                        height: 82,
+                                                        fit: BoxFit.cover,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 22),
+                                                Align(
+                                                  alignment:
+                                                      Alignment.centerLeft,
+                                                  child: Text(
+                                                    '「清潔感があって、話しかけやすい」\n'
+                                                    '「目元に意志があって、頼れる印象」\n'
+                                                    '「落ち着いて見えるのに、重くなりすぎない」\n\n'
+                                                    '全体として、安心感と誠実さが先に伝わる見え方です。',
+                                                    style: TextStyle(
+                                                      color: Colors.white
+                                                          .withValues(
+                                                            alpha: 0.74,
+                                                          ),
+                                                      fontSize: 16,
+                                                      height: 1.55,
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                    ),
+                                                  ),
+                                                ),
+                                                const Spacer(),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _buildBottomActions(),
+                            ],
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: RepaintBoundary(
+                                      key: _cardCaptureKeys[3],
+                                      child: SizedBox(
+                                        height: _resultCardHeight,
+                                        child: _buildCardWithFaceyOverlay(
+                                          _buildResultCardFrame(
                                             child: Stack(
                                               children: [
                                                 Positioned(
@@ -664,7 +753,7 @@ class _ConditionAnalysisResultScreenState
                     offset: const Offset(0, -44),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List<Widget>.generate(3, (int index) {
+                      children: List<Widget>.generate(4, (int index) {
                         final bool active = _currentPageIndex == index;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
