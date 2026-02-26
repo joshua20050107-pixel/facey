@@ -244,68 +244,6 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
     return buildTextBubble();
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(22),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    const Color(0xFF1D2740).withValues(alpha: 0.95),
-                    const Color(0xFF2E3F5B).withValues(alpha: 0.92),
-                  ],
-                ),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.34),
-                    blurRadius: 16,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.chat_rounded,
-                size: 22,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '外見の改善や戦略を相談',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.94),
-                fontSize: 19,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '改善点やこれからの行動・気になることを\n相談してみてください',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.56),
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                height: 1.35,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildMessages() {
     return ListView.builder(
       controller: _chatScrollController,
@@ -569,7 +507,9 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                       children: [
                         _CircleActionButton(
                           icon: Icons.add_rounded,
-                          onPressed: _canAddMoreImages ? _pickFromGallery : null,
+                          onPressed: _canAddMoreImages
+                              ? _pickFromGallery
+                              : null,
                         ),
                         const SizedBox(width: 10),
                         Expanded(child: _buildComposer()),
