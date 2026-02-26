@@ -307,10 +307,6 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
   }
 
   Widget _buildMessages() {
-    if (_messages.isEmpty) {
-      return _buildEmptyState();
-    }
-
     return ListView.builder(
       controller: _chatScrollController,
       physics: const AlwaysScrollableScrollPhysics(
@@ -518,65 +514,142 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
       behavior: HitTestBehavior.opaque,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
-        child: Column(
+        child: Stack(
           children: [
-            SizedBox(
-              height: 52,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Facey Chat',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        fontSize: 24,
-                        fontFamily: 'SF Pro Display',
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.15,
+            Column(
+              children: [
+                SizedBox(
+                  height: 52,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Facey Chat',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.95),
+                            fontSize: 24,
+                            fontFamily: 'SF Pro Display',
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.15,
+                          ),
+                        ),
                       ),
+                      Transform.translate(
+                        offset: const Offset(5, 4),
+                        child: IconButton(
+                          onPressed: _refreshChat,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 58,
+                            minHeight: 58,
+                          ),
+                          icon: Image.asset(
+                            'assets/images/manto.png',
+                            width: 37,
+                            height: 37,
+                            color: const Color.fromARGB(255, 215, 214, 214),
+                            colorBlendMode: BlendMode.srcIn,
+                          ),
+                          color: Colors.white.withValues(alpha: 0.8),
+                          disabledColor: Colors.white.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(child: _buildMessages()),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: Transform.translate(
+                    offset: const Offset(0, 2),
+                    child: Row(
+                      crossAxisAlignment: _composerImages.isNotEmpty
+                          ? CrossAxisAlignment.end
+                          : CrossAxisAlignment.center,
+                      children: [
+                        _CircleActionButton(
+                          icon: Icons.add_rounded,
+                          onPressed: _canAddMoreImages ? _pickFromGallery : null,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(child: _buildComposer()),
+                      ],
                     ),
                   ),
-                  Transform.translate(
-                    offset: const Offset(5, 4),
-                    child: IconButton(
-                      onPressed: _refreshChat,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 58,
-                        minHeight: 58,
-                      ),
-                      icon: Image.asset(
-                        'assets/images/manto.png',
-                        width: 37,
-                        height: 37,
-                        color: const Color.fromARGB(255, 215, 214, 214),
-                        colorBlendMode: BlendMode.srcIn,
-                      ),
-                      color: Colors.white.withValues(alpha: 0.8),
-                      disabledColor: Colors.white.withValues(alpha: 0.5),
-                    ),
+                ),
+              ],
+            ),
+            if (_messages.isEmpty)
+              const Positioned.fill(
+                top: 52,
+                bottom: 118,
+                child: IgnorePointer(child: _ChatEmptyStateOverlay()),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ChatEmptyStateOverlay extends StatelessWidget {
+  const _ChatEmptyStateOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(22),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    const Color(0xFF1D2740).withValues(alpha: 0.95),
+                    const Color(0xFF2E3F5B).withValues(alpha: 0.92),
+                  ],
+                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.34),
+                    blurRadius: 16,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
+              child: const Icon(
+                Icons.chat_rounded,
+                size: 22,
+                color: Colors.white,
+              ),
             ),
-            Expanded(child: _buildMessages()),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 2),
-              child: Transform.translate(
-                offset: const Offset(0, 2),
-                child: Row(
-                  crossAxisAlignment: _composerImages.isNotEmpty
-                      ? CrossAxisAlignment.end
-                      : CrossAxisAlignment.center,
-                  children: [
-                    _CircleActionButton(
-                      icon: Icons.add_rounded,
-                      onPressed: _canAddMoreImages ? _pickFromGallery : null,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(child: _buildComposer()),
-                  ],
-                ),
+            const SizedBox(height: 16),
+            Text(
+              '外見の改善や戦略を相談',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.94),
+                fontSize: 19,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '改善点やこれからの行動・気になることを\n相談してみてください',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.56),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                height: 1.35,
               ),
             ),
           ],
