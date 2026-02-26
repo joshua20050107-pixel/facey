@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'condition_analysis_result_screen.dart';
 import 'face_analysis_result_screen.dart';
@@ -53,6 +54,27 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
   bool _didNavigate = false;
   bool _hasReversed = false;
 
+  Future<String> _persistResultImage(
+    String sourcePath, {
+    required String prefix,
+  }) async {
+    final File source = File(sourcePath);
+    if (!source.existsSync()) return sourcePath;
+    final Directory appDir = await getApplicationDocumentsDirectory();
+    final Directory imageDir = Directory('${appDir.path}/analysis_results');
+    if (!await imageDir.exists()) {
+      await imageDir.create(recursive: true);
+    }
+    final int dotIndex = sourcePath.lastIndexOf('.');
+    final String ext = dotIndex >= 0
+        ? sourcePath.substring(dotIndex).toLowerCase()
+        : '.jpg';
+    final String targetPath =
+        '${imageDir.path}/${prefix}_${DateTime.now().millisecondsSinceEpoch}$ext';
+    await source.copy(targetPath);
+    return targetPath;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -103,6 +125,16 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
     });
     await _resultController.forward();
     if (!mounted || _didNavigate) return;
+    final String persistentFrontPath = await _persistResultImage(
+      widget.imagePath,
+      prefix: widget.isConditionFlow ? 'condition_front' : 'face_front',
+    );
+    final String? persistentSidePath = widget.sideImagePath != null
+        ? await _persistResultImage(
+            widget.sideImagePath!,
+            prefix: widget.isConditionFlow ? 'condition_side' : 'face_side',
+          )
+        : null;
     final Box<String> prefs = Hive.box<String>(_prefsBoxName);
     final String frontKey = widget.isConditionFlow
         ? _conditionLatestResultFrontImageKey
@@ -110,9 +142,9 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
     final String sideKey = widget.isConditionFlow
         ? _conditionLatestResultSideImageKey
         : _latestResultSideImageKey;
-    await prefs.put(frontKey, widget.imagePath);
-    if (widget.sideImagePath != null) {
-      await prefs.put(sideKey, widget.sideImagePath!);
+    await prefs.put(frontKey, persistentFrontPath);
+    if (persistentSidePath != null) {
+      await prefs.put(sideKey, persistentSidePath);
     } else {
       await prefs.delete(sideKey);
     }
@@ -129,12 +161,12 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
             ) {
               if (widget.isConditionFlow) {
                 return ConditionAnalysisResultScreen(
-                  imagePath: widget.imagePath,
+                  imagePath: persistentFrontPath,
                 );
               }
               return FaceAnalysisResultScreen(
-                imagePath: widget.imagePath,
-                sideImagePath: widget.sideImagePath,
+                imagePath: persistentFrontPath,
+                sideImagePath: persistentSidePath,
                 persistSummary: true,
               );
             },

@@ -9,7 +9,7 @@ class UpgradeScreen extends StatelessWidget {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.asset('assets/images/メス.png', fit: BoxFit.cover),
+          Image.asset('assets/images/引きそ.png', fit: BoxFit.cover),
           SafeArea(
             child: Align(
               alignment: Alignment.topLeft,

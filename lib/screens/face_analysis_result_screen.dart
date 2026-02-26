@@ -229,8 +229,12 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     for (int i = 0; i < 8; i++) {
       final Uint8List? bytes = await _captureCardAsPng();
       if (bytes != null && bytes.isNotEmpty) {
-        final Directory tempDir = await getTemporaryDirectory();
-        final String path = '${tempDir.path}/facey_latest_result_card.png';
+        final Directory appDir = await getApplicationDocumentsDirectory();
+        final Directory imageDir = Directory('${appDir.path}/analysis_results');
+        if (!await imageDir.exists()) {
+          await imageDir.create(recursive: true);
+        }
+        final String path = '${imageDir.path}/facey_latest_result_card.png';
         final File file = File(path);
         await file.writeAsBytes(bytes, flush: true);
         final Box<String> box = Hive.box<String>(_prefsBoxName);

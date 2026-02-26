@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../main.dart';
 import '../routes/no_swipe_back_material_page_route.dart';
 
 const int _kOnboardingGaugeSteps = 9;
@@ -15,6 +19,10 @@ class _OnboardingGaugeMemory {
 class _OnboardingEvaluationMemory {
   static double score = 50;
   static bool hasMovedSlider = false;
+}
+
+class _OnboardingOptimizingMemory {
+  static bool completed = false;
 }
 
 class _OnboardingNoTransitionRoute<T> extends NoSwipeBackMaterialPageRoute<T> {
@@ -35,6 +43,41 @@ class _OnboardingNoTransitionRoute<T> extends NoSwipeBackMaterialPageRoute<T> {
   ) {
     return child;
   }
+}
+
+class _OnboardingFinishRoute<T> extends PageRouteBuilder<T> {
+  _OnboardingFinishRoute({required WidgetBuilder builder})
+    : super(
+        pageBuilder:
+            (
+              BuildContext context,
+              Animation<double> animation,
+              Animation<double> secondaryAnimation,
+            ) => builder(context),
+        transitionDuration: const Duration(milliseconds: 280),
+        reverseTransitionDuration: const Duration(milliseconds: 260),
+        transitionsBuilder:
+            (
+              BuildContext context,
+              Animation<double> animation,
+              Animation<double> secondaryAnimation,
+              Widget child,
+            ) {
+              final bool isReversing =
+                  animation.status == AnimationStatus.reverse;
+              final Tween<Offset> tween = isReversing
+                  ? Tween<Offset>(begin: Offset.zero, end: const Offset(0, 1))
+                  : Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero);
+              final Animation<Offset> offsetAnimation = tween.animate(
+                CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                  reverseCurve: Curves.easeInCubic,
+                ),
+              );
+              return SlideTransition(position: offsetAnimation, child: child);
+            },
+      );
 }
 
 class OnboardingStartScreen extends StatefulWidget {
@@ -1159,7 +1202,15 @@ class _OnboardingConcernScreenState extends State<OnboardingConcernScreen>
 
   @override
   Widget build(BuildContext context) {
-    const List<String> options = <String>['清潔感', '目力', '輪郭', '肌', '髪', '雰囲気'];
+    const List<String> options = <String>[
+      '清潔感',
+      '目力',
+      '輪郭',
+      '肌',
+      '髪',
+      '雰囲気',
+      'その他',
+    ];
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -1854,6 +1905,8 @@ class _OnboardingLastInfoScreenState extends State<OnboardingLastInfoScreen>
     if (_didRequestReview || !mounted) return;
     _didRequestReview = true;
     try {
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
       final InAppReview inAppReview = InAppReview.instance;
       final bool available = await inAppReview.isAvailable();
       if (!available || !mounted) return;
@@ -2107,24 +2160,120 @@ class OnboardingOptimizingScreen extends StatefulWidget {
 
 class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
     with TickerProviderStateMixin {
+  final Random _random = Random();
   late final AnimationController _progressController;
   late final AnimationController _blinkController;
+  Timer? _progressTimer;
+  bool _isFinalizingProgress = false;
+  double _progressPhase = 0;
+  String _statusDetail = 'プロファイルを初期化中';
+  DateTime _lastStatusChangedAt = DateTime.now();
+
+  static const List<String> _statusDetails = <String>[
+    'プロファイルを初期化中',
+    '最適な体験をチューニング',
+    '推奨設定を調整中',
+    '通知設定を最適化中',
+    '体験を最適化',
+  ];
 
   @override
   void initState() {
     super.initState();
+    final bool alreadyCompleted = _OnboardingOptimizingMemory.completed;
     _progressController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4200),
-    )..forward();
+      duration: const Duration(milliseconds: 1),
+      value: alreadyCompleted ? 1 : 0.04,
+    );
     _blinkController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
+    if (alreadyCompleted) {
+      _statusDetail = '環境構築が完了しました';
+      _isFinalizingProgress = true;
+      return;
+    }
+    _scheduleNextProgressStep();
+  }
+
+  void _scheduleNextProgressStep() {
+    _progressTimer?.cancel();
+    final double current = _progressController.value;
+    if (!mounted || current >= 1) return;
+    if (_isFinalizingProgress) return;
+
+    if (current >= 0.96) {
+      _isFinalizingProgress = true;
+      _statusDetail = '最終チェック中';
+      _progressTimer = Timer(
+        Duration(milliseconds: 350 + _random.nextInt(350)),
+        () {
+          if (!mounted) return;
+          _progressController
+              .animateTo(
+                1,
+                duration: const Duration(milliseconds: 620),
+                curve: Curves.easeOutCubic,
+              )
+              .whenComplete(() {
+                if (!mounted) return;
+                setState(() {
+                  _statusDetail = '環境構築が完了しました';
+                });
+                _OnboardingOptimizingMemory.completed = true;
+              });
+        },
+      );
+      setState(() {});
+      return;
+    }
+
+    final double baseStep = current < 0.32
+        ? 0.04
+        : current < 0.72
+        ? 0.025
+        : 0.013;
+    _progressPhase += 0.72 + (_random.nextDouble() * 0.18);
+    final double wave = sin(_progressPhase) * baseStep * 0.26;
+    final double jitter = (_random.nextDouble() - 0.5) * baseStep * 0.24;
+    final double delta = (baseStep + wave + jitter).clamp(0.004, 0.04);
+    final double target = (current + delta).clamp(0.0, 0.965);
+    final int moveMs = current < 0.72
+        ? 220 + _random.nextInt(100)
+        : 260 + _random.nextInt(120);
+    final int gapMs = 45 + _random.nextInt(45);
+
+    final DateTime now = DateTime.now();
+    final bool canChangeStatus =
+        now.difference(_lastStatusChangedAt).inMilliseconds >= 1800;
+    final bool shouldChangeStatus =
+        canChangeStatus && _random.nextDouble() < 0.52;
+    if (shouldChangeStatus) {
+      setState(() {
+        _statusDetail = _statusDetails[_random.nextInt(_statusDetails.length)];
+        _lastStatusChangedAt = now;
+      });
+    }
+    _progressController
+        .animateTo(
+          target,
+          duration: Duration(milliseconds: moveMs),
+          curve: Curves.easeInOutCubic,
+        )
+        .whenComplete(() {
+          if (!mounted) return;
+          _progressTimer = Timer(Duration(milliseconds: gapMs), () {
+            if (!mounted) return;
+            _scheduleNextProgressStep();
+          });
+        });
   }
 
   @override
   void dispose() {
+    _progressTimer?.cancel();
     _progressController.dispose();
     _blinkController.dispose();
     super.dispose();
@@ -2186,6 +2335,19 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                     color: Color(0xFFD2D9E8),
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 240),
+                  child: Text(
+                    _statusDetail,
+                    key: ValueKey<String>(_statusDetail),
+                    style: const TextStyle(
+                      color: Color(0xFFAFB8CB),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 30),
@@ -2285,7 +2447,26 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          onPressed: done ? () {} : null,
+                          onPressed: done
+                              ? () async {
+                                  final bool? closeToHome =
+                                      await Navigator.of(context).push<bool>(
+                                        _OnboardingFinishRoute<bool>(
+                                          builder: (_) =>
+                                              const OnboardingFinishImageScreen(),
+                                        ),
+                                      );
+                                  if (!context.mounted || closeToHome != true) {
+                                    return;
+                                  }
+                                  Navigator.of(context).pushAndRemoveUntil(
+                                    _OnboardingNoTransitionRoute<void>(
+                                      builder: (_) => const HomeScreen(),
+                                    ),
+                                    (Route<dynamic> route) => false,
+                                  );
+                                }
+                              : null,
                           child: const Text('完了'),
                         ),
                       ),
@@ -2296,6 +2477,40 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class OnboardingFinishImageScreen extends StatelessWidget {
+  const OnboardingFinishImageScreen({super.key});
+
+  void _close(BuildContext context) {
+    Navigator.of(context).pop(true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: Image.asset('assets/images/引きそ.png', fit: BoxFit.cover),
+          ),
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8, right: 8),
+                child: IconButton(
+                  onPressed: () => _close(context),
+                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
