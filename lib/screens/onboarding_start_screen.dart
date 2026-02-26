@@ -6,6 +6,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../main.dart';
+import 'payment_page_scaffold.dart';
 import '../routes/no_swipe_back_material_page_route.dart';
 
 const int _kOnboardingGaugeSteps = 9;
@@ -2491,28 +2492,7 @@ class OnboardingFinishImageScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: Stack(
-        children: <Widget>[
-          Positioned.fill(
-            child: Image.asset('assets/images/引きそ.png', fit: BoxFit.cover),
-          ),
-          SafeArea(
-            child: Align(
-              alignment: Alignment.topRight,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8, right: 8),
-                child: IconButton(
-                  onPressed: () => _close(context),
-                  icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+    return PaymentPageScaffold(onClose: () => _close(context));
   }
 }
 

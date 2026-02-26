@@ -1,0 +1,424 @@
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+class PaymentPageScaffold extends StatefulWidget {
+  const PaymentPageScaffold({
+    super.key,
+    required this.onClose,
+    this.content,
+    this.backgroundImagePath = 'assets/images/引きそ.png',
+    this.closeAlignment = Alignment.topRight,
+    this.closePadding = const EdgeInsets.only(top: 8, right: 8),
+    this.closeIcon = const Icon(Icons.close, color: Colors.white, size: 23),
+    this.backgroundFit = BoxFit.cover,
+    this.title = 'アップグレード',
+    this.subtitle = '『魅力的な自分へ』',
+  });
+
+  final VoidCallback onClose;
+  final Widget? content;
+  final String backgroundImagePath;
+  final Alignment closeAlignment;
+  final EdgeInsets closePadding;
+  final Widget closeIcon;
+  final BoxFit backgroundFit;
+  final String title;
+  final String subtitle;
+
+  @override
+  State<PaymentPageScaffold> createState() => _PaymentPageScaffoldState();
+}
+
+class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
+  static const int _cardCount = 4;
+  static final Uri _privacyPolicyUrl = Uri.parse(
+    'https://mercury-ixora-4df.notion.site/30ab9bad745580b89262d3bead931a6b',
+  );
+  static final Uri _termsUrl = Uri.parse(
+    'https://mercury-ixora-4df.notion.site/Facey-30ab9bad745580b78192d675b7fa6b1b',
+  );
+  late final PageController _cardsController;
+  int _activeCardIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _cardsController = PageController(viewportFraction: 0.92);
+  }
+
+  @override
+  void dispose() {
+    _cardsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: <Widget>[
+          Positioned.fill(
+            child: Image.asset(
+              widget.backgroundImagePath,
+              fit: widget.backgroundFit,
+            ),
+          ),
+          if (widget.content != null)
+            SafeArea(
+              child: Align(
+                alignment: widget.closeAlignment,
+                child: Padding(
+                  padding: widget.closePadding,
+                  child: IconButton(
+                    onPressed: widget.onClose,
+                    icon: widget.closeIcon,
+                  ),
+                ),
+              ),
+            ),
+          if (widget.content == null)
+            SafeArea(
+              child: LayoutBuilder(
+                builder: (BuildContext context, BoxConstraints constraints) {
+                  final double cardHeight = (constraints.maxHeight * 0.48)
+                      .clamp(320.0, 500.0);
+                  final double cardWidth = constraints.maxWidth - 32;
+                  return Stack(
+                    clipBehavior: Clip.none,
+                    children: <Widget>[
+                      Positioned.fill(
+                        child: SingleChildScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.only(bottom: 100),
+                          child: Column(
+                            children: <Widget>[
+                              Align(
+                                alignment: Alignment.topLeft,
+                                child: Padding(
+                                  padding: widget.closePadding,
+                                  child: IconButton(
+                                    onPressed: widget.onClose,
+                                    icon: widget.closeIcon,
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 22,
+                                ),
+                                child: Transform.translate(
+                                  offset: const Offset(0, -38),
+                                  child: Column(
+                                    children: <Widget>[
+                                      const SizedBox(height: 28),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(
+                                          widget.title,
+                                          maxLines: 1,
+                                          textAlign: TextAlign.center,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 33,
+                                            fontFamily:
+                                                'Hiragino Kaku Gothic ProN',
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: -0.2,
+                                            height: 1.02,
+                                            shadows: <Shadow>[
+                                              Shadow(
+                                                color: Color(0x50000000),
+                                                blurRadius: 2,
+                                                offset: Offset(0, 1),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 18),
+                                      Text(
+                                        widget.subtitle,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: Colors.white.withValues(
+                                            alpha: 0.36,
+                                          ),
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.2,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 30),
+                                      SizedBox(
+                                        width: cardWidth,
+                                        height: cardHeight + 26,
+                                        child: Column(
+                                          children: <Widget>[
+                                            SizedBox(
+                                              height: cardHeight,
+                                              child: PageView.builder(
+                                                controller: _cardsController,
+                                                itemCount: _cardCount,
+                                                onPageChanged: (int index) {
+                                                  setState(() {
+                                                    _activeCardIndex = index;
+                                                  });
+                                                },
+                                                itemBuilder:
+                                                    (
+                                                      BuildContext context,
+                                                      int index,
+                                                    ) => Padding(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 6,
+                                                          ),
+                                                      child: Container(
+                                                        width: double.infinity,
+                                                        decoration: BoxDecoration(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                34,
+                                                              ),
+                                                          gradient:
+                                                              const LinearGradient(
+                                                                begin: Alignment
+                                                                    .topLeft,
+                                                                end: Alignment
+                                                                    .bottomRight,
+                                                                colors: <Color>[
+                                                                  Color(
+                                                                    0xAA111826,
+                                                                  ),
+                                                                  Color(
+                                                                    0xCC0A1222,
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                          border: Border.all(
+                                                            color: Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.06,
+                                                                ),
+                                                          ),
+                                                          boxShadow:
+                                                              const <BoxShadow>[
+                                                                BoxShadow(
+                                                                  color: Color(
+                                                                    0x66000000,
+                                                                  ),
+                                                                  blurRadius:
+                                                                      24,
+                                                                  offset:
+                                                                      Offset(
+                                                                        0,
+                                                                        10,
+                                                                      ),
+                                                                ),
+                                                              ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: List<Widget>.generate(
+                                                _cardCount,
+                                                (int dotIndex) => Container(
+                                                  width: 8,
+                                                  height: 8,
+                                                  margin:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 4,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color:
+                                                        _activeCardIndex ==
+                                                            dotIndex
+                                                        ? Colors.white
+                                                        : Colors.white
+                                                              .withValues(
+                                                                alpha: 0.32,
+                                                              ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 180),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 34,
+                        height: 92,
+                        child: IgnorePointer(
+                          child: Container(color: Colors.black),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.bottomCenter,
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(22, 0, 22, 50),
+                          child: SizedBox(
+                            width: double.infinity,
+                            height: 60,
+                            child: ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2F4CF6),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(44),
+                                ),
+                              ),
+                              child: const Text(
+                                'Unlock now 🙌',
+                                style: TextStyle(
+                                  fontSize: 50 / 3,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.1,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 18,
+                        child: Center(
+                          child: Text(
+                            '¥1500/月',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.45),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 20,
+                        right: 20,
+                        bottom: -7,
+                        child: Row(
+                          children: <Widget>[
+                            Expanded(
+                              child: Center(
+                                child: TextButton(
+                                  onPressed: () async {
+                                    await launchUrl(
+                                      _termsUrl,
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white.withValues(
+                                      alpha: 0.9,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    padding: EdgeInsets.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Terms of Use',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.fade,
+                                    softWrap: false,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Center(
+                                child: TextButton(
+                                  onPressed: () {},
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white.withValues(
+                                      alpha: 0.9,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    padding: EdgeInsets.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Restore Purchase',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.fade,
+                                    softWrap: false,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: Center(
+                                child: TextButton(
+                                  onPressed: () async {
+                                    await launchUrl(
+                                      _privacyPolicyUrl,
+                                      mode: LaunchMode.externalApplication,
+                                    );
+                                  },
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.white.withValues(
+                                      alpha: 0.9,
+                                    ),
+                                    minimumSize: Size.zero,
+                                    padding: EdgeInsets.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text(
+                                    'Privacy Policy',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.fade,
+                                    softWrap: false,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          if (widget.content != null) SafeArea(child: widget.content!),
+        ],
+      ),
+    );
+  }
+}
