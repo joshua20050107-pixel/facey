@@ -12,6 +12,7 @@ import 'screens/coach_settings_screen.dart';
 import 'screens/growth_log_tab_screen.dart';
 import 'screens/scan_tab_screen.dart';
 import 'services/notification_permission_service.dart';
+import 'screens/onboarding_start_screen.dart';
 import 'widgets/yomu_gender_two_choice.dart';
 
 Future<void> main() async {
@@ -29,12 +30,13 @@ class FaceyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Facey',
       debugShowCheckedModeBanner: false,
+      navigatorObservers: <NavigatorObserver>[onboardingRouteObserver],
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF060911),
         fontFamily: 'SF Pro Display',
       ),
-      home: const HomeScreen(),
+      home: const OnboardingStartScreen(),
     );
   }
 }
@@ -186,13 +188,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'coach',
   ];
 
-  static const MethodChannel _hapticChannel = MethodChannel('facey/haptics');
-
   void _triggerBottomNavHaptic() {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
-    unawaited(
-      _hapticChannel.invokeMethod<void>('softImpact').catchError((Object _) {}),
-    );
+    if (kIsWeb) return;
+    HapticFeedback.lightImpact();
   }
 
   void _playBottomIconSpring(int index) {
