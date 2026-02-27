@@ -120,7 +120,10 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
   }) {
     final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
     final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
-    final double textSize = (25 * scale).clamp(21.0, 27.0);
+    final bool isScanLabel = label == 'スキャンする';
+    final double textSize = isScanLabel
+        ? (21 * scale).clamp(17.0, 23.0)
+        : (25 * scale).clamp(21.0, 27.0);
     return SizedBox(
       width: double.infinity,
       height: buttonHeight,
@@ -154,7 +157,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
             label,
             style: TextStyle(
               fontSize: textSize,
-              fontWeight: FontWeight.w700,
+              fontFamily: isScanLabel ? 'Hiragino Kaku Gothic ProN' : null,
+              fontWeight: isScanLabel ? FontWeight.w900 : FontWeight.w700,
               letterSpacing: 0.2,
             ),
           ),

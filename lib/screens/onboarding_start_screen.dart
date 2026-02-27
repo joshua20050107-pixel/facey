@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
@@ -1984,7 +1985,7 @@ class _OnboardingLastInfoScreenState extends State<OnboardingLastInfoScreen>
                           ),
                           const SizedBox(height: 15),
                           Image.asset(
-                            'assets/images/声.png',
+                            'assets/images/おかmw.png',
                             width: 250,
                             fit: BoxFit.contain,
                           ),
@@ -2164,6 +2165,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
   final Random _random = Random();
   late final AnimationController _progressController;
   late final AnimationController _blinkController;
+  late final AnimationController _ringSpinController;
   Timer? _progressTimer;
   bool _isFinalizingProgress = false;
   double _progressPhase = 0;
@@ -2191,6 +2193,10 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     )..repeat(reverse: true);
+    _ringSpinController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3200),
+    )..repeat();
     if (alreadyCompleted) {
       _statusDetail = '環境構築が完了しました';
       _isFinalizingProgress = true;
@@ -2277,6 +2283,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
     _progressTimer?.cancel();
     _progressController.dispose();
     _blinkController.dispose();
+    _ringSpinController.dispose();
     super.dispose();
   }
 
@@ -2306,119 +2313,50 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                   totalSteps: _kOnboardingGaugeSteps,
                 ),
                 const Spacer(flex: 1),
+                const SizedBox(height: 4),
+                const Text(
+                  '多くの人は、自分の印象を正確に\n把握できていません。',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 8),
                 AnimatedBuilder(
                   animation: Listenable.merge(<Listenable>[
-                    _progressController,
                     _blinkController,
+                    _progressController,
                   ]),
                   builder: (BuildContext context, _) {
                     final bool done = _progressController.value >= 1;
-                    final double opacity = done
-                        ? 1
-                        : (0.35 + (_blinkController.value * 0.65));
                     return Opacity(
-                      opacity: opacity,
+                      opacity: done
+                          ? 1
+                          : (0.35 + (_blinkController.value * 0.65)),
                       child: Text(
-                        done ? '準備ok' : '準備中',
+                        done ? '準備完了' : '回答内容をもとに、あなたの現在地を整理します。',
                         style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 34,
-                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFAFB8CB),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     );
                   },
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  'あなたに合わせた環境を構築しています',
-                  style: TextStyle(
-                    color: Color(0xFFD2D9E8),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 240),
-                  child: Text(
-                    _statusDetail,
-                    key: ValueKey<String>(_statusDetail),
-                    style: const TextStyle(
-                      color: Color(0xFFAFB8CB),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 30),
                 AnimatedBuilder(
-                  animation: _progressController,
+                  animation: Listenable.merge(<Listenable>[
+                    _progressController,
+                    _ringSpinController,
+                  ]),
                   builder: (BuildContext context, _) {
                     final double progress = _progressController.value;
-                    final int percent = (progress * 100).round().clamp(0, 100);
-                    return ClipRRect(
-                      child: SizedBox(
-                        width: 246,
-                        height: 246,
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: <Widget>[
-                            Container(
-                              width: 216,
-                              height: 216,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: <Color>[
-                                    const Color(
-                                      0xFF7E6DFF,
-                                    ).withValues(alpha: 0.18),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              width: 186,
-                              height: 186,
-                              child: CircularProgressIndicator(
-                                value: progress,
-                                strokeWidth: 12,
-                                strokeCap: StrokeCap.round,
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.16,
-                                ),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Color(0xFFBE79FF),
-                                ),
-                              ),
-                            ),
-                            Container(
-                              width: 152,
-                              height: 152,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const RadialGradient(
-                                  colors: <Color>[
-                                    Color(0xFF2B2441),
-                                    Color(0xFF171D2C),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Text(
-                              '$percent%',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 44,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                    return _FuturisticLoadingRing(
+                      progress: progress,
+                      spinValue: _ringSpinController.value,
                     );
                   },
                 ),
@@ -2450,16 +2388,6 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                           ),
                           onPressed: done
                               ? () async {
-                                  final bool? closeToHome =
-                                      await Navigator.of(context).push<bool>(
-                                        _OnboardingFinishRoute<bool>(
-                                          builder: (_) =>
-                                              const OnboardingFinishImageScreen(),
-                                        ),
-                                      );
-                                  if (!context.mounted || closeToHome != true) {
-                                    return;
-                                  }
                                   Navigator.of(context).pushAndRemoveUntil(
                                     _OnboardingNoTransitionRoute<void>(
                                       builder: (_) => const HomeScreen(),
@@ -2494,6 +2422,131 @@ class OnboardingFinishImageScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return PaymentPageScaffold(onClose: () => _close(context));
   }
+}
+
+class _FuturisticLoadingRing extends StatelessWidget {
+  const _FuturisticLoadingRing({
+    required this.progress,
+    required this.spinValue,
+  });
+
+  final double progress;
+  final double spinValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final int percent = (progress * 100).round().clamp(0, 100);
+    return SizedBox(
+      width: 246,
+      height: 246,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          Container(
+            width: 220,
+            height: 220,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: <Color>[
+                  const Color(0xFF8E6FFF).withValues(alpha: 0.2),
+                  const Color(0xFF6A5CFF).withValues(alpha: 0.1),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          Transform.rotate(
+            angle: spinValue * pi * 2,
+            child: SizedBox(
+              width: 194,
+              height: 194,
+              child: CustomPaint(
+                painter: _FuturisticRingPainter(progress: progress),
+              ),
+            ),
+          ),
+          Container(
+            width: 154,
+            height: 154,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const RadialGradient(
+                colors: <Color>[Color(0xFF1F2338), Color(0xFF121826)],
+              ),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+          ),
+          Text(
+            '$percent%',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 30,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FuturisticRingPainter extends CustomPainter {
+  _FuturisticRingPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const double stroke = 5.2;
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    final double radius = (size.width - stroke) / 2;
+    final Rect rect = Rect.fromCircle(center: center, radius: radius);
+    final double p = progress.clamp(0.0, 1.0);
+    final double sweep = max(0.04, p) * pi * 2;
+
+    final Paint track = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = Colors.white.withValues(alpha: 0.16);
+    canvas.drawCircle(center, radius, track);
+
+    final Paint arc = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: -pi / 2,
+        endAngle: -pi / 2 + sweep,
+        colors: const <Color>[
+          Color(0xFF6F5BFF),
+          Color(0xFFA86DFF),
+          Color(0xFFD07BFF),
+          Color(0xFF7A5CFF),
+        ],
+      ).createShader(rect);
+    canvas.drawArc(rect, -pi / 2, sweep, false, arc);
+
+    final double endAngle = -pi / 2 + sweep;
+    final Offset end = Offset(
+      center.dx + cos(endAngle) * radius,
+      center.dy + sin(endAngle) * radius,
+    );
+    final Paint glow = Paint()
+      ..color = const Color(0xFFC883FF).withValues(alpha: 0.9)
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 10);
+    canvas.drawCircle(end, stroke * 0.95, glow);
+    canvas.drawCircle(
+      end,
+      stroke * 0.52,
+      Paint()..color = const Color(0xFFE7B2FF),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _FuturisticRingPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class _FinalComparisonGraph extends StatelessWidget {

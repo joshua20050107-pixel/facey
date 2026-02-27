@@ -210,163 +210,252 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   Future<void> _showAddHabitSheet() async {
     final TextEditingController controller = TextEditingController();
     final TextEditingController goalController = TextEditingController();
+    bool isGoalStep = false;
+    bool showTitleError = false;
     final _HabitItem? created = await showDialog<_HabitItem>(
       context: context,
       barrierDismissible: true,
       builder: (BuildContext context) {
-        return AnimatedPadding(
-          duration: const Duration(milliseconds: 180),
-          curve: Curves.easeOut,
-          padding: EdgeInsets.only(
-            left: 14,
-            right: 14,
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Dialog(
-            backgroundColor: Colors.transparent,
-            insetPadding: const EdgeInsets.symmetric(horizontal: 14),
-            child: SingleChildScrollView(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF121B2A),
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.2),
-                  ),
-                ),
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '習慣を追加してください',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFF3F6FB),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: controller,
-                      autofocus: true,
-                      minLines: 1,
-                      maxLines: 2,
-                      maxLength: 25,
-                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      inputFormatters: <TextInputFormatter>[
-                        LengthLimitingTextInputFormatter(25),
-                      ],
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: '例: 水を2L飲む',
-                        helperText: '25文字まで',
-                        helperStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.58),
-                          fontSize: 12,
-                        ),
-                        counterStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.62),
-                          fontSize: 12,
-                        ),
-                        hintStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF1A2435),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      '目標',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFFF3F6FB),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: goalController,
-                      minLines: 1,
-                      maxLines: 2,
-                      maxLength: 25,
-                      maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      inputFormatters: <TextInputFormatter>[
-                        LengthLimitingTextInputFormatter(25),
-                      ],
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: '例: 肌を綺麗にする',
-                        helperText: '25文字まで',
-                        helperStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.58),
-                          fontSize: 12,
-                        ),
-                        counterStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.62),
-                          fontSize: 12,
-                        ),
-                        hintStyle: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                        ),
-                        filled: true,
-                        fillColor: const Color(0xFF1A2435),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(14),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF80C5FF),
-                          foregroundColor: const Color(0xFF0D1420),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+        _HabitItem? buildHabitFromInput() {
+          final String title = _truncateToMaxChars(controller.text.trim(), 25);
+          if (title.isEmpty) return null;
+          final String goal = _truncateToMaxChars(
+            goalController.text.trim(),
+            25,
+          );
+          return _HabitItem(
+            id: DateTime.now().microsecondsSinceEpoch.toString(),
+            title: title,
+            goal: goal,
+            achievedDays: 0,
+            lastAchievedDate: '',
+            achievedDates: const <String>[],
+            emoji: '',
+            isDone: false,
+          );
+        }
+
+        return MediaQuery.removeViewInsets(
+          removeLeft: true,
+          removeTop: true,
+          removeRight: true,
+          removeBottom: true,
+          context: context,
+          child: SafeArea(
+            child: StatefulBuilder(
+              builder:
+                  (
+                    BuildContext context,
+                    void Function(void Function()) setDialogState,
+                  ) {
+                    return Align(
+                      alignment: Alignment.topCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 206, 14, 0),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF121B2A),
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.2),
+                              ),
+                            ),
+                            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 320),
+                              child: SingleChildScrollView(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isGoalStep
+                                          ? '目標を入力してください'
+                                          : '継続したい習慣を追加してください',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFFF3F6FB),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    if (!isGoalStep)
+                                      TextField(
+                                        controller: controller,
+                                        textInputAction: TextInputAction.done,
+                                        onSubmitted: (_) {
+                                          final String title =
+                                              _truncateToMaxChars(
+                                                controller.text.trim(),
+                                                25,
+                                              );
+                                          if (title.isEmpty) {
+                                            setDialogState(() {
+                                              showTitleError = true;
+                                            });
+                                            return;
+                                          }
+                                          setDialogState(() {
+                                            showTitleError = false;
+                                            isGoalStep = true;
+                                          });
+                                        },
+                                        minLines: 1,
+                                        maxLines: 2,
+                                        maxLength: 25,
+                                        maxLengthEnforcement:
+                                            MaxLengthEnforcement.enforced,
+                                        inputFormatters: <TextInputFormatter>[
+                                          LengthLimitingTextInputFormatter(25),
+                                        ],
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: '例: 水を2L飲む',
+                                          helperText: showTitleError
+                                              ? '習慣を入力してください'
+                                              : '25文字まで',
+                                          helperStyle: TextStyle(
+                                            color: showTitleError
+                                                ? const Color(0xFFFF8D8D)
+                                                : Colors.white.withValues(
+                                                    alpha: 0.58,
+                                                  ),
+                                            fontSize: 12,
+                                          ),
+                                          counterStyle: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.62,
+                                            ),
+                                            fontSize: 12,
+                                          ),
+                                          hintStyle: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.45,
+                                            ),
+                                          ),
+                                          filled: true,
+                                          fillColor: const Color(0xFF1A2435),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                        ),
+                                      )
+                                    else
+                                      TextField(
+                                        controller: goalController,
+                                        textInputAction: TextInputAction.done,
+                                        onSubmitted: (_) {
+                                          final _HabitItem? habit =
+                                              buildHabitFromInput();
+                                          if (habit == null) return;
+                                          Navigator.of(context).pop(habit);
+                                        },
+                                        minLines: 1,
+                                        maxLines: 2,
+                                        maxLength: 25,
+                                        maxLengthEnforcement:
+                                            MaxLengthEnforcement.enforced,
+                                        inputFormatters: <TextInputFormatter>[
+                                          LengthLimitingTextInputFormatter(25),
+                                        ],
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                        ),
+                                        decoration: InputDecoration(
+                                          hintText: '例: 肌を綺麗にする',
+                                          helperText: '25文字まで',
+                                          helperStyle: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.58,
+                                            ),
+                                            fontSize: 12,
+                                          ),
+                                          counterStyle: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.62,
+                                            ),
+                                            fontSize: 12,
+                                          ),
+                                          hintStyle: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.45,
+                                            ),
+                                          ),
+                                          filled: true,
+                                          fillColor: const Color(0xFF1A2435),
+                                          border: OutlineInputBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            borderSide: BorderSide.none,
+                                          ),
+                                        ),
+                                      ),
+                                    const SizedBox(height: 12),
+                                    SizedBox(
+                                      width: double.infinity,
+                                      child: FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor: const Color(
+                                            0xFF80C5FF,
+                                          ),
+                                          foregroundColor: const Color(
+                                            0xFF0D1420,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                          ),
+                                        ),
+                                        onPressed: () {
+                                          if (!isGoalStep) {
+                                            final String title =
+                                                _truncateToMaxChars(
+                                                  controller.text.trim(),
+                                                  25,
+                                                );
+                                            if (title.isEmpty) {
+                                              setDialogState(() {
+                                                showTitleError = true;
+                                              });
+                                              return;
+                                            }
+                                            setDialogState(() {
+                                              showTitleError = false;
+                                              isGoalStep = true;
+                                            });
+                                            return;
+                                          }
+                                          final _HabitItem? habit =
+                                              buildHabitFromInput();
+                                          if (habit == null) return;
+                                          Navigator.of(context).pop(habit);
+                                        },
+                                        child: Text(
+                                          isGoalStep ? '追加する' : '次へ',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                        onPressed: () {
-                          final String title = _truncateToMaxChars(
-                            controller.text.trim(),
-                            25,
-                          );
-                          if (title.isEmpty) return;
-                          final String goal = _truncateToMaxChars(
-                            goalController.text.trim(),
-                            25,
-                          );
-                          Navigator.of(context).pop(
-                            _HabitItem(
-                              id: DateTime.now().microsecondsSinceEpoch
-                                  .toString(),
-                              title: title,
-                              goal: goal,
-                              achievedDays: 0,
-                              lastAchievedDate: '',
-                              achievedDates: const <String>[],
-                              emoji: '',
-                              isDone: false,
-                            ),
-                          );
-                        },
-                        child: const Text(
-                          '追加する',
-                          style: TextStyle(fontWeight: FontWeight.w800),
-                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
+                    );
+                  },
             ),
           ),
         );
@@ -533,7 +622,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
               const SizedBox(height: 22),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(bottom: 160),
+                  padding: const EdgeInsets.only(bottom: 40),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

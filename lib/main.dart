@@ -15,6 +15,8 @@ import 'services/notification_permission_service.dart';
 import 'screens/onboarding_start_screen.dart';
 import 'widgets/yomu_gender_two_choice.dart';
 
+const bool _skipOnboarding = true;
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
@@ -30,13 +32,17 @@ class FaceyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Facey',
       debugShowCheckedModeBanner: false,
-      navigatorObservers: <NavigatorObserver>[onboardingRouteObserver],
+      navigatorObservers: _skipOnboarding
+          ? const <NavigatorObserver>[]
+          : <NavigatorObserver>[onboardingRouteObserver],
       theme: ThemeData(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF060911),
         fontFamily: 'SF Pro Display',
       ),
-      home: const OnboardingStartScreen(),
+      home: _skipOnboarding
+          ? const HomeScreen()
+          : const OnboardingStartScreen(),
     );
   }
 }
@@ -291,6 +297,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
+      resizeToAvoidBottomInset: true,
       bottomNavigationBar: SafeArea(
         top: false,
         child: Padding(

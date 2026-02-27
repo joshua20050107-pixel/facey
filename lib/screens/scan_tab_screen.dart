@@ -111,7 +111,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   Widget _buildStartAnalysisButton(double scale) {
     final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
     final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
-    final double textSize = (25 * scale).clamp(21.0, 27.0);
+    final double textSize = (21 * scale).clamp(17.0, 23.0);
 
     return SizedBox(
       width: double.infinity,
@@ -155,7 +155,8 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
             'スキャンする',
             style: TextStyle(
               fontSize: textSize,
-              fontWeight: FontWeight.w700,
+              fontFamily: 'Hiragino Kaku Gothic ProN',
+              fontWeight: FontWeight.w900,
               letterSpacing: 0.2,
             ),
           ),

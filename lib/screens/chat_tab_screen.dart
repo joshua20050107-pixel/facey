@@ -132,6 +132,10 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
       _composerImages.clear();
     });
     _scrollChatToBottom();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      FocusManager.instance.primaryFocus?.unfocus();
+    });
 
     await Future<void>.delayed(const Duration(milliseconds: 450));
     if (!mounted) return;
@@ -498,23 +502,18 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                 Expanded(child: _buildMessages()),
                 Padding(
                   padding: const EdgeInsets.only(bottom: 2),
-                  child: Transform.translate(
-                    offset: const Offset(0, 2),
-                    child: Row(
-                      crossAxisAlignment: _composerImages.isNotEmpty
-                          ? CrossAxisAlignment.end
-                          : CrossAxisAlignment.center,
-                      children: [
-                        _CircleActionButton(
-                          icon: Icons.add_rounded,
-                          onPressed: _canAddMoreImages
-                              ? _pickFromGallery
-                              : null,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(child: _buildComposer()),
-                      ],
-                    ),
+                  child: Row(
+                    crossAxisAlignment: _composerImages.isNotEmpty
+                        ? CrossAxisAlignment.end
+                        : CrossAxisAlignment.center,
+                    children: [
+                      _CircleActionButton(
+                        icon: Icons.add_rounded,
+                        onPressed: _canAddMoreImages ? _pickFromGallery : null,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(child: _buildComposer()),
+                    ],
                   ),
                 ),
               ],
