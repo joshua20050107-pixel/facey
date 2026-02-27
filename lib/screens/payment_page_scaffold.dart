@@ -288,7 +288,7 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                 ),
                               ),
                               child: const Text(
-                                'Unlock now 🙌',
+                                'アップグレード🙌',
                                 style: TextStyle(
                                   fontSize: 50 / 3,
                                   fontWeight: FontWeight.w800,

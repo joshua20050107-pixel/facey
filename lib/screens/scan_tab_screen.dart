@@ -230,12 +230,12 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   }
 
   Widget _buildSlidingPages(double scale) {
-    final double imageWidth = (430 * scale).clamp(268.0, 448.0);
+    final double imageWidth = (428 * scale).clamp(268.0, 446.0);
 
     final String imagePath = widget.selectedGender == YomuGender.female
         ? 'assets/images/plaos.png'
         : 'assets/images/pamiko.png';
-    final double firstPageImageHeight = (imageWidth / (1045 / 1629)) * 0.95;
+    final double firstPageImageHeight = (imageWidth / (1045 / 1629)) * 0.94;
     final String? latestFrontPath = _latestResultFrontImagePath;
     final String? thumbnailPath =
         latestFrontPath != null &&
@@ -343,13 +343,13 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                   Positioned(
                     left: imageWidth * 0.002,
                     right: imageWidth * 0.002,
-                    bottom: imageWidth * 0.30,
+                    bottom: imageWidth * 0.34,
                     child: const Text(
                       'あなたの魅力を\n分析して変化を追跡',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Color(0xF2FFFFFF),
-                        fontSize: 28,
+                        fontSize: 24,
                         fontWeight: FontWeight.w900,
                         fontFamily: 'Hiragino Kaku Gothic ProN',
                         letterSpacing: 0.0,
@@ -552,7 +552,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
               const TopHeader(
                 title: 'Home',
                 titleStyle: TextStyle(
-                  fontSize: 25,
+                  fontSize: 24,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -572,7 +572,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
               ),
               Expanded(
                 child: Transform.translate(
-                  offset: const Offset(0, 4),
+                  offset: const Offset(0, -4),
                   child: OverflowBox(
                     alignment: Alignment.center,
                     minWidth: 0,
@@ -586,7 +586,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
               ),
               const SizedBox(height: 8),
               Transform.translate(
-                offset: const Offset(0, 8),
+                offset: const Offset(0, -4),
                 child: _buildPageIndicator(),
               ),
               const SizedBox(height: 23),

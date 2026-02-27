@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
@@ -32,10 +33,11 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   List<_FrontImageEntry> _frontImageHistory = <_FrontImageEntry>[];
   Map<String, _MonthlyScore> _monthlyScores = <String, _MonthlyScore>{};
   List<_HabitItem> _habits = <_HabitItem>[];
-  final Map<String, double> _habitSwipeOffsets = <String, double>{};
+  String? _editingHabitId;
   final Set<String> _removingHabitIds = <String>{};
   final Object _habitTapRegionGroup = Object();
   final RegExp _dateKeyPattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+  Timer? _habitLongPressTimer;
 
   @override
   void initState() {
@@ -501,44 +503,41 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     if (!mounted) return;
     setState(() {
       _habits.removeWhere((_HabitItem item) => item.id == id);
-      _habitSwipeOffsets.remove(id);
+      if (_editingHabitId == id) {
+        _editingHabitId = null;
+      }
       _removingHabitIds.remove(id);
     });
     await _persistHabits();
   }
 
   void _closeHabitActions() {
-    if (_habitSwipeOffsets.isEmpty) return;
-    bool changed = false;
-    final Map<String, double> next = <String, double>{};
-    _habitSwipeOffsets.forEach((String id, double value) {
-      if (value != 0) changed = true;
-      next[id] = 0;
-    });
-    if (!changed) return;
+    if (_editingHabitId == null) return;
     setState(() {
-      _habitSwipeOffsets
-        ..clear()
-        ..addAll(next);
+      _editingHabitId = null;
     });
   }
 
-  void _onHabitDragUpdate(String id, DragUpdateDetails details) {
-    final double current = _habitSwipeOffsets[id] ?? 0;
-    final double next = (current + details.delta.dx).clamp(-86.0, 0.0);
-    setState(() {
-      _habitSwipeOffsets.updateAll(
-        (String key, double value) => key == id ? value : 0,
-      );
-      _habitSwipeOffsets[id] = next;
+  void _startHabitLongPressTimer(String habitId) {
+    _habitLongPressTimer?.cancel();
+    _habitLongPressTimer = Timer(const Duration(milliseconds: 320), () {
+      if (!mounted || _editingHabitId == habitId) return;
+      HapticFeedback.mediumImpact();
+      setState(() {
+        _editingHabitId = habitId;
+      });
     });
   }
 
-  void _onHabitDragEnd(String id) {
-    final double current = _habitSwipeOffsets[id] ?? 0;
-    setState(() {
-      _habitSwipeOffsets[id] = current <= -36 ? -86 : 0;
-    });
+  void _cancelHabitLongPressTimer() {
+    _habitLongPressTimer?.cancel();
+    _habitLongPressTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _cancelHabitLongPressTimer();
+    super.dispose();
   }
 
   void _onHabitReorder(int oldIndex, int newIndex) {
@@ -550,7 +549,6 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
       if (newIndex < 0 || newIndex >= _habits.length) return;
       final _HabitItem moved = _habits.removeAt(oldIndex);
       _habits.insert(newIndex, moved);
-      _habitSwipeOffsets.updateAll((String key, double value) => 0);
     });
     _persistHabits();
   }
@@ -697,61 +695,35 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                           padding: EdgeInsets.zero,
                           buildDefaultDragHandles: false,
                           itemCount: _habits.length,
-                          onReorderStart: (_) => HapticFeedback.mediumImpact(),
+                          onReorderStart: (int index) {
+                            _cancelHabitLongPressTimer();
+                            HapticFeedback.mediumImpact();
+                            if (index < 0 || index >= _habits.length) return;
+                            setState(() {
+                              _editingHabitId = _habits[index].id;
+                            });
+                          },
                           onReorder: _onHabitReorder,
                           proxyDecorator:
                               (
                                 Widget child,
                                 int index,
                                 Animation<double> animation,
-                              ) {
-                                return AnimatedBuilder(
-                                  animation: animation,
-                                  child: child,
-                                  builder:
-                                      (
-                                        BuildContext context,
-                                        Widget? proxyChild,
-                                      ) {
-                                        final double t = Curves.easeOut
-                                            .transform(animation.value);
-                                        return Transform.scale(
-                                          scale: 1.0 + (0.02 * t),
-                                          child: DecoratedBox(
-                                            decoration: BoxDecoration(
-                                              boxShadow: <BoxShadow>[
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withValues(alpha: 0.28),
-                                                  blurRadius: 18,
-                                                  offset: const Offset(0, 8),
-                                                ),
-                                              ],
-                                            ),
-                                            child: proxyChild,
-                                          ),
-                                        );
-                                      },
-                                );
-                              },
+                              ) => child,
                           itemBuilder: (BuildContext context, int index) {
                             final _HabitItem habit = _habits[index];
                             final bool isRemoving = _removingHabitIds.contains(
                               habit.id,
                             );
-                            final double offsetX =
-                                _habitSwipeOffsets[habit.id] ?? 0;
-                            final double revealWidth = (-offsetX).clamp(
-                              0.0,
-                              86.0,
-                            );
+                            final bool isEditing = _editingHabitId == habit.id;
                             final Widget habitRow = TapRegion(
-                              key: ValueKey<String>('habit-${habit.id}'),
                               groupId: _habitTapRegionGroup,
                               onTapOutside: (_) => _closeHabitActions(),
                               child: Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
-                                child: Container(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 160),
+                                  curve: Curves.easeOutCubic,
                                   height: 84,
                                   decoration: BoxDecoration(
                                     gradient: habit.isDone
@@ -776,267 +748,264 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                                   ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(16),
-                                    child: Stack(
-                                      children: [
-                                        Positioned(
-                                          top: 0,
-                                          bottom: 0,
-                                          right: 0,
-                                          width: revealWidth,
-                                          child: DecoratedBox(
-                                            decoration: const BoxDecoration(
-                                              color: Color(0xFFE03A3A),
-                                              borderRadius: BorderRadius.only(
-                                                topRight: Radius.circular(16),
-                                                bottomRight: Radius.circular(
-                                                  16,
-                                                ),
-                                              ),
-                                            ),
-                                            child: revealWidth >= 42
-                                                ? const Icon(
-                                                    Icons.delete_rounded,
-                                                    color: Colors.white,
-                                                    size: 26,
-                                                  )
-                                                : null,
-                                          ),
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTap: () {
+                                        if (_editingHabitId != null) {
+                                          _closeHabitActions();
+                                          return;
+                                        }
+                                        _openHabitPage(habit);
+                                      },
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 160,
                                         ),
-                                        GestureDetector(
-                                          behavior: HitTestBehavior.opaque,
-                                          onTap: () => _openHabitPage(habit),
-                                          onHorizontalDragUpdate: (details) =>
-                                              _onHabitDragUpdate(
-                                                habit.id,
-                                                details,
-                                              ),
-                                          onHorizontalDragEnd: (_) =>
-                                              _onHabitDragEnd(habit.id),
-                                          child: AnimatedContainer(
-                                            duration: const Duration(
-                                              milliseconds: 160,
-                                            ),
-                                            transform:
-                                                Matrix4.translationValues(
-                                                  offsetX,
-                                                  0,
-                                                  0,
-                                                ),
-                                            decoration: BoxDecoration(
-                                              gradient: habit.isDone
-                                                  ? const LinearGradient(
-                                                      colors: <Color>[
-                                                        Color(0xFF203651),
-                                                        Color(0xFF2C4A6A),
-                                                      ],
-                                                      begin:
-                                                          Alignment.centerLeft,
-                                                      end:
-                                                          Alignment.centerRight,
-                                                    )
-                                                  : null,
-                                              color: habit.isDone
-                                                  ? null
-                                                  : const Color(0xFF111A28),
-                                            ),
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 10,
-                                            ),
-                                            child: Stack(
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    Expanded(
-                                                      child: Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Text(
-                                                            habit.title,
-                                                            maxLines: 2,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                            style: TextStyle(
-                                                              fontSize: 17,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              color:
-                                                                  habit.isDone
-                                                                  ? const Color(
-                                                                      0xFFE7F0FF,
-                                                                    )
-                                                                  : const Color(
-                                                                      0xFFF0F5FF,
-                                                                    ),
-                                                              decoration:
-                                                                  TextDecoration
-                                                                      .none,
+                                        curve: Curves.easeOut,
+                                        decoration: BoxDecoration(
+                                          gradient: habit.isDone
+                                              ? const LinearGradient(
+                                                  colors: <Color>[
+                                                    Color(0xFF203651),
+                                                    Color(0xFF2C4A6A),
+                                                  ],
+                                                  begin: Alignment.centerLeft,
+                                                  end: Alignment.centerRight,
+                                                )
+                                              : null,
+                                          color: habit.isDone
+                                              ? null
+                                              : const Color(0xFF111A28),
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    habit.title,
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    style: TextStyle(
+                                                      fontSize: 17,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: habit.isDone
+                                                          ? const Color(
+                                                              0xFFE7F0FF,
+                                                            )
+                                                          : const Color(
+                                                              0xFFF0F5FF,
                                                             ),
-                                                          ),
-                                                        ],
-                                                      ),
+                                                      decoration:
+                                                          TextDecoration.none,
                                                     ),
-                                                    const SizedBox(width: 8),
-                                                    Transform.translate(
-                                                      offset: const Offset(
-                                                        -10,
-                                                        0,
-                                                      ),
-                                                      child: SizedBox(
-                                                        width: 84,
-                                                        child: Stack(
-                                                          clipBehavior:
-                                                              Clip.none,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Transform.translate(
+                                              offset: const Offset(-10, 0),
+                                              child: SizedBox(
+                                                width: 108,
+                                                child: Stack(
+                                                  clipBehavior: Clip.none,
+                                                  children: [
+                                                    Positioned(
+                                                      left: 40,
+                                                      top: 4,
+                                                      child: IgnorePointer(
+                                                        child: Row(
+                                                          mainAxisSize:
+                                                              MainAxisSize.min,
                                                           children: [
-                                                            Positioned(
-                                                              left: 40,
-                                                              top: 4,
-                                                              child: IgnorePointer(
-                                                                child: Row(
-                                                                  mainAxisSize:
-                                                                      MainAxisSize
-                                                                          .min,
-                                                                  children: [
-                                                                    const Icon(
-                                                                      Icons
-                                                                          .local_fire_department_rounded,
-                                                                      size: 13,
-                                                                      color: Color(
-                                                                        0xFFFFA439,
-                                                                      ),
-                                                                    ),
-                                                                    Text(
-                                                                      '${habit.achievedDays}',
-                                                                      style: TextStyle(
-                                                                        fontSize:
-                                                                            12,
-                                                                        fontWeight:
-                                                                            FontWeight.w700,
-                                                                        color: Colors
-                                                                            .white
-                                                                            .withValues(
-                                                                              alpha: 0.86,
-                                                                            ),
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
+                                                            const Icon(
+                                                              Icons
+                                                                  .local_fire_department_rounded,
+                                                              size: 13,
+                                                              color: Color(
+                                                                0xFFFFA439,
                                                               ),
                                                             ),
-                                                            Positioned(
-                                                              left: 0,
-                                                              top: 15,
-                                                              child: GestureDetector(
-                                                                onTap: () =>
-                                                                    _toggleHabit(
-                                                                      habit.id,
+                                                            Text(
+                                                              '${habit.achievedDays}',
+                                                              style: TextStyle(
+                                                                fontSize: 12,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                color: Colors
+                                                                    .white
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.86,
                                                                     ),
-                                                                child: AnimatedContainer(
-                                                                  duration:
-                                                                      const Duration(
-                                                                        milliseconds:
-                                                                            150,
-                                                                      ),
-                                                                  width: 34,
-                                                                  height: 34,
-                                                                  decoration: BoxDecoration(
-                                                                    shape: BoxShape
-                                                                        .circle,
-                                                                    color:
-                                                                        habit
-                                                                            .isDone
-                                                                        ? const Color(
-                                                                            0xFF80C5FF,
-                                                                          )
-                                                                        : Colors.white.withValues(
-                                                                            alpha:
-                                                                                0.25,
-                                                                          ),
-                                                                    border: Border.all(
-                                                                      color: Colors
-                                                                          .white
-                                                                          .withValues(
-                                                                            alpha:
-                                                                                0.6,
-                                                                          ),
-                                                                    ),
-                                                                  ),
-                                                                  child:
-                                                                      habit
-                                                                          .isDone
-                                                                      ? const Icon(
-                                                                          Icons
-                                                                              .check_rounded,
-                                                                          size:
-                                                                              20,
-                                                                          color: Color(
-                                                                            0xFF0C1522,
-                                                                          ),
-                                                                        )
-                                                                      : null,
-                                                                ),
                                                               ),
                                                             ),
                                                           ],
                                                         ),
                                                       ),
                                                     ),
+                                                    Positioned(
+                                                      left: 0,
+                                                      top: 15,
+                                                      child: GestureDetector(
+                                                        onTap: () =>
+                                                            _toggleHabit(
+                                                              habit.id,
+                                                            ),
+                                                        child: AnimatedContainer(
+                                                          duration:
+                                                              const Duration(
+                                                                milliseconds:
+                                                                    150,
+                                                              ),
+                                                          width: 34,
+                                                          height: 34,
+                                                          decoration: BoxDecoration(
+                                                            shape:
+                                                                BoxShape.circle,
+                                                            color: habit.isDone
+                                                                ? const Color(
+                                                                    0xFF80C5FF,
+                                                                  )
+                                                                : Colors.white
+                                                                      .withValues(
+                                                                        alpha:
+                                                                            0.25,
+                                                                      ),
+                                                            border: Border.all(
+                                                              color: Colors
+                                                                  .white
+                                                                  .withValues(
+                                                                    alpha: 0.6,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          child: habit.isDone
+                                                              ? const Icon(
+                                                                  Icons
+                                                                      .check_rounded,
+                                                                  size: 20,
+                                                                  color: Color(
+                                                                    0xFF0C1522,
+                                                                  ),
+                                                                )
+                                                              : null,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    if (isEditing)
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerRight,
+                                                        child: Padding(
+                                                          padding:
+                                                              const EdgeInsets.only(
+                                                                right: 8,
+                                                              ),
+                                                          child: GestureDetector(
+                                                            behavior:
+                                                                HitTestBehavior
+                                                                    .opaque,
+                                                            onTap: () =>
+                                                                _deleteHabit(
+                                                                  habit.id,
+                                                                ),
+                                                            child: Container(
+                                                              width: 30,
+                                                              height: 30,
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    const Color(
+                                                                      0xFFE03A3A,
+                                                                    ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      15,
+                                                                    ),
+                                                              ),
+                                                              child: const Icon(
+                                                                Icons
+                                                                    .delete_rounded,
+                                                                size: 19,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ),
                                                   ],
                                                 ),
-                                              ],
+                                              ),
                                             ),
-                                          ),
+                                          ],
                                         ),
-                                        if (revealWidth >= 42)
-                                          Positioned(
-                                            top: 0,
-                                            bottom: 0,
-                                            right: 0,
-                                            width: 86,
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior.opaque,
-                                              onTap: () =>
-                                                  _deleteHabit(habit.id),
-                                            ),
-                                          ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                            return ReorderableDelayedDragStartListener(
-                              key: ValueKey<String>(
-                                'habit-reorder-${habit.id}',
-                              ),
-                              index: index,
-                              child: ClipRect(
-                                child: AnimatedSize(
-                                  duration: const Duration(milliseconds: 220),
-                                  curve: Curves.easeInOut,
-                                  alignment: Alignment.topCenter,
-                                  child: SizedBox(
-                                    height: isRemoving ? 0 : 94,
-                                    child: IgnorePointer(
-                                      ignoring: isRemoving,
-                                      child: AnimatedOpacity(
-                                        duration: const Duration(
-                                          milliseconds: 180,
-                                        ),
-                                        opacity: isRemoving ? 0 : 1,
-                                        child: habitRow,
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
+                            );
+                            final Widget animatedRow = ClipRect(
+                              key: ValueKey<String>(
+                                'habit-reorder-${habit.id}',
+                              ),
+                              child: AnimatedSize(
+                                duration: const Duration(milliseconds: 220),
+                                curve: Curves.easeInOut,
+                                alignment: Alignment.topCenter,
+                                child: SizedBox(
+                                  height: isRemoving ? 0 : 94,
+                                  child: IgnorePointer(
+                                    ignoring: isRemoving,
+                                    child: AnimatedOpacity(
+                                      duration: const Duration(
+                                        milliseconds: 180,
+                                      ),
+                                      opacity: isRemoving ? 0 : 1,
+                                      child: habitRow,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                            final Widget dragStartListener = isEditing
+                                ? ReorderableDragStartListener(
+                                    index: index,
+                                    child: animatedRow,
+                                  )
+                                : ReorderableDelayedDragStartListener(
+                                    index: index,
+                                    child: animatedRow,
+                                  );
+                            final Widget rowForState = Listener(
+                              onPointerDown: (_) {
+                                if (!isEditing) {
+                                  _startHabitLongPressTimer(habit.id);
+                                }
+                              },
+                              onPointerUp: (_) => _cancelHabitLongPressTimer(),
+                              onPointerCancel: (_) =>
+                                  _cancelHabitLongPressTimer(),
+                              child: dragStartListener,
+                            );
+                            return KeyedSubtree(
+                              key: ValueKey<String>(
+                                'habit-reorder-${habit.id}',
+                              ),
+                              child: rowForState,
                             );
                           },
                         ),
@@ -1047,7 +1016,15 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
             ],
           ),
         ),
-        _FloatingAddButton(onPressed: _showAddHabitSheet),
+        _FloatingAddButton(
+          onPressed: () {
+            if (_editingHabitId != null) {
+              _closeHabitActions();
+              return;
+            }
+            _showAddHabitSheet();
+          },
+        ),
       ],
     );
   }

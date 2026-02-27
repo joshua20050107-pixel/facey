@@ -249,14 +249,14 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
         Positioned(
           left: useHomeTitleStyle ? imageWidth * 0.002 : 24,
           right: useHomeTitleStyle ? imageWidth * 0.002 : 24,
-          bottom: useHomeTitleStyle ? imageWidth * 0.30 : 120,
+          bottom: useHomeTitleStyle ? imageWidth * 0.34 : 120,
           child: Text(
             title,
             textAlign: TextAlign.center,
             style: useHomeTitleStyle
                 ? const TextStyle(
                     color: Color(0xF2FFFFFF),
-                    fontSize: 28,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
                     fontFamily: 'Hiragino Kaku Gothic ProN',
                     letterSpacing: 0.0,
@@ -324,8 +324,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
         final double scale = widthScale < heightScale
             ? widthScale
             : heightScale;
-        final double imageWidth = (430 * scale).clamp(268.0, 448.0);
-        final double cardHeight = (imageWidth / (1045 / 1629)) * 0.95;
+        final double imageWidth = (428 * scale).clamp(268.0, 446.0);
+        final double cardHeight = (imageWidth / (1045 / 1629)) * 0.94;
         final double pageGap = (1.4 * scale).clamp(1.0, 2.0);
 
         return Padding(
@@ -335,7 +335,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
               TopHeader(
                 title: widget.title,
                 titleStyle: TextStyle(
-                  fontSize: 25,
+                  fontSize: 24,
                   fontWeight: FontWeight.w900,
                 ),
               ),
@@ -355,7 +355,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
               ),
               Expanded(
                 child: Transform.translate(
-                  offset: const Offset(0, 4),
+                  offset: const Offset(0, -4),
                   child: OverflowBox(
                     alignment: Alignment.center,
                     minWidth: 0,
@@ -455,7 +455,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
               ),
               const SizedBox(height: 8),
               Transform.translate(
-                offset: const Offset(0, 8),
+                offset: const Offset(0, -4),
                 child: _buildPageIndicator(),
               ),
               const SizedBox(height: 23),
