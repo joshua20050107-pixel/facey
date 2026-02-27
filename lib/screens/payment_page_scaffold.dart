@@ -287,12 +287,33 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                   borderRadius: BorderRadius.circular(44),
                                 ),
                               ),
-                              child: const Text(
-                                'アップグレード🙌',
-                                style: TextStyle(
-                                  fontSize: 50 / 3,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.1,
+                              child: RichText(
+                                text: TextSpan(
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 50 / 3,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.1,
+                                  ),
+                                  children: <InlineSpan>[
+                                    const TextSpan(text: 'アップグレード'),
+                                    WidgetSpan(
+                                      alignment: PlaceholderAlignment.baseline,
+                                      baseline: TextBaseline.alphabetic,
+                                      child: Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 2.4,
+                                        ),
+                                        child: Transform.translate(
+                                          offset: const Offset(0, -1.5),
+                                          child: const Text(
+                                            '🙌',
+                                            style: TextStyle(fontSize: 21),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
