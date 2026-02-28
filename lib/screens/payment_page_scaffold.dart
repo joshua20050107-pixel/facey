@@ -167,61 +167,112 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                                     _activeCardIndex = index;
                                                   });
                                                 },
-                                                itemBuilder:
-                                                    (
-                                                      BuildContext context,
-                                                      int index,
-                                                    ) => Padding(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 6,
-                                                          ),
-                                                      child: Container(
-                                                        width: double.infinity,
-                                                        decoration: BoxDecoration(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                34,
-                                                              ),
-                                                          gradient:
-                                                              const LinearGradient(
-                                                                begin: Alignment
-                                                                    .topLeft,
-                                                                end: Alignment
-                                                                    .bottomRight,
-                                                                colors: <Color>[
-                                                                  Color(
-                                                                    0xAA111826,
-                                                                  ),
-                                                                  Color(
-                                                                    0xCC0A1222,
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                          border: Border.all(
-                                                            color: Colors.white
-                                                                .withValues(
-                                                                  alpha: 0.06,
+                                                itemBuilder: (BuildContext context, int index) {
+                                                  final BorderRadius radius =
+                                                      BorderRadius.circular(34);
+                                                  return Padding(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 6,
+                                                        ),
+                                                    child: Container(
+                                                      width: double.infinity,
+                                                      decoration: BoxDecoration(
+                                                        borderRadius: radius,
+                                                        gradient:
+                                                            const LinearGradient(
+                                                              begin: Alignment
+                                                                  .topLeft,
+                                                              end: Alignment
+                                                                  .bottomRight,
+                                                              colors: <Color>[
+                                                                Color(
+                                                                  0xAA111826,
                                                                 ),
-                                                          ),
-                                                          boxShadow:
-                                                              const <BoxShadow>[
-                                                                BoxShadow(
-                                                                  color: Color(
-                                                                    0x66000000,
-                                                                  ),
-                                                                  blurRadius:
-                                                                      24,
-                                                                  offset:
-                                                                      Offset(
-                                                                        0,
-                                                                        10,
-                                                                      ),
+                                                                Color(
+                                                                  0xCC0A1222,
                                                                 ),
                                                               ],
+                                                            ),
+                                                        border: Border.all(
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.06,
+                                                              ),
                                                         ),
+                                                        boxShadow:
+                                                            const <BoxShadow>[
+                                                              BoxShadow(
+                                                                color: Color(
+                                                                  0x66000000,
+                                                                ),
+                                                                blurRadius: 24,
+                                                                offset: Offset(
+                                                                  0,
+                                                                  10,
+                                                                ),
+                                                              ),
+                                                            ],
+                                                      ),
+                                                      child: ClipRRect(
+                                                        borderRadius: radius,
+                                                        child: index == 0
+                                                            ? LayoutBuilder(
+                                                                builder:
+                                                                    (
+                                                                      BuildContext
+                                                                      context,
+                                                                      BoxConstraints
+                                                                      constraints,
+                                                                    ) {
+                                                                      return Stack(
+                                                                        children:
+                                                                            <
+                                                                              Widget
+                                                                            >[
+                                                                              const Positioned(
+                                                                                left: 0,
+                                                                                right: 0,
+                                                                                top: 50,
+                                                                                child: Text(
+                                                                                  'AIによるフィードバック',
+                                                                                  textAlign: TextAlign.center,
+                                                                                  style: TextStyle(
+                                                                                    color: Colors.white,
+                                                                                    fontSize: 20,
+                                                                                    fontFamily: 'Hiragino Kaku Gothic ProN',
+                                                                                    fontWeight: FontWeight.w900,
+                                                                                    letterSpacing: 0.1,
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                              Align(
+                                                                                alignment: const Alignment(
+                                                                                  0,
+                                                                                  0.75,
+                                                                                ),
+                                                                                child: SizedBox(
+                                                                                  width:
+                                                                                      constraints.maxWidth *
+                                                                                      0.8,
+                                                                                  height:
+                                                                                      constraints.maxHeight *
+                                                                                      0.8,
+                                                                                  child: Image.asset(
+                                                                                    'assets/images/oka.png',
+                                                                                    fit: BoxFit.contain,
+                                                                                  ),
+                                                                                ),
+                                                                              ),
+                                                                            ],
+                                                                      );
+                                                                    },
+                                                              )
+                                                            : const SizedBox.shrink(),
                                                       ),
                                                     ),
+                                                  );
+                                                },
                                               ),
                                             ),
                                             const SizedBox(height: 20),
@@ -253,13 +304,13 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                             ),
                                             const SizedBox(height: 24),
                                             Text(
-                                              '数多くのテストにより改善されています。',
+                                              '多くの実データから導かれた評価ロジックです。',
                                               textAlign: TextAlign.center,
                                               style: TextStyle(
                                                 color: Colors.white.withValues(
                                                   alpha: 0.36,
                                                 ),
-                                                fontSize: 15,
+                                                fontSize: 14,
                                                 fontWeight: FontWeight.w800,
                                                 letterSpacing: 0.1,
                                               ),
