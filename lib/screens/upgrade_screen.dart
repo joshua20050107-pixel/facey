@@ -11,6 +11,7 @@ class UpgradeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PaymentPageScaffold(
+      useAppGradientBackground: true,
       onClose: () {
         if (fromSettings) {
           Navigator.of(context).pop();
@@ -27,7 +28,7 @@ class UpgradeScreen extends StatelessWidget {
       },
       closeAlignment: Alignment.topLeft,
       closePadding: const EdgeInsets.only(left: 8, top: 4),
-      closeIcon: const Icon(Icons.close_rounded, size: 34, color: Colors.white),
+      closeIcon: const Icon(Icons.close_rounded, size: 28, color: Colors.white),
     );
   }
 }

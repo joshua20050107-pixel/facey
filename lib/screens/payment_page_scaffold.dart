@@ -7,17 +7,19 @@ class PaymentPageScaffold extends StatefulWidget {
     required this.onClose,
     this.content,
     this.backgroundImagePath = 'assets/images/引きそ.png',
+    this.useAppGradientBackground = false,
     this.closeAlignment = Alignment.topRight,
     this.closePadding = const EdgeInsets.only(top: 8, right: 8),
     this.closeIcon = const Icon(Icons.close, color: Colors.white, size: 23),
     this.backgroundFit = BoxFit.cover,
-    this.title = 'アップグレード',
-    this.subtitle = '『外見は、設計できる』',
+    this.title = 'Facey AI',
+    this.subtitle = '『今の自分をレベルアップしよう😎』',
   });
 
   final VoidCallback onClose;
   final Widget? content;
   final String backgroundImagePath;
+  final bool useAppGradientBackground;
   final Alignment closeAlignment;
   final EdgeInsets closePadding;
   final Widget closeIcon;
@@ -59,10 +61,12 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
       body: Stack(
         children: <Widget>[
           Positioned.fill(
-            child: Image.asset(
-              widget.backgroundImagePath,
-              fit: widget.backgroundFit,
-            ),
+            child: widget.useAppGradientBackground
+                ? const _AppGradientBackground()
+                : Image.asset(
+                    widget.backgroundImagePath,
+                    fit: widget.backgroundFit,
+                  ),
           ),
           if (widget.content != null)
             SafeArea(
@@ -140,10 +144,8 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                       Text(
                                         widget.subtitle,
                                         textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.36,
-                                          ),
+                                        style: const TextStyle(
+                                          color: Color(0xFF9FB3D9),
                                           fontSize: 18,
                                           fontWeight: FontWeight.w800,
                                           letterSpacing: 0.2,
@@ -152,7 +154,7 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                       const SizedBox(height: 30),
                                       SizedBox(
                                         width: cardWidth,
-                                        height: cardHeight + 26,
+                                        height: cardHeight + 96,
                                         child: Column(
                                           children: <Widget>[
                                             SizedBox(
@@ -222,7 +224,7 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                                     ),
                                               ),
                                             ),
-                                            const SizedBox(height: 10),
+                                            const SizedBox(height: 20),
                                             Row(
                                               mainAxisAlignment:
                                                   MainAxisAlignment.center,
@@ -247,6 +249,19 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                                               ),
                                                   ),
                                                 ),
+                                              ),
+                                            ),
+                                            const SizedBox(height: 24),
+                                            Text(
+                                              '数多くのテストにより改善されています。',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                color: Colors.white.withValues(
+                                                  alpha: 0.36,
+                                                ),
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 0.1,
                                               ),
                                             ),
                                           ],
@@ -449,6 +464,78 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
           if (widget.content != null) SafeArea(child: widget.content!),
         ],
       ),
+    );
+  }
+}
+
+class _AppGradientBackground extends StatelessWidget {
+  const _AppGradientBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: <Widget>[
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Color(0xFF042448),
+                  Color(0xFF021A35),
+                  Color(0xFF000D20),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0, -1.05),
+                radius: 1.12,
+                colors: <Color>[
+                  Color(0x802766AA),
+                  Color(0x3323588A),
+                  Color(0x00071B36),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: <Color>[
+                  Color(0xD9001024),
+                  Color(0x00001024),
+                  Color(0xD9001024),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Color(0x00000817),
+                  Color(0x80000713),
+                  Color(0xE6000610),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
