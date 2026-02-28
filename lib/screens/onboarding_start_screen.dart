@@ -10,7 +10,7 @@ import '../main.dart';
 import 'payment_page_scaffold.dart';
 import '../routes/no_swipe_back_material_page_route.dart';
 
-const int _kOnboardingGaugeSteps = 9;
+const int _kOnboardingGaugeSteps = 10;
 final RouteObserver<PageRoute<dynamic>> onboardingRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
 
@@ -720,13 +720,28 @@ class _OnboardingGenderDoneScreenState extends State<OnboardingGenderDoneScreen>
                   order: 0,
                   child: const Align(
                     alignment: Alignment.centerLeft,
-                    child: Text(
-                      'あなたの評価',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.w700,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          'あなたの評価',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          '外見の変化は、現在地を知ることから始まります。',
+                          style: TextStyle(
+                            color: Color(0xFFD7E0F1),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -751,165 +766,46 @@ class _OnboardingGenderDoneScreenState extends State<OnboardingGenderDoneScreen>
                             const SizedBox(height: 34),
                             SizedBox(
                               width: double.infinity,
-                              child: Stack(
-                                clipBehavior: Clip.none,
-                                alignment: Alignment.topCenter,
+                              child: Column(
                                 children: <Widget>[
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 150),
-                                    child: Column(
-                                      children: <Widget>[
-                                        Stack(
-                                          alignment: Alignment.center,
-                                          children: <Widget>[
-                                            Container(
-                                              height: 6,
-                                              decoration: BoxDecoration(
-                                                borderRadius:
-                                                    BorderRadius.circular(999),
-                                                gradient: const LinearGradient(
-                                                  colors: <Color>[
-                                                    Color(0xFFCC2CFF),
-                                                    Color(0xFF35D8FF),
-                                                  ],
-                                                ),
-                                                boxShadow: const <BoxShadow>[
-                                                  BoxShadow(
-                                                    color: Color(0x6635D8FF),
-                                                    blurRadius: 14,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              height: 14,
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
-                                                children: List<Widget>.generate(
-                                                  40,
-                                                  (_) => Container(
-                                                    width: 2,
-                                                    height: 8,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.white
-                                                          .withValues(
-                                                            alpha: 0.5,
-                                                          ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            99,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            SliderTheme(
-                                              data: SliderTheme.of(context).copyWith(
-                                                trackHeight: 20,
-                                                trackShape:
-                                                    const _FullWidthTrackShape(),
-                                                activeTrackColor:
-                                                    Colors.transparent,
-                                                inactiveTrackColor:
-                                                    Colors.transparent,
-                                                overlayColor:
-                                                    Colors.transparent,
-                                                thumbColor: const Color(
-                                                  0xFFDDF6FF,
-                                                ),
-                                                thumbShape:
-                                                    const RoundSliderThumbShape(
-                                                      enabledThumbRadius: 14,
-                                                    ),
-                                              ),
-                                              child: Slider(
-                                                value: _score,
-                                                min: 0,
-                                                max: 100,
-                                                onChanged: (double value) {
-                                                  setState(() {
-                                                    _score = value;
-                                                    _hasMovedSlider = true;
-                                                    _OnboardingEvaluationMemory
-                                                            .score =
-                                                        value;
-                                                    _OnboardingEvaluationMemory
-                                                            .hasMovedSlider =
-                                                        true;
-                                                  });
-                                                },
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 14),
-                                        const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: <Widget>[
-                                            Text(
-                                              '0',
-                                              style: TextStyle(
-                                                color: Color(0xFFC1C9D6),
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                            Text(
-                                              '100',
-                                              style: TextStyle(
-                                                color: Color(0xFFC1C9D6),
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w600,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                                  _FuturisticScoreRing(score: _score),
+                                  const SizedBox(height: 34),
+                                  _FuturisticScoreSlider(
+                                    value: _score,
+                                    onChanged: (double value) {
+                                      setState(() {
+                                        _score = value;
+                                        _hasMovedSlider = true;
+                                        _OnboardingEvaluationMemory.score =
+                                            value;
+                                        _OnboardingEvaluationMemory
+                                                .hasMovedSlider =
+                                            true;
+                                      });
+                                    },
                                   ),
-                                  DecoratedBox(
-                                    decoration: const BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: SweepGradient(
-                                        colors: <Color>[
-                                          Color(0xFF35D8FF),
-                                          Color(0xFF6E45FF),
-                                          Color(0xFFFF50CF),
-                                          Color(0xFFFFD06E),
-                                          Color(0xFF35D8FF),
-                                        ],
-                                      ),
-                                      boxShadow: <BoxShadow>[
-                                        BoxShadow(
-                                          color: Color(0x6635D8FF),
-                                          blurRadius: 24,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(3),
-                                      child: Container(
-                                        width: 108,
-                                        height: 108,
-                                        alignment: Alignment.center,
-                                        decoration: const BoxDecoration(
-                                          color: Color(0xFF0A0D14),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Text(
-                                          _score.round().toString(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 30,
-                                            fontWeight: FontWeight.w700,
-                                          ),
+                                  const SizedBox(height: 14),
+                                  const Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: <Widget>[
+                                      Text(
+                                        '0',
+                                        style: TextStyle(
+                                          color: Color(0xFFC1C9D6),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                    ),
+                                      Text(
+                                        '100',
+                                        style: TextStyle(
+                                          color: Color(0xFFC1C9D6),
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
@@ -986,6 +882,253 @@ class _FullWidthTrackShape extends RoundedRectSliderTrackShape {
       parentBox.size.width,
       trackHeight,
     );
+  }
+}
+
+class _FuturisticScoreRing extends StatelessWidget {
+  const _FuturisticScoreRing({required this.score});
+
+  final double score;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 160,
+      height: 160,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          Container(
+            width: 160,
+            height: 160,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(
+                colors: <Color>[
+                  const Color(0xFF52E6FF).withValues(alpha: 0.16),
+                  Colors.transparent,
+                ],
+              ),
+            ),
+          ),
+          CustomPaint(
+            size: const Size.square(140),
+            painter: _ScoreRingPainter(progress: score / 100),
+          ),
+          Container(
+            width: 118,
+            height: 118,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const RadialGradient(
+                colors: <Color>[Color(0xFF111B2D), Color(0xFF080D19)],
+                radius: 0.95,
+              ),
+              border: Border.all(
+                color: const Color(0xFF9BC9FF).withValues(alpha: 0.22),
+              ),
+            ),
+            child: Text(
+              score.round().toString(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 34,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreRingPainter extends CustomPainter {
+  const _ScoreRingPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double clamped = progress.clamp(0.0, 1.0);
+    final Offset center = size.center(Offset.zero);
+    final Rect rect = Rect.fromCircle(
+      center: center,
+      radius: (size.shortestSide / 2) - 10,
+    );
+
+    final Paint track = Paint()
+      ..color = const Color(0xFFADC3E9).withValues(alpha: 0.18)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8;
+    canvas.drawArc(rect, 0, pi * 2, false, track);
+
+    final Paint arc = Paint()
+      ..shader = const SweepGradient(
+        colors: <Color>[
+          Color(0xFF3DE2FF),
+          Color(0xFF6A68FF),
+          Color(0xFFFF58D0),
+          Color(0xFFFFCC72),
+          Color(0xFF3DE2FF),
+        ],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+    canvas.drawArc(rect, -pi / 2, (pi * 2) * clamped, false, arc);
+
+    final double angle = (-pi / 2) + (pi * 2 * clamped);
+    final double radius = rect.width / 2;
+    final Offset knob = Offset(
+      center.dx + cos(angle) * radius,
+      center.dy + sin(angle) * radius,
+    );
+    final Paint glow = Paint()
+      ..color = const Color(0xFF9EEBFF).withValues(alpha: 0.45)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(knob, 10, glow);
+    canvas.drawCircle(knob, 4, Paint()..color = const Color(0xFFE2FBFF));
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScoreRingPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class _FuturisticScoreSlider extends StatelessWidget {
+  const _FuturisticScoreSlider({required this.value, required this.onChanged});
+
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 34,
+      child: Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _ScoreSliderTrackPainter(progress: value / 100),
+            ),
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 28,
+              trackShape: const _FullWidthTrackShape(),
+              activeTrackColor: Colors.transparent,
+              inactiveTrackColor: Colors.transparent,
+              overlayColor: Colors.transparent,
+              thumbShape: const _NeonThumbShape(radius: 15),
+            ),
+            child: Slider(value: value, min: 0, max: 100, onChanged: onChanged),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScoreSliderTrackPainter extends CustomPainter {
+  const _ScoreSliderTrackPainter({required this.progress});
+
+  final double progress;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double clamped = progress.clamp(0.0, 1.0);
+    final RRect fullTrack = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, (size.height - 8) / 2, size.width, 8),
+      const Radius.circular(999),
+    );
+    final Paint trackBase = Paint()
+      ..color = const Color(0xFF9BB2D8).withValues(alpha: 0.2);
+    canvas.drawRRect(fullTrack, trackBase);
+
+    final double activeWidth = size.width * clamped;
+    if (activeWidth > 0) {
+      final RRect activeTrack = RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, (size.height - 8) / 2, activeWidth, 8),
+        const Radius.circular(999),
+      );
+      final Paint activePaint = Paint()
+        ..shader = const LinearGradient(
+          colors: <Color>[Color(0xFFD641FF), Color(0xFF4ADFFF)],
+        ).createShader(Rect.fromLTWH(0, 0, activeWidth, size.height));
+      final Paint activeGlow = Paint()
+        ..color = const Color(0xFF5BDFFF).withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+      canvas.drawRRect(activeTrack, activeGlow);
+      canvas.drawRRect(activeTrack, activePaint);
+    }
+
+    final int ticks = 38;
+    final Paint tickPaint = Paint()
+      ..color = const Color(0xFFE7EEFF).withValues(alpha: 0.5)
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 2;
+    for (int i = 0; i <= ticks; i++) {
+      final double dx = size.width * (i / ticks);
+      final bool major = i % 4 == 0;
+      final double tickHeight = major ? 12 : 8;
+      canvas.drawLine(
+        Offset(dx, (size.height / 2) - (tickHeight / 2)),
+        Offset(dx, (size.height / 2) + (tickHeight / 2)),
+        tickPaint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScoreSliderTrackPainter oldDelegate) {
+    return oldDelegate.progress != progress;
+  }
+}
+
+class _NeonThumbShape extends SliderComponentShape {
+  const _NeonThumbShape({required this.radius});
+
+  final double radius;
+
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) {
+    return Size.fromRadius(radius + 2);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final Canvas canvas = context.canvas;
+    final Paint glow = Paint()
+      ..color = const Color(0xFF84F1FF).withValues(alpha: 0.38)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas.drawCircle(center, radius + 3, glow);
+
+    final Paint shell = Paint()
+      ..shader = const RadialGradient(
+        colors: <Color>[Color(0xFFE8F7FF), Color(0xFFBFE9FF)],
+      ).createShader(Rect.fromCircle(center: center, radius: radius));
+    canvas.drawCircle(center, radius, shell);
+
+    final Paint core = Paint()..color = const Color(0xFFDDF4FF);
+    canvas.drawCircle(center, radius * 0.52, core);
   }
 }
 
@@ -1779,7 +1922,7 @@ class _OnboardingFinalStepScreenState extends State<OnboardingFinalStepScreen>
                             _buildStaggeredReveal(
                               order: 2,
                               child: Text(
-                                '実際の評価と自己認識は平均で+$gapPercent%ズレています',
+                                '実際の評価と自己認識は平均で+$gapPercent%\nズレています',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontSize: compact ? 18 : 23,
@@ -1828,7 +1971,7 @@ class _OnboardingFinalStepScreenState extends State<OnboardingFinalStepScreen>
                               Navigator.of(context).push(
                                 _OnboardingNoTransitionRoute<void>(
                                   builder: (_) =>
-                                      const OnboardingLastInfoScreen(),
+                                      const OnboardingExtraStepScreen(),
                                 ),
                               );
                             },
@@ -1846,6 +1989,349 @@ class _OnboardingFinalStepScreenState extends State<OnboardingFinalStepScreen>
       ),
     );
   }
+}
+
+class OnboardingExtraStepScreen extends StatefulWidget {
+  const OnboardingExtraStepScreen({super.key});
+
+  @override
+  State<OnboardingExtraStepScreen> createState() =>
+      _OnboardingExtraStepScreenState();
+}
+
+class _OnboardingExtraStepScreenState extends State<OnboardingExtraStepScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _introController;
+
+  @override
+  void initState() {
+    super.initState();
+    _introController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _introController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildStaggeredReveal({required int order, required Widget child}) {
+    final double start = order * 0.08;
+    final double end = (start + 0.46) > 1 ? 1 : (start + 0.46);
+    final Animation<double> animation = CurvedAnimation(
+      parent: _introController,
+      curve: Interval(start, end, curve: Curves.easeOutQuart),
+    );
+
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (BuildContext context, Widget? builtChild) {
+        final double t = animation.value;
+        return Opacity(
+          opacity: t,
+          child: Transform.translate(
+            offset: Offset(0, (1 - t) * -12),
+            child: builtChild,
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: <Color>[
+              Color(0xFF10151D),
+              Color(0xFF222C3B),
+              Color(0xFF364B68),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              children: <Widget>[
+                const SizedBox(height: 8),
+                const _OnboardingTopBar(
+                  currentStep: 7,
+                  totalSteps: _kOnboardingGaugeSteps,
+                ),
+                const SizedBox(height: 14),
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        _buildStaggeredReveal(
+                          order: 0,
+                          child: const Text(
+                            '外見は、設計できます。',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 31,
+                              fontWeight: FontWeight.w700,
+                              height: 1.22,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 18),
+                        _buildStaggeredReveal(
+                          order: 1,
+                          child: const Text(
+                            '外見は固定ではありません。\n'
+                            '姿勢・表情・肌・意識や生活習慣などを改めることで印象は変化していきます。\n'
+                            'Faceyは、その変化を記録します。',
+                            textAlign: TextAlign.left,
+                            style: TextStyle(
+                              color: Color(0xFFD7E0F1),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              height: 1.5,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildStaggeredReveal(
+                          order: 2,
+                          child: SizedBox(
+                            height: 150,
+                            width: double.infinity,
+                            child: CustomPaint(
+                              painter: _OnboardingGrowthArcPainter(),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildStaggeredReveal(
+                          order: 3,
+                          child: Row(
+                            children: const <Widget>[
+                              Expanded(
+                                child: _OnboardingFeatureCard(
+                                  icon: Icons.search_rounded,
+                                  title: '観察する',
+                                  subtitle: '印象・肌・コンディション\nを見える化',
+                                  accent: Color(0xFF6BCAFF),
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: _OnboardingFeatureCard(
+                                  icon: Icons.tune_rounded,
+                                  title: '調整する',
+                                  subtitle: 'あなた用の\n改善ポイントを提案',
+                                  accent: Color(0xFFB37BFF),
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                child: _OnboardingFeatureCard(
+                                  icon: Icons.trending_up_rounded,
+                                  title: '伸ばす',
+                                  subtitle: '変化をグラフ /\n履歴で確認',
+                                  accent: Color(0xFF8BD7FF),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                      ],
+                    ),
+                  ),
+                ),
+                _buildStaggeredReveal(
+                  order: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: const StadiumBorder(),
+                          textStyle: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            _OnboardingNoTransitionRoute<void>(
+                              builder: (_) => const OnboardingLastInfoScreen(),
+                            ),
+                          );
+                        },
+                        child: const Text('次へ'),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OnboardingFeatureCard extends StatelessWidget {
+  const _OnboardingFeatureCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.accent,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 180,
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: const Color(0xFF1B2540).withValues(alpha: 0.55),
+        border: Border.all(
+          color: const Color(0xFF6D86C5).withValues(alpha: 0.5),
+        ),
+      ),
+      child: Column(
+        children: <Widget>[
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: <Color>[
+                  accent.withValues(alpha: 0.75),
+                  const Color(0xFF8D6EFF).withValues(alpha: 0.45),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Icon(icon, color: Colors.white, size: 28),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFFB8C5E0),
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              height: 1.38,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OnboardingGrowthArcPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint track = Paint()
+      ..shader = const LinearGradient(
+        colors: <Color>[
+          Color(0xFF5B79C8),
+          Color(0xFFC387FF),
+          Color(0xFF78E1FF),
+        ],
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    final Paint glow = Paint()
+      ..color = const Color(0xFF9ED9FF).withValues(alpha: 0.22)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 10
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+
+    final Path path = Path()
+      ..moveTo(0, size.height * 0.84)
+      ..cubicTo(
+        size.width * 0.22,
+        size.height * 0.82,
+        size.width * 0.46,
+        size.height * 0.62,
+        size.width * 0.66,
+        size.height * 0.44,
+      )
+      ..cubicTo(
+        size.width * 0.78,
+        size.height * 0.34,
+        size.width * 0.9,
+        size.height * 0.24,
+        size.width,
+        size.height * 0.16,
+      );
+
+    canvas.drawPath(path, glow);
+    canvas.drawPath(path, track);
+
+    final List<Offset> dots = <Offset>[
+      Offset(size.width * 0.14, size.height * 0.78),
+      Offset(size.width * 0.39, size.height * 0.67),
+      Offset(size.width * 0.62, size.height * 0.48),
+      Offset(size.width * 0.84, size.height * 0.25),
+    ];
+    for (final Offset dot in dots) {
+      final Paint dotPaint = Paint()..color = const Color(0xFFBDE8FF);
+      final Paint dotGlow = Paint()
+        ..color = const Color(0xFF9FE6FF).withValues(alpha: 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 7);
+      canvas.drawCircle(dot, 9, dotGlow);
+      canvas.drawCircle(dot, 4, dotPaint);
+
+      final Paint dash = Paint()
+        ..color = const Color(0xFFAFBEDA).withValues(alpha: 0.45)
+        ..strokeWidth = 1;
+      canvas.drawLine(
+        Offset(dot.dx, dot.dy + 8),
+        Offset(dot.dx, size.height - 6),
+        dash,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class OnboardingLastInfoScreen extends StatefulWidget {
@@ -1941,7 +2427,7 @@ class _OnboardingLastInfoScreenState extends State<OnboardingLastInfoScreen>
               children: <Widget>[
                 const SizedBox(height: 8),
                 const _OnboardingTopBar(
-                  currentStep: 7,
+                  currentStep: 8,
                   totalSteps: _kOnboardingGaugeSteps,
                 ),
                 const SizedBox(height: 20),
@@ -2085,7 +2571,7 @@ class _OnboardingLastDoneScreenState extends State<OnboardingLastDoneScreen> {
               children: <Widget>[
                 const SizedBox(height: 8),
                 const _OnboardingTopBar(
-                  currentStep: 8,
+                  currentStep: 9,
                   totalSteps: _kOnboardingGaugeSteps,
                 ),
                 const SizedBox(height: 20),
@@ -2309,17 +2795,17 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
               children: <Widget>[
                 const SizedBox(height: 8),
                 const _OnboardingTopBar(
-                  currentStep: 9,
+                  currentStep: 10,
                   totalSteps: _kOnboardingGaugeSteps,
                 ),
                 const Spacer(flex: 1),
                 const SizedBox(height: 4),
                 const Text(
-                  '多くの人は、自分の印象を正確に\n把握できていません。',
+                  'あなたの印象は、\nここから変わります。',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 25,
                     fontWeight: FontWeight.w700,
                   ),
                 ),

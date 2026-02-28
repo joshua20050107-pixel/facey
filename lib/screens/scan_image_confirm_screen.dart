@@ -79,7 +79,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
                 Navigator.of(context).pop();
                 await _replaceImage(ImageSource.gallery);
               },
-              child: const Text('写真を選択', style: TextStyle(color: Colors.white)),
+              child: const Text('画像を選択', style: TextStyle(color: Colors.white)),
             ),
           ],
           cancelButton: CupertinoActionSheetAction(

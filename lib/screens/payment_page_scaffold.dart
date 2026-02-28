@@ -252,7 +252,7 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                                           ],
                                         ),
                                       ),
-                                      const SizedBox(height: 180),
+                                      const SizedBox(height: 30),
                                     ],
                                   ),
                                 ),
@@ -266,6 +266,15 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold> {
                         right: 0,
                         bottom: 34,
                         height: 92,
+                        child: IgnorePointer(
+                          child: Container(color: Colors.black),
+                        ),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: -12,
+                        height: 64,
                         child: IgnorePointer(
                           child: Container(color: Colors.black),
                         ),

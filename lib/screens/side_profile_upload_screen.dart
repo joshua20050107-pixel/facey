@@ -195,7 +195,7 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
                 Navigator.of(context).pop();
                 await _pickImage(ImageSource.gallery);
               },
-              child: const Text('写真を選択', style: TextStyle(color: Colors.white)),
+              child: const Text('画像を選択', style: TextStyle(color: Colors.white)),
             ),
           ],
           cancelButton: CupertinoActionSheetAction(

@@ -104,14 +104,14 @@ class FaceAnalysisResult {
 
   factory FaceAnalysisResult.dummy() {
     return const FaceAnalysisResult(
-      overall: 67,
+      overall: 91,
       metrics: <FaceMetricScore>[
-        FaceMetricScore(label: 'ポテンシャル', value: 96),
-        FaceMetricScore(label: '性的魅力', value: 82),
-        FaceMetricScore(label: '印象', value: 73),
-        FaceMetricScore(label: '清潔感', value: 61),
-        FaceMetricScore(label: '骨格', value: 54),
-        FaceMetricScore(label: '肌', value: 34),
+        FaceMetricScore(label: 'ポテンシャル', value: 92),
+        FaceMetricScore(label: '性的魅力', value: 93),
+        FaceMetricScore(label: '印象', value: 91),
+        FaceMetricScore(label: '清潔感', value: 89),
+        FaceMetricScore(label: '骨格', value: 88),
+        FaceMetricScore(label: '肌', value: 86),
       ],
     );
   }
@@ -552,6 +552,10 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       metrics.add(const FaceMetricScore(label: '-', value: 0));
     }
     final int potentialScore = metrics.first.value.clamp(0, 100);
+    final int potentialDeltaFromOverall = potentialScore - viewData.overall;
+    final String potentialDeltaText = potentialDeltaFromOverall >= 0
+        ? '+$potentialDeltaFromOverall'
+        : '$potentialDeltaFromOverall';
     final int betterThan = (viewData.overall + 20).clamp(0, 99).toInt();
     final int potentialBetterThan = (potentialScore + 2).clamp(0, 99).toInt();
     final int visiblePageCount = 7;
@@ -649,16 +653,22 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                     _MetricPairCard(
                                                       left: metrics[0],
                                                       right: metrics[1],
+                                                      potentialDeltaText:
+                                                          potentialDeltaText,
                                                     ),
                                                     const SizedBox(height: 10),
                                                     _MetricPairCard(
                                                       left: metrics[2],
                                                       right: metrics[3],
+                                                      potentialDeltaText:
+                                                          potentialDeltaText,
                                                     ),
                                                     const SizedBox(height: 10),
                                                     _MetricPairCard(
                                                       left: metrics[4],
                                                       right: metrics[5],
+                                                      potentialDeltaText:
+                                                          potentialDeltaText,
                                                     ),
                                                     const SizedBox(height: 4),
                                                   ],
@@ -807,21 +817,29 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                               _MetricPairCard(
                                                 left: secondPageMetrics[0],
                                                 right: secondPageMetrics[1],
+                                                potentialDeltaText:
+                                                    potentialDeltaText,
                                               ),
                                               const Spacer(flex: 1),
                                               _MetricPairCard(
                                                 left: secondPageMetrics[2],
                                                 right: secondPageMetrics[3],
+                                                potentialDeltaText:
+                                                    potentialDeltaText,
                                               ),
                                               const Spacer(flex: 1),
                                               _MetricPairCard(
                                                 left: secondPageMetrics[4],
                                                 right: secondPageMetrics[5],
+                                                potentialDeltaText:
+                                                    potentialDeltaText,
                                               ),
                                               const Spacer(flex: 1),
                                               _MetricPairCard(
                                                 left: secondPageMetrics[6],
                                                 right: secondPageMetrics[7],
+                                                potentialDeltaText:
+                                                    potentialDeltaText,
                                               ),
                                               const Spacer(flex: 2),
                                             ],
@@ -1013,17 +1031,47 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                 ),
                                                 child: Column(
                                                   children: [
-                                                    const Align(
+                                                    Align(
                                                       alignment:
                                                           Alignment.centerLeft,
-                                                      child: Text(
-                                                        'ポテンシャル',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 31,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
+                                                      child: Row(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          const Text(
+                                                            'ポテンシャル',
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontSize: 31,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w500,
+                                                            ),
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 16,
+                                                          ),
+                                                          Padding(
+                                                            padding:
+                                                                const EdgeInsets.only(
+                                                                  top: 4,
+                                                                ),
+                                                            child: Text(
+                                                              potentialDeltaText,
+                                                              style: const TextStyle(
+                                                                color: Color(
+                                                                  0xFF39D353,
+                                                                ),
+                                                                fontSize: 21,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                     const SizedBox(height: 2),
@@ -1879,10 +1927,15 @@ class _OverallHeaderSection extends StatelessWidget {
 }
 
 class _MetricPairCard extends StatelessWidget {
-  const _MetricPairCard({required this.left, required this.right});
+  const _MetricPairCard({
+    required this.left,
+    required this.right,
+    required this.potentialDeltaText,
+  });
 
   final FaceMetricScore left;
   final FaceMetricScore right;
+  final String potentialDeltaText;
 
   @override
   Widget build(BuildContext context) {
@@ -1897,7 +1950,12 @@ class _MetricPairCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Center(child: _MetricCell(metric: left)),
+            child: Center(
+              child: _MetricCell(
+                metric: left,
+                potentialDeltaText: potentialDeltaText,
+              ),
+            ),
           ),
           Container(
             width: 1,
@@ -1906,7 +1964,12 @@ class _MetricPairCard extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 12),
           ),
           Expanded(
-            child: Center(child: _MetricCell(metric: right)),
+            child: Center(
+              child: _MetricCell(
+                metric: right,
+                potentialDeltaText: potentialDeltaText,
+              ),
+            ),
           ),
         ],
       ),
@@ -1915,22 +1978,39 @@ class _MetricPairCard extends StatelessWidget {
 }
 
 class _MetricCell extends StatelessWidget {
-  const _MetricCell({required this.metric});
+  const _MetricCell({required this.metric, required this.potentialDeltaText});
 
   final FaceMetricScore metric;
+  final String potentialDeltaText;
 
   @override
   Widget build(BuildContext context) {
+    final bool isPotentialMetric = metric.label == 'ポテンシャル';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          metric.label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.92),
-            fontSize: 15,
-            fontWeight: FontWeight.w500,
-          ),
+        Row(
+          children: [
+            Text(
+              metric.label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.92),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (isPotentialMetric) ...[
+              const SizedBox(width: 12),
+              Text(
+                potentialDeltaText,
+                style: const TextStyle(
+                  color: Color(0xFF39D353),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 1),
         Text(
@@ -1943,18 +2023,29 @@ class _MetricCell extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        _ScoreBar(value: metric.value, width: double.infinity, height: 12),
+        _ScoreBar(
+          value: metric.value,
+          width: double.infinity,
+          height: 12,
+          usePurpleGradient: isPotentialMetric,
+        ),
       ],
     );
   }
 }
 
 class _ScoreBar extends StatelessWidget {
-  const _ScoreBar({required this.value, required this.width, this.height = 14});
+  const _ScoreBar({
+    required this.value,
+    required this.width,
+    this.height = 14,
+    this.usePurpleGradient = false,
+  });
 
   final int value;
   final double width;
   final double height;
+  final bool usePurpleGradient;
 
   (Color, Color) _gradientByScore(int score) {
     final double t = (score.clamp(0, 100)) / 100;
@@ -1971,7 +2062,9 @@ class _ScoreBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final int score = value.clamp(0, 100);
     final double clamped = score / 100;
-    final (Color startColor, Color endColor) = _gradientByScore(score);
+    final (Color startColor, Color endColor) = usePurpleGradient
+        ? (const Color(0xFF6C1CFF), const Color(0xFFB62BFF))
+        : _gradientByScore(score);
     return ClipRRect(
       borderRadius: BorderRadius.circular(12),
       child: SizedBox(
