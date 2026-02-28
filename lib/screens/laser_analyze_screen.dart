@@ -241,63 +241,118 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF042448),
+                    Color(0xFF021A35),
+                    Color(0xFF000D20),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final double frameWidth = (constraints.maxWidth * 0.84).clamp(
-                260.0,
-                370.0,
-              );
-              final double frameHeight = (constraints.maxHeight * 0.64).clamp(
-                390.0,
-                560.0,
-              );
-              return Align(
-                alignment: const Alignment(0, -0.75),
-                child: AnimatedBuilder(
-                  animation: Listenable.merge([_laserProgress, _resultAnim]),
-                  builder: (BuildContext context, _) {
-                    final double scale = 1 - (_resultAnim.value * 0.02);
-                    return Transform.scale(
-                      scale: scale,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
-                        child: SizedBox(
-                          width: frameWidth,
-                          height: frameHeight,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              Image.file(
-                                File(widget.imagePath),
-                                fit: BoxFit.cover,
-                              ),
-                              CustomPaint(
-                                painter: YomuLaserPainter(
-                                  progress: _laserProgress.value,
-                                  showLaser: _showLaser,
-                                  laserWidth: widget.spec.laserWidth,
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -1.05),
+                  radius: 1.12,
+                  colors: [
+                    Color(0x802766AA),
+                    Color(0x3323588A),
+                    Color(0x00071B36),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color(0xD9001024),
+                    Color(0x00001024),
+                    Color(0xD9001024),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x00000817),
+                    Color(0x80000713),
+                    Color(0xE6000610),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final double frameWidth = (constraints.maxWidth * 0.84).clamp(
+                  260.0,
+                  370.0,
+                );
+                final double frameHeight = (constraints.maxHeight * 0.64).clamp(
+                  390.0,
+                  560.0,
+                );
+                return Align(
+                  alignment: const Alignment(0, -0.75),
+                  child: AnimatedBuilder(
+                    animation: Listenable.merge([_laserProgress, _resultAnim]),
+                    builder: (BuildContext context, _) {
+                      final double scale = 1 - (_resultAnim.value * 0.02);
+                      return Transform.scale(
+                        scale: scale,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: SizedBox(
+                            width: frameWidth,
+                            height: frameHeight,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                Image.file(
+                                  File(widget.imagePath),
+                                  fit: BoxFit.cover,
                                 ),
-                              ),
-                            ],
+                                CustomPaint(
+                                  painter: YomuLaserPainter(
+                                    progress: _laserProgress.value,
+                                    showLaser: _showLaser,
+                                    laserWidth: widget.spec.laserWidth,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

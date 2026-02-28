@@ -12,7 +12,7 @@ class PaymentPageScaffold extends StatefulWidget {
     this.closeIcon = const Icon(Icons.close, color: Colors.white, size: 23),
     this.backgroundFit = BoxFit.cover,
     this.title = 'アップグレード',
-    this.subtitle = '『魅力的な自分へ』',
+    this.subtitle = '『外見は、設計できる』',
   });
 
   final VoidCallback onClose;

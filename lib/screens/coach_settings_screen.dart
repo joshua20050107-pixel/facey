@@ -131,7 +131,7 @@ class CoachSettingsScreen extends StatelessWidget {
                           milliseconds: 280,
                         ),
                         pageBuilder: (BuildContext context, _, __) {
-                          return const UpgradeScreen();
+                          return const UpgradeScreen(fromSettings: true);
                         },
                         transitionsBuilder:
                             (
@@ -264,28 +264,83 @@ class GenderScreen extends StatelessWidget {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: SafeArea(
-          child: YomuGenderTwoChoice(
-            showTitle: true,
-            title: 'あなたの性別を\n選択してください',
-            wholeOffset: Offset(0, 28),
-            titleStyle: TextStyle(
-              color: const Color.fromARGB(255, 212, 212, 212),
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF042448),
+                    Color(0xFF021A35),
+                    Color(0xFF000D20),
+                  ],
+                ),
+              ),
             ),
-            initialValue: selectedGender,
-            onChanged: onGenderChanged,
           ),
-        ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -1.05),
+                  radius: 1.12,
+                  colors: [
+                    Color(0x802766AA),
+                    Color(0x3323588A),
+                    Color(0x00071B36),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color(0xD9001024),
+                    Color(0x00001024),
+                    Color(0xD9001024),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x00000817),
+                    Color(0x80000713),
+                    Color(0xE6000610),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: YomuGenderTwoChoice(
+              showTitle: true,
+              title: 'あなたの性別を\n選択してください',
+              wholeOffset: Offset(0, 28),
+              titleStyle: TextStyle(
+                color: const Color.fromARGB(255, 212, 212, 212),
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+              initialValue: selectedGender,
+              onChanged: onGenderChanged,
+            ),
+          ),
+        ],
       ),
     );
   }

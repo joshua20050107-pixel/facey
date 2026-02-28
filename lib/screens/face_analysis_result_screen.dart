@@ -1050,27 +1050,6 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                                       .w500,
                                                             ),
                                                           ),
-                                                          const SizedBox(
-                                                            width: 16,
-                                                          ),
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets.only(
-                                                                  top: 4,
-                                                                ),
-                                                            child: Text(
-                                                              potentialDeltaText,
-                                                              style: const TextStyle(
-                                                                color: Color(
-                                                                  0xFF39D353,
-                                                                ),
-                                                                fontSize: 21,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w800,
-                                                              ),
-                                                            ),
-                                                          ),
                                                         ],
                                                       ),
                                                     ),

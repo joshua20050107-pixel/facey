@@ -6,13 +6,88 @@ import 'package:flutter/material.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:permission_handler/permission_handler.dart';
 
-import '../main.dart';
 import 'payment_page_scaffold.dart';
+import 'upgrade_screen.dart';
 import '../routes/no_swipe_back_material_page_route.dart';
 
 const int _kOnboardingGaugeSteps = 10;
 final RouteObserver<PageRoute<dynamic>> onboardingRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
+
+class _OnboardingGradientBackground extends StatelessWidget {
+  const _OnboardingGradientBackground({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: <Widget>[
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Color(0xFF042448),
+                  Color(0xFF021A35),
+                  Color(0xFF000D20),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0, -1.05),
+                radius: 1.12,
+                colors: <Color>[
+                  Color(0x802766AA),
+                  Color(0x3323588A),
+                  Color(0x00071B36),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: <Color>[
+                  Color(0xD9001024),
+                  Color(0x00001024),
+                  Color(0xD9001024),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: <Color>[
+                  Color(0x00000817),
+                  Color(0x80000713),
+                  Color(0xE6000610),
+                ],
+              ),
+            ),
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
 
 class _OnboardingGaugeMemory {
   static int lastStep = 0;
@@ -344,18 +419,7 @@ class _OnboardingNextScreenState extends State<OnboardingNextScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -693,18 +757,7 @@ class _OnboardingGenderDoneScreenState extends State<OnboardingGenderDoneScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -911,10 +964,6 @@ class _FuturisticScoreRing extends StatelessWidget {
               ),
             ),
           ),
-          CustomPaint(
-            size: const Size.square(140),
-            painter: _ScoreRingPainter(progress: score / 100),
-          ),
           Container(
             width: 118,
             height: 118,
@@ -938,6 +987,10 @@ class _FuturisticScoreRing extends StatelessWidget {
                 letterSpacing: 0.6,
               ),
             ),
+          ),
+          CustomPaint(
+            size: const Size.square(140),
+            painter: _ScoreRingPainter(progress: score / 100),
           ),
         ],
       ),
@@ -1194,18 +1247,7 @@ class _OnboardingPerceptionScreenState extends State<OnboardingPerceptionScreen>
       '正直自信ない',
     ];
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1357,18 +1399,7 @@ class _OnboardingConcernScreenState extends State<OnboardingConcernScreen>
       'その他',
     ];
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1531,23 +1562,14 @@ class _OnboardingReactionScreenState extends State<OnboardingReactionScreen>
   Widget build(BuildContext context) {
     const List<String> options = <String>[
       'よく褒められる',
+      '清潔感はある',
+      '可もなく不可もなく',
+      '異性に刺さらない',
       '友達止まり',
-      '興味持たれにくい',
       'わからない',
     ];
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1696,18 +1718,7 @@ class _OnboardingReasonScreenState extends State<OnboardingReasonScreen>
       'なんとなく',
     ];
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1856,18 +1867,7 @@ class _OnboardingFinalStepScreenState extends State<OnboardingFinalStepScreen>
     const int gapPercent = 20;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
@@ -2045,18 +2045,7 @@ class _OnboardingExtraStepScreenState extends State<OnboardingExtraStepScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -2407,18 +2396,7 @@ class _OnboardingLastInfoScreenState extends State<OnboardingLastInfoScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -2551,18 +2529,7 @@ class _OnboardingLastDoneScreenState extends State<OnboardingLastDoneScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -2656,14 +2623,16 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
   bool _isFinalizingProgress = false;
   double _progressPhase = 0;
   String _statusDetail = 'プロファイルを初期化中';
+  int _statusIndex = 0;
   DateTime _lastStatusChangedAt = DateTime.now();
 
   static const List<String> _statusDetails = <String>[
     'プロファイルを初期化中',
-    '最適な体験をチューニング',
-    '推奨設定を調整中',
-    '通知設定を最適化中',
-    '体験を最適化',
+    'フェイスエンジンを起動中',
+    '魅力モデルを読み込み中',
+    'パーソナルデータを同期中',
+    '印象データを最適化中',
+    '成長トラッキングを準備中',
   ];
 
   @override
@@ -2681,7 +2650,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
     )..repeat(reverse: true);
     _ringSpinController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3200),
+      duration: const Duration(milliseconds: 5200),
     )..repeat();
     if (alreadyCompleted) {
       _statusDetail = '環境構築が完了しました';
@@ -2740,12 +2709,11 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
 
     final DateTime now = DateTime.now();
     final bool canChangeStatus =
-        now.difference(_lastStatusChangedAt).inMilliseconds >= 1800;
-    final bool shouldChangeStatus =
-        canChangeStatus && _random.nextDouble() < 0.52;
-    if (shouldChangeStatus) {
+        now.difference(_lastStatusChangedAt).inMilliseconds >= 1400;
+    if (canChangeStatus) {
       setState(() {
-        _statusDetail = _statusDetails[_random.nextInt(_statusDetails.length)];
+        _statusIndex = (_statusIndex + 1) % _statusDetails.length;
+        _statusDetail = _statusDetails[_statusIndex];
         _lastStatusChangedAt = now;
       });
     }
@@ -2776,18 +2744,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: <Color>[
-              Color(0xFF10151D),
-              Color(0xFF222C3B),
-              Color(0xFF364B68),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
+      body: _OnboardingGradientBackground(
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -2822,7 +2779,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                           ? 1
                           : (0.35 + (_blinkController.value * 0.65)),
                       child: Text(
-                        done ? '準備完了' : '回答内容をもとに、あなたの現在地を整理します。',
+                        done ? '準備完了' : _statusDetail,
                         style: const TextStyle(
                           color: Color(0xFFAFB8CB),
                           fontSize: 13,
@@ -2875,8 +2832,8 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                           onPressed: done
                               ? () async {
                                   Navigator.of(context).pushAndRemoveUntil(
-                                    _OnboardingNoTransitionRoute<void>(
-                                      builder: (_) => const HomeScreen(),
+                                    _OnboardingFinishRoute<void>(
+                                      builder: (_) => const UpgradeScreen(),
                                     ),
                                     (Route<dynamic> route) => false,
                                   );
@@ -2923,53 +2880,42 @@ class _FuturisticLoadingRing extends StatelessWidget {
   Widget build(BuildContext context) {
     final int percent = (progress * 100).round().clamp(0, 100);
     return SizedBox(
-      width: 246,
-      height: 246,
+      width: 260,
+      height: 260,
       child: Stack(
         alignment: Alignment.center,
         children: <Widget>[
-          Container(
-            width: 220,
-            height: 220,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: <Color>[
-                  const Color(0xFF8E6FFF).withValues(alpha: 0.2),
-                  const Color(0xFF6A5CFF).withValues(alpha: 0.1),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-          Transform.rotate(
-            angle: spinValue * pi * 2,
-            child: SizedBox(
-              width: 194,
-              height: 194,
-              child: CustomPaint(
-                painter: _FuturisticRingPainter(progress: progress),
-              ),
-            ),
-          ),
           Container(
             width: 154,
             height: 154,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const RadialGradient(
-                colors: <Color>[Color(0xFF1F2338), Color(0xFF121826)],
+              gradient: RadialGradient(
+                colors: <Color>[
+                  const Color(0xFF5E7BFF).withValues(alpha: 0.16),
+                  const Color(0xFF8561FF).withValues(alpha: 0.08),
+                  Colors.transparent,
+                ],
               ),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            ),
+          ),
+          SizedBox(
+            width: 228,
+            height: 228,
+            child: CustomPaint(
+              painter: _FuturisticSpinnerPainter(
+                progress: progress,
+                spinValue: spinValue,
+              ),
             ),
           ),
           Text(
             '$percent%',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 30,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+              fontSize: 38,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.2,
             ),
           ),
         ],
@@ -2978,61 +2924,93 @@ class _FuturisticLoadingRing extends StatelessWidget {
   }
 }
 
-class _FuturisticRingPainter extends CustomPainter {
-  _FuturisticRingPainter({required this.progress});
+class _FuturisticSpinnerPainter extends CustomPainter {
+  _FuturisticSpinnerPainter({required this.progress, required this.spinValue});
 
   final double progress;
+  final double spinValue;
 
   @override
   void paint(Canvas canvas, Size size) {
-    const double stroke = 5.2;
+    const int spokeCount = 22;
+    const double stroke = 12;
     final Offset center = Offset(size.width / 2, size.height / 2);
-    final double radius = (size.width - stroke) / 2;
-    final Rect rect = Rect.fromCircle(center: center, radius: radius);
-    final double p = progress.clamp(0.0, 1.0);
-    final double sweep = max(0.04, p) * pi * 2;
+    final double clampedProgress = progress.clamp(0.0, 1.0);
+    final double colorBoost = Curves.easeOutCubic.transform(clampedProgress);
+    final double filledRaw = spokeCount * clampedProgress;
+    final int fullCount = filledRaw.floor().clamp(0, spokeCount);
+    final double partial = (filledRaw - fullCount).clamp(0.0, 1.0);
+    final int shimmerOffset = ((spinValue * spokeCount).floor()) % spokeCount;
+    final double startRadius = size.width * 0.34;
+    final double baseLength = size.width * 0.115;
 
-    final Paint track = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..color = Colors.white.withValues(alpha: 0.16);
-    canvas.drawCircle(center, radius, track);
+    for (int i = 0; i < spokeCount; i++) {
+      final bool full = i < fullCount;
+      final bool partialFill = i == fullCount && fullCount < spokeCount;
+      final double fillLevel = full
+          ? 1.0
+          : partialFill
+          ? partial
+          : 0.0;
+      final int distanceFromShimmer =
+          (i - (fullCount + shimmerOffset) + spokeCount) % spokeCount;
+      final double shimmer = fillLevel > 0 && distanceFromShimmer <= 1
+          ? (0.12 + (0.12 * colorBoost))
+          : 0.0;
+      final double intensity = (fillLevel * 0.9) + shimmer;
+      final double angle = (-pi / 2) + ((2 * pi * i) / spokeCount);
+      final double length =
+          baseLength + ((fillLevel > 0 ? 1.0 : 0.0) * size.width * 0.022);
+      final double hue = (215 + ((i / spokeCount) * 65)) % 360;
+      final Color litColor = HSLColor.fromAHSL(
+        1,
+        hue,
+        0.46 + (0.5 * colorBoost),
+        0.58 + (0.2 * colorBoost),
+      ).toColor();
+      final Color baseColor = Color.lerp(
+        const Color(0xFF2E3442),
+        const Color(0xFF3D4A68),
+        colorBoost * 0.62,
+      )!;
+      final Offset from = Offset(
+        center.dx + cos(angle) * startRadius,
+        center.dy + sin(angle) * startRadius,
+      );
+      final Offset to = Offset(
+        center.dx + cos(angle) * (startRadius + length),
+        center.dy + sin(angle) * (startRadius + length),
+      );
 
-    final Paint arc = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = stroke
-      ..strokeCap = StrokeCap.round
-      ..shader = SweepGradient(
-        startAngle: -pi / 2,
-        endAngle: -pi / 2 + sweep,
-        colors: const <Color>[
-          Color(0xFF6F5BFF),
-          Color(0xFFA86DFF),
-          Color(0xFFD07BFF),
-          Color(0xFF7A5CFF),
-        ],
-      ).createShader(rect);
-    canvas.drawArc(rect, -pi / 2, sweep, false, arc);
+      if (fillLevel > 0.02 && intensity > 0.62) {
+        final Paint glow = Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke + 3.8
+          ..strokeCap = StrokeCap.round
+          ..color = litColor.withValues(
+            alpha: (0.22 + (0.26 * colorBoost)) * intensity,
+          )
+          ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 5.5);
+        canvas.drawLine(from, to, glow);
+      }
 
-    final double endAngle = -pi / 2 + sweep;
-    final Offset end = Offset(
-      center.dx + cos(endAngle) * radius,
-      center.dy + sin(endAngle) * radius,
-    );
-    final Paint glow = Paint()
-      ..color = const Color(0xFFC883FF).withValues(alpha: 0.9)
-      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 10);
-    canvas.drawCircle(end, stroke * 0.95, glow);
-    canvas.drawCircle(
-      end,
-      stroke * 0.52,
-      Paint()..color = const Color(0xFFE7B2FF),
-    );
+      final double blend = (0.08 + (0.92 * intensity)).clamp(0.0, 1.0);
+      final Paint spoke = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = Color.lerp(
+          baseColor,
+          litColor,
+          blend,
+        )!.withValues(alpha: 0.2 + (0.26 * colorBoost) + (0.54 * intensity));
+      canvas.drawLine(from, to, spoke);
+    }
   }
 
   @override
-  bool shouldRepaint(covariant _FuturisticRingPainter oldDelegate) =>
-      oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _FuturisticSpinnerPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.spinValue != spinValue;
 }
 
 class _FinalComparisonGraph extends StatelessWidget {

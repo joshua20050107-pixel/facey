@@ -1155,14 +1155,14 @@ class _HabitPlaceholderScreenState extends State<_HabitPlaceholderScreen> {
     final int allTimeValue = widget.habit.achievedDays;
     final int streakValue = _streakDays(DateTime.now());
     return Scaffold(
-      backgroundColor: const Color(0xFF0E1421),
+      backgroundColor: const Color(0xFF042448),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: <Color>[
-              Color(0xFF0E1421),
-              Color(0xFF253550),
-              Color(0xFF354C6E),
+              Color(0xFF042448),
+              Color(0xFF021A35),
+              Color(0xFF000D20),
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -1588,7 +1588,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF10151D), Color(0xFF222C3B), Color(0xFF364B68)],
+            colors: [Color(0xFF042448), Color(0xFF021A35), Color(0xFF000D20)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -1818,7 +1818,7 @@ class _GrowthBlankScreenState extends State<_GrowthBlankScreen> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF10151D), Color(0xFF222C3B), Color(0xFF364B68)],
+            colors: [Color(0xFF042448), Color(0xFF021A35), Color(0xFF000D20)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

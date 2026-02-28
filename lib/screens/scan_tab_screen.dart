@@ -123,11 +123,11 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
           gradient: const LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [Color(0xFF5B22FF), Color(0xFFB61DFF)],
+            colors: [Color(0xFF7C3AED), Color(0xFF9333EA)],
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8C35FF).withValues(alpha: 0.5),
+              color: const Color(0xFF6D28D9).withValues(alpha: 0.45),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -168,7 +168,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   Widget _buildOpenLatestResultButton(double scale) {
     final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
     final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
-    final double textSize = (25 * scale).clamp(21.0, 27.0);
+    final double textSize = (21 * scale).clamp(17.0, 23.0);
     final String? path = _latestResultFrontImagePath;
     final bool enabled =
         path != null && path.isNotEmpty && File(path).existsSync();
@@ -180,17 +180,14 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(buttonRadius),
           border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: enabled
-                ? const [Color(0xFF5B22FF), Color(0xFFB61DFF)]
-                : const [Color(0xFF444A57), Color(0xFF383D47)],
+            colors: [Color(0xFF7C3AED), Color(0xFF9333EA)],
           ),
           boxShadow: [
             BoxShadow(
-              color: (enabled ? const Color(0xFF8C35FF) : Colors.black)
-                  .withValues(alpha: enabled ? 0.5 : 0.3),
+              color: const Color(0xFF6D28D9).withValues(alpha: 0.45),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -220,7 +217,8 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
             enabled ? '結果を見る' : '結果がありません',
             style: TextStyle(
               fontSize: textSize,
-              fontWeight: FontWeight.w700,
+              fontFamily: 'Hiragino Kaku Gothic ProN',
+              fontWeight: FontWeight.w900,
               letterSpacing: 0.2,
             ),
           ),

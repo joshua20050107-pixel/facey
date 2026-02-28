@@ -131,14 +131,20 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(buttonRadius),
           border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [Color(0xFF5B22FF), Color(0xFFB61DFF)],
+            colors: isScanLabel
+                ? [Color(0xFF7C3AED), Color(0xFF9333EA)]
+                : [Color(0xFF5B22FF), Color(0xFFB61DFF)],
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8C35FF).withValues(alpha: 0.45),
+              color:
+                  (isScanLabel
+                          ? const Color(0xFF6D28D9)
+                          : const Color(0xFF8C35FF))
+                      .withValues(alpha: 0.45),
               blurRadius: 16,
               offset: const Offset(0, 8),
             ),

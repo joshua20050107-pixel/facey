@@ -222,11 +222,11 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
           gradient: const LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [Color(0xFF5D2DFF), Color(0xFFAD24FF)],
+            colors: [Color(0xFF7C3AED), Color(0xFF9333EA)],
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF8B31FF).withValues(alpha: 0.5),
+              color: const Color(0xFF6D28D9).withValues(alpha: 0.45),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -379,56 +379,111 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0A0C10), Color(0xFF1A2230), Color(0xFF2E3F5B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF042448),
+                    Color(0xFF021A35),
+                    Color(0xFF000D20),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              return Stack(
-                children: [
-                  Align(
-                    alignment: const Alignment(0, -0.9),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(13),
-                      child: SizedBox(
-                        width: constraints.maxWidth - 34,
-                        child: Stack(
-                          children: [
-                            AspectRatio(
-                              aspectRatio: _previewAspectRatio,
-                              child:
-                                  (_cameraModeEnabled && !_initializingCamera)
-                                  ? _buildCameraSurface()
-                                  : Image.asset(imagePath, fit: BoxFit.cover),
-                            ),
-                            if (_cameraModeEnabled)
-                              Positioned(
-                                top: 10,
-                                right: 10,
-                                child: _buildFlashToggle(),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -1.05),
+                  radius: 1.12,
+                  colors: [
+                    Color(0x802766AA),
+                    Color(0x3323588A),
+                    Color(0x00071B36),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color(0xD9001024),
+                    Color(0x00001024),
+                    Color(0xD9001024),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x00000817),
+                    Color(0x80000713),
+                    Color(0xE6000610),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                return Stack(
+                  children: [
+                    Align(
+                      alignment: const Alignment(0, -0.9),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(13),
+                        child: SizedBox(
+                          width: constraints.maxWidth - 34,
+                          child: Stack(
+                            children: [
+                              AspectRatio(
+                                aspectRatio: _previewAspectRatio,
+                                child:
+                                    (_cameraModeEnabled && !_initializingCamera)
+                                    ? _buildCameraSurface()
+                                    : Image.asset(imagePath, fit: BoxFit.cover),
                               ),
-                          ],
+                              if (_cameraModeEnabled)
+                                Positioned(
+                                  top: 10,
+                                  right: 10,
+                                  child: _buildFlashToggle(),
+                                ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  Positioned(
-                    left: 36,
-                    right: 36,
-                    bottom: 32,
-                    child: _buildBottomAction(),
-                  ),
-                ],
-              );
-            },
+                    Positioned(
+                      left: 36,
+                      right: 36,
+                      bottom: 32,
+                      child: _buildBottomAction(),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

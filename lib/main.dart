@@ -306,12 +306,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(34),
               border: Border.all(
-                color: const Color(0xFF6E7F99).withValues(alpha: 0.28),
+                color: const Color(0xFF95A0B3).withValues(alpha: 0.2),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF000000).withValues(alpha: 0.34),
-                  blurRadius: 18,
+                  color: const Color(0xFF000000).withValues(alpha: 0.48),
+                  blurRadius: 20,
                   offset: const Offset(0, 8),
                 ),
               ],
@@ -319,8 +319,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF1D2737).withValues(alpha: 0.9),
-                  const Color(0xFF141C2A).withValues(alpha: 0.94),
+                  const Color(0xFF171C25).withValues(alpha: 0.9),
+                  const Color(0xFF0C1018).withValues(alpha: 0.95),
                 ],
               ),
             ),
@@ -358,7 +358,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(26),
-                                    color: const Color(0xFF3A4D6E),
+                                    color: const Color(
+                                      0xFF4B5566,
+                                    ).withValues(alpha: 0.55),
                                   ),
                                 ),
                               ),
@@ -380,36 +382,93 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF10151D), Color(0xFF222C3B), Color(0xFF364B68)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        child: IndexedStack(
-          index: _selectedBottomIndex,
-          children: [
-            SafeArea(child: ScanTabScreen(selectedGender: _selectedGender)),
-            SafeArea(child: ActivityTabScreen(selectedGender: _selectedGender)),
-            const SafeArea(child: GrowthLogTabScreen()),
-            const SafeArea(child: ChatTabScreen()),
-            SafeArea(
-              child: CoachSettingsScreen(
-                notificationEnabled: _settingsNotificationEnabled,
-                onNotificationChanged: _handleNotificationChanged,
-                selectedGender: _selectedGender,
-                onGenderChanged: (YomuGender value) {
-                  setState(() {
-                    _selectedGender = value;
-                  });
-                  _saveGender(value);
-                },
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF042448),
+                    Color(0xFF021A35),
+                    Color(0xFF000D20),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment(0, -1.05),
+                  radius: 1.12,
+                  colors: [
+                    Color(0x802766AA),
+                    Color(0x3323588A),
+                    Color(0x00071B36),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color(0xD9001024),
+                    Color(0x00001024),
+                    Color(0xD9001024),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x00000817),
+                    Color(0x80000713),
+                    Color(0xE6000610),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          IndexedStack(
+            index: _selectedBottomIndex,
+            children: [
+              SafeArea(child: ScanTabScreen(selectedGender: _selectedGender)),
+              SafeArea(
+                child: ActivityTabScreen(selectedGender: _selectedGender),
+              ),
+              const SafeArea(child: GrowthLogTabScreen()),
+              const SafeArea(child: ChatTabScreen()),
+              SafeArea(
+                child: CoachSettingsScreen(
+                  notificationEnabled: _settingsNotificationEnabled,
+                  onNotificationChanged: _handleNotificationChanged,
+                  selectedGender: _selectedGender,
+                  onGenderChanged: (YomuGender value) {
+                    setState(() {
+                      _selectedGender = value;
+                    });
+                    _saveGender(value);
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
