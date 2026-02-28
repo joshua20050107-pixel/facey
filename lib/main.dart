@@ -55,6 +55,9 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+  static const MethodChannel _hapticsChannel = MethodChannel(
+    'com.facey/haptics',
+  );
   static const String _prefsBoxName = 'app_prefs';
   static const String _genderKey = 'selected_gender';
   static const String _notificationEnabledKey = 'settings_notification_enabled';
@@ -194,9 +197,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     'coach',
   ];
 
-  void _triggerBottomNavHaptic() {
+  Future<void> _triggerBottomNavHaptic() async {
     if (kIsWeb) return;
-    HapticFeedback.lightImpact();
+    if (defaultTargetPlatform != TargetPlatform.iOS) return;
+    try {
+      await _hapticsChannel.invokeMethod<void>('softImpact');
+    } on PlatformException {
+      HapticFeedback.lightImpact();
+    } on MissingPluginException {
+      HapticFeedback.lightImpact();
+    }
   }
 
   void _playBottomIconSpring(int index) {
@@ -256,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Expanded(
       child: InkWell(
         onTap: () {
-          _triggerBottomNavHaptic();
+          unawaited(_triggerBottomNavHaptic());
           _playBottomIconSpring(index);
           _playBottomCapsuleSpring();
           _slideBottomTargetTo(index);

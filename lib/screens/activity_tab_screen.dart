@@ -120,10 +120,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
   }) {
     final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
     final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
-    final bool isScanLabel = label == 'スキャンする';
-    final double textSize = isScanLabel
-        ? (21 * scale).clamp(17.0, 23.0)
-        : (25 * scale).clamp(21.0, 27.0);
+    final double textSize = (21 * scale).clamp(17.0, 23.0);
     return SizedBox(
       width: double.infinity,
       height: buttonHeight,
@@ -131,21 +128,15 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(buttonRadius),
           border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: isScanLabel
-                ? [Color(0xFF7C3AED), Color(0xFF9333EA)]
-                : [Color(0xFF5B22FF), Color(0xFFB61DFF)],
+            colors: <Color>[Color(0xFF7C3AED), Color(0xFF9333EA)],
           ),
           boxShadow: [
             BoxShadow(
-              color:
-                  (isScanLabel
-                          ? const Color(0xFF6D28D9)
-                          : const Color(0xFF8C35FF))
-                      .withValues(alpha: 0.45),
-              blurRadius: 16,
+              color: const Color(0xFF6D28D9).withValues(alpha: 0.45),
+              blurRadius: 18,
               offset: const Offset(0, 8),
             ),
           ],
@@ -155,6 +146,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
             disabledForegroundColor: Colors.white.withValues(alpha: 0.95),
+            overlayColor: Colors.white.withValues(alpha: 0.25),
+            splashFactory: InkRipple.splashFactory,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(buttonRadius),
             ),
@@ -163,8 +156,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
             label,
             style: TextStyle(
               fontSize: textSize,
-              fontFamily: isScanLabel ? 'Hiragino Kaku Gothic ProN' : null,
-              fontWeight: isScanLabel ? FontWeight.w900 : FontWeight.w700,
+              fontFamily: 'Hiragino Kaku Gothic ProN',
+              fontWeight: FontWeight.w900,
               letterSpacing: 0.2,
             ),
           ),

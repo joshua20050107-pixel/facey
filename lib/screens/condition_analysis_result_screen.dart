@@ -362,7 +362,7 @@ class _ConditionAnalysisResultScreenState
         m.value.clamp(0, 100),
       ...List<int>.filled((6 - viewData.metrics.length).clamp(0, 6), 0),
     ];
-    const List<String> labels = <String>['肌', '清潔感', '印象', '活力', '目力', 'キレ'];
+    const List<String> labels = <String>['清潔感', '肌', '雰囲気', '活力', '髪', '目元'];
 
     return Scaffold(
       extendBodyBehindAppBar: true,
