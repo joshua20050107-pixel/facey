@@ -1,9 +1,10 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-import '../routes/no_swipe_back_material_page_route.dart';
+import '../routes/scan_flow_material_page_route.dart';
 import 'face_analysis_result_screen.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
@@ -22,30 +23,102 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultFrontImageKey = 'latest_result_front_image';
   static const String _latestResultSideImageKey = 'latest_result_side_image';
+  static const String _pendingFaceAnalysisUntilMsKey =
+      'pending_face_analysis_until_ms';
+  static const String _homeScanTargetPageKey = 'home_scan_target_page';
+  static const String _homeScanTargetAppliedAckKey =
+      'home_scan_target_applied_ack';
   final PageController _pageController = PageController(viewportFraction: 0.93);
   int _currentPageIndex = 0;
   String? _latestResultFrontImagePath;
   String? _latestResultSideImagePath;
+  bool _isPendingFaceAnalysis = false;
+  Timer? _analysisUnlockTimer;
+  StreamSubscription<BoxEvent>? _prefsSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadLatestResult();
+    _prefsSubscription = Hive.box<String>(_prefsBoxName).watch().listen((
+      BoxEvent event,
+    ) {
+      final Object? key = event.key;
+      if (key == null) {
+        _loadLatestResult();
+        return;
+      }
+      if (key == _latestResultFrontImageKey ||
+          key == _latestResultSideImageKey ||
+          key == _pendingFaceAnalysisUntilMsKey) {
+        _loadLatestResult();
+        return;
+      }
+      if (key == _homeScanTargetPageKey) {
+        final Box<String> box = Hive.box<String>(_prefsBoxName);
+        final String raw = box.get(_homeScanTargetPageKey) ?? '';
+        if (raw.isEmpty) return;
+        final List<String> parts = raw.split(':');
+        final int? target = int.tryParse(parts.first);
+        if (target == null) return;
+        final String ackToken = parts.length > 1 ? parts[1] : '';
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(target);
+        }
+        if (mounted) {
+          setState(() {
+            _currentPageIndex = target;
+          });
+        }
+        if (ackToken.isNotEmpty) {
+          unawaited(box.put(_homeScanTargetAppliedAckKey, ackToken));
+        }
+        unawaited(box.delete(_homeScanTargetPageKey));
+      }
+    });
   }
 
   @override
   void dispose() {
+    _prefsSubscription?.cancel();
+    _analysisUnlockTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
   void _loadLatestResult() {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
+    _analysisUnlockTimer?.cancel();
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    final int? pendingUntilMs = int.tryParse(
+      box.get(_pendingFaceAnalysisUntilMsKey) ?? '',
+    );
+    final bool isPending = pendingUntilMs != null && pendingUntilMs > nowMs;
+    if (isPending) {
+      _analysisUnlockTimer = Timer(
+        Duration(milliseconds: pendingUntilMs - nowMs),
+        () async {
+          final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+          await prefs.delete(_pendingFaceAnalysisUntilMsKey);
+          if (!mounted) return;
+          _loadLatestResult();
+        },
+      );
+    } else if (pendingUntilMs != null) {
+      unawaited(box.delete(_pendingFaceAnalysisUntilMsKey));
+    }
     if (!mounted) return;
     setState(() {
       _latestResultFrontImagePath = box.get(_latestResultFrontImageKey);
       _latestResultSideImagePath = box.get(_latestResultSideImageKey);
+      _isPendingFaceAnalysis = isPending;
     });
+  }
+
+  Route<void> _buildStartScanRoute() {
+    return ScanFlowMaterialPageRoute<void>(
+      builder: (_) => ScanNextScreen(selectedGender: widget.selectedGender),
+    );
   }
 
   Route<void> _buildResultScreenRoute({
@@ -55,12 +128,17 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     return PageRouteBuilder<void>(
       transitionDuration: const Duration(milliseconds: 320),
       reverseTransitionDuration: const Duration(milliseconds: 420),
-      pageBuilder: (BuildContext context, _, __) {
-        return FaceAnalysisResultScreen(
-          imagePath: imagePath,
-          sideImagePath: sideImagePath,
-        );
-      },
+      pageBuilder:
+          (
+            BuildContext context,
+            Animation<double> animation,
+            Animation<double> secondaryAnimation,
+          ) {
+            return FaceAnalysisResultScreen(
+              imagePath: imagePath,
+              sideImagePath: sideImagePath,
+            );
+          },
       transitionsBuilder:
           (
             BuildContext context,
@@ -135,13 +213,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         ),
         child: TextButton(
           onPressed: () async {
-            await Navigator.of(context).push(
-              NoSwipeBackMaterialPageRoute<void>(
-                builder: (_) =>
-                    ScanNextScreen(selectedGender: widget.selectedGender),
-              ),
-            );
-            _loadLatestResult();
+            await Navigator.of(context).push(_buildStartScanRoute());
           },
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
@@ -165,13 +237,15 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     );
   }
 
-  Widget _buildOpenLatestResultButton(double scale) {
+  Widget _buildOpenLatestResultButton(
+    double scale, {
+    required bool enabled,
+    required String label,
+  }) {
     final double buttonHeight = (76 * scale).clamp(60.0, 80.0);
     final double buttonRadius = (46 * scale).clamp(36.0, 50.0);
     final double textSize = (21 * scale).clamp(17.0, 23.0);
     final String? path = _latestResultFrontImagePath;
-    final bool enabled =
-        path != null && path.isNotEmpty && File(path).existsSync();
 
     return SizedBox(
       width: double.infinity,
@@ -198,7 +272,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
               ? () {
                   Navigator.of(context).push(
                     _buildResultScreenRoute(
-                      imagePath: path,
+                      imagePath: path!,
                       sideImagePath: _latestResultSideImagePath,
                     ),
                   );
@@ -214,7 +288,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
             ),
           ),
           child: Text(
-            enabled ? '結果を見る' : '結果がありません',
+            label,
             style: TextStyle(
               fontSize: textSize,
               fontFamily: 'Hiragino Kaku Gothic ProN',
@@ -243,6 +317,12 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         : null;
     final bool hasLatestResult =
         thumbnailPath != null && thumbnailPath.isNotEmpty;
+    final bool resultButtonEnabled = hasLatestResult && !_isPendingFaceAnalysis;
+    final String resultButtonLabel = !hasLatestResult
+        ? '結果がありません'
+        : _isPendingFaceAnalysis
+        ? '分析中です...'
+        : '結果を見る';
     final double pageGap = (1.4 * scale).clamp(1.0, 2.0);
     return PageView(
       controller: _pageController,
@@ -253,9 +333,6 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         setState(() {
           _currentPageIndex = index;
         });
-        if (index == 1) {
-          _loadLatestResult();
-        }
       },
       children: [
         Padding(
@@ -468,23 +545,53 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
                           left: imageWidth * 0.055,
                           right: imageWidth * 0.055,
                           bottom: imageWidth * 0.055,
-                          child: _buildOpenLatestResultButton(scale),
+                          child: _buildOpenLatestResultButton(
+                            scale,
+                            enabled: resultButtonEnabled,
+                            label: resultButtonLabel,
+                          ),
                         ),
                         Positioned(
                           left: 0,
                           right: 0,
                           bottom: imageWidth * 0.38,
-                          child: Text(
-                            _todayDateText(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Color(0xEBFFFFFF),
-                              fontSize: 37,
-                              fontWeight: FontWeight.w900,
-                              fontFamily: 'Hiragino Kaku Gothic ProN',
-                              letterSpacing: 0.2,
-                            ),
-                          ),
+                          child: _isPendingFaceAnalysis
+                              ? Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: const [
+                                    Text(
+                                      '分析中です...',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Color(0xEBFFFFFF),
+                                        fontSize: 30,
+                                        fontWeight: FontWeight.w900,
+                                        fontFamily: 'Hiragino Kaku Gothic ProN',
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
+                                    SizedBox(height: 12),
+                                    SizedBox(
+                                      width: 150,
+                                      child: LinearProgressIndicator(
+                                        minHeight: 4.5,
+                                        color: Colors.white,
+                                        backgroundColor: Color(0x4DFFFFFF),
+                                      ),
+                                    ),
+                                  ],
+                                )
+                              : Text(
+                                  _todayDateText(),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: Color(0xEBFFFFFF),
+                                    fontSize: 37,
+                                    fontWeight: FontWeight.w900,
+                                    fontFamily: 'Hiragino Kaku Gothic ProN',
+                                    letterSpacing: 0.2,
+                                  ),
+                                ),
                         ),
                       ],
                     )

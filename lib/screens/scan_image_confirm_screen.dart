@@ -11,6 +11,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../routes/no_swipe_back_material_page_route.dart';
+import '../routes/scan_flow_material_page_route.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'laser_analyze_screen.dart';
 import 'side_profile_upload_screen.dart';
@@ -45,6 +46,22 @@ class ScanImageConfirmScreen extends StatefulWidget {
 
 class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
   static const String _prefsBoxName = 'app_prefs';
+  static const String _latestResultFrontImageKey = 'latest_result_front_image';
+  static const String _latestResultSideImageKey = 'latest_result_side_image';
+  static const String _latestResultOverallScoreKey =
+      'latest_result_overall_score';
+  static const String _latestResultPotentialScoreKey =
+      'latest_result_potential_score';
+  static const String _resultOverallSumKey = 'result_overall_sum';
+  static const String _resultPotentialSumKey = 'result_potential_sum';
+  static const String _resultCountKey = 'result_count';
+  static const String _lastAggregatedResultIdKey = 'last_aggregated_result_id';
+  static const String _resultMonthlyScoresKey = 'result_monthly_scores';
+  static const String _pendingFaceAnalysisUntilMsKey =
+      'pending_face_analysis_until_ms';
+  static const String _homeScanTargetPageKey = 'home_scan_target_page';
+  static const String _homeScanTargetAppliedAckKey =
+      'home_scan_target_applied_ack';
   static const String _resultFrontImageHistoryKey =
       'result_front_image_history';
   static const String _resultFrontImageHistoryMetaKey =
@@ -350,7 +367,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
               );
               if (!mounted) return;
               Navigator.of(context).push(
-                NoSwipeBackMaterialPageRoute<void>(
+                ScanFlowMaterialPageRoute<void>(
                   builder: (_) => SideProfileUploadScreen(
                     selectedGender: widget.selectedGender,
                     frontImagePath: persistentFrontImagePath,
@@ -369,6 +386,47 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
             final String? sideImagePath = hasSeparateSideImage
                 ? await _persistScanImage(_currentImagePath, prefix: 'side')
                 : null;
+            if (!widget.isConditionFlow) {
+              final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+              await prefs.put(_latestResultFrontImageKey, laserImagePath);
+              if (sideImagePath != null && sideImagePath.isNotEmpty) {
+                await prefs.put(_latestResultSideImageKey, sideImagePath);
+              } else {
+                await prefs.delete(_latestResultSideImageKey);
+              }
+              await _persistGrowthSummaryForFaceFlow(
+                frontImagePath: laserImagePath,
+                sideImagePath: sideImagePath,
+              );
+              final int pendingUntilMs =
+                  DateTime.now().millisecondsSinceEpoch + 8000;
+              await prefs.put(
+                _pendingFaceAnalysisUntilMsKey,
+                pendingUntilMs.toString(),
+              );
+              final String homePageAckToken = DateTime.now()
+                  .microsecondsSinceEpoch
+                  .toString();
+              await prefs.delete(_homeScanTargetAppliedAckKey);
+              await prefs.put(_homeScanTargetPageKey, '1:$homePageAckToken');
+              await WidgetsBinding.instance.endOfFrame;
+              await _waitHomeTargetPageApplied(prefs, homePageAckToken);
+              if (!mounted) return;
+              final NavigatorState navigator = Navigator.of(context);
+              final Route<dynamic>? currentRoute = ModalRoute.of(context);
+              final int removeCount = hasSeparateSideImage ? 3 : 1;
+              if (currentRoute != null) {
+                for (int i = 0; i < removeCount; i++) {
+                  if (!navigator.canPop()) break;
+                  navigator.removeRouteBelow(currentRoute);
+                }
+              }
+              if (navigator.canPop()) {
+                ScanFlowMaterialPageRoute.armVerticalReverseFor(currentRoute);
+                navigator.pop();
+              }
+              return;
+            }
             if (!mounted) return;
             Navigator.of(context).push(
               NoSwipeBackMaterialPageRoute<void>(
@@ -461,6 +519,123 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
     await box.put(_resultFrontImageHistoryMetaKey, jsonEncode(normalized));
 
     return persistentFrontImagePath;
+  }
+
+  Future<void> _persistGrowthSummaryForFaceFlow({
+    required String frontImagePath,
+    String? sideImagePath,
+  }) async {
+    const int overallScore = 91;
+    const int potentialScore = 92;
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    await box.put(_latestResultOverallScoreKey, overallScore.toString());
+    await box.put(_latestResultPotentialScoreKey, potentialScore.toString());
+
+    final String resultId = '$frontImagePath|$overallScore|$potentialScore';
+    final String? lastAggregatedId = box.get(_lastAggregatedResultIdKey);
+    if (lastAggregatedId != resultId) {
+      final int currentOverallSum =
+          int.tryParse(box.get(_resultOverallSumKey) ?? '') ?? 0;
+      final int currentPotentialSum =
+          int.tryParse(box.get(_resultPotentialSumKey) ?? '') ?? 0;
+      final int currentCount =
+          int.tryParse(box.get(_resultCountKey) ?? '') ?? 0;
+
+      await box.put(
+        _resultOverallSumKey,
+        (currentOverallSum + overallScore).toString(),
+      );
+      await box.put(
+        _resultPotentialSumKey,
+        (currentPotentialSum + potentialScore).toString(),
+      );
+      await box.put(_resultCountKey, (currentCount + 1).toString());
+      await box.put(_lastAggregatedResultIdKey, resultId);
+
+      final DateTime now = DateTime.now();
+      final String monthKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}';
+      final String monthlyRaw = box.get(_resultMonthlyScoresKey) ?? '{}';
+      Map<String, dynamic> monthlyMap;
+      try {
+        monthlyMap = Map<String, dynamic>.from(
+          jsonDecode(monthlyRaw) as Map<String, dynamic>,
+        );
+      } catch (_) {
+        monthlyMap = <String, dynamic>{};
+      }
+      final Map<String, dynamic> monthData = Map<String, dynamic>.from(
+        monthlyMap[monthKey] as Map? ?? <String, dynamic>{},
+      );
+      final int monthOverallSum =
+          (monthData['overallSum'] is num ? monthData['overallSum'] as num : 0)
+              .toInt();
+      final int monthPotentialSum =
+          (monthData['potentialSum'] is num
+                  ? monthData['potentialSum'] as num
+                  : 0)
+              .toInt();
+      final int monthCount =
+          (monthData['count'] is num ? monthData['count'] as num : 0).toInt();
+      monthlyMap[monthKey] = <String, dynamic>{
+        'overallSum': monthOverallSum + overallScore,
+        'potentialSum': monthPotentialSum + potentialScore,
+        'count': monthCount + 1,
+      };
+      await box.put(_resultMonthlyScoresKey, jsonEncode(monthlyMap));
+    }
+
+    final String historyRaw = box.get(_resultFrontImageHistoryKey) ?? '';
+    final List<String> history = historyRaw
+        .split('\n')
+        .where((String p) => p.isNotEmpty)
+        .toList();
+    history.remove(frontImagePath);
+    history.insert(0, frontImagePath);
+    if (history.length > 120) {
+      history.removeRange(120, history.length);
+    }
+    await box.put(_resultFrontImageHistoryKey, history.join('\n'));
+
+    final String metaRaw = box.get(_resultFrontImageHistoryMetaKey) ?? '[]';
+    List<dynamic> metaList;
+    try {
+      metaList = jsonDecode(metaRaw) as List<dynamic>;
+    } catch (_) {
+      metaList = <dynamic>[];
+    }
+    final List<Map<String, dynamic>> normalized = metaList
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    normalized.removeWhere((Map<String, dynamic> item) {
+      return item['path'] == frontImagePath;
+    });
+    final Map<String, dynamic> metaItem = <String, dynamic>{
+      'path': frontImagePath,
+      'addedAt': DateTime.now().toIso8601String(),
+    };
+    if (sideImagePath != null && sideImagePath.isNotEmpty) {
+      metaItem['sidePath'] = sideImagePath;
+    }
+    normalized.insert(0, metaItem);
+    if (normalized.length > 120) {
+      normalized.removeRange(120, normalized.length);
+    }
+    await box.put(_resultFrontImageHistoryMetaKey, jsonEncode(normalized));
+  }
+
+  Future<void> _waitHomeTargetPageApplied(
+    Box<String> prefs,
+    String ackToken,
+  ) async {
+    const Duration timeout = Duration(milliseconds: 280);
+    const Duration poll = Duration(milliseconds: 12);
+    final DateTime deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final String? ack = prefs.get(_homeScanTargetAppliedAckKey);
+      if (ack == ackToken) return;
+      await Future<void>.delayed(poll);
+    }
   }
 
   Future<void> _backToScanStart() async {

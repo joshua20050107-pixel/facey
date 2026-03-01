@@ -7,7 +7,7 @@ import 'package:camera/camera.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
-import '../routes/no_swipe_back_material_page_route.dart';
+import '../routes/scan_flow_material_page_route.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'scan_image_confirm_screen.dart';
 
@@ -79,7 +79,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
   }
 
   Future<void> _openConfirmScreen(String imagePath) async {
-    final Route<String?> route = NoSwipeBackMaterialPageRoute<String?>(
+    final Route<String?> route = ScanFlowMaterialPageRoute<String?>(
       builder: (_) => ScanImageConfirmScreen(
         initialImagePath: imagePath,
         selectedGender: widget.selectedGender,

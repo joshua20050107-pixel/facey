@@ -351,7 +351,7 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                                               ),
                                               const SizedBox(height: 24),
                                               Text(
-                                                '多くの実データから導かれた評価ロジックです。',
+                                                'ユーザーからのフィードバックにより機能は\n日々改善されています。',
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   color: Colors.white

@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
-import '../routes/no_swipe_back_material_page_route.dart';
+import '../routes/scan_flow_material_page_route.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'scan_image_confirm_screen.dart';
 
@@ -71,7 +71,7 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
 
   Future<void> _openConfirmScreen(String imagePath) async {
     await Navigator.of(context).push<void>(
-      NoSwipeBackMaterialPageRoute<void>(
+      ScanFlowMaterialPageRoute<void>(
         builder: (_) => ScanImageConfirmScreen(
           initialImagePath: imagePath,
           selectedGender: widget.selectedGender,
