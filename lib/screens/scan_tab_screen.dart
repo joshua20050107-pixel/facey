@@ -231,7 +231,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
     final double imageWidth = (428 * scale).clamp(268.0, 446.0);
 
     final String imagePath = widget.selectedGender == YomuGender.female
-        ? 'assets/images/plaos.png'
+        ? 'assets/images/kklaso.png'
         : 'assets/images/pamiko.png';
     final double firstPageImageHeight = (imageWidth / (1045 / 1629)) * 0.94;
     final String? latestFrontPath = _latestResultFrontImagePath;

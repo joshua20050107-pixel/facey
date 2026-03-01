@@ -140,19 +140,12 @@ class _OnboardingFinishRoute<T> extends PageRouteBuilder<T> {
               Animation<double> secondaryAnimation,
               Widget child,
             ) {
-              final bool isReversing =
-                  animation.status == AnimationStatus.reverse;
-              final Tween<Offset> tween = isReversing
-                  ? Tween<Offset>(begin: Offset.zero, end: const Offset(0, 1))
-                  : Tween<Offset>(begin: const Offset(1, 0), end: Offset.zero);
-              final Animation<Offset> offsetAnimation = tween.animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                  reverseCurve: Curves.easeInCubic,
-                ),
+              final Animation<double> opacity = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
               );
-              return SlideTransition(position: offsetAnimation, child: child);
+              return FadeTransition(opacity: opacity, child: child);
             },
       );
 }
@@ -446,18 +439,35 @@ class _OnboardingNextScreenState extends State<OnboardingNextScreen>
                     ),
                   ),
                 ),
+                _buildStaggeredReveal(
+                  order: 1,
+                  child: const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'アプリをあなたに最適化するための基本設定です',
+                        style: TextStyle(
+                          color: Color(0xB3FFFFFF),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
                         _buildStaggeredReveal(
-                          order: 1,
+                          order: 2,
                           child: _buildGenderButton('男性', context),
                         ),
                         const SizedBox(height: 38),
                         _buildStaggeredReveal(
-                          order: 2,
+                          order: 3,
                           child: _buildGenderButton('女性', context),
                         ),
                       ],
@@ -465,7 +475,7 @@ class _OnboardingNextScreenState extends State<OnboardingNextScreen>
                   ),
                 ),
                 _buildStaggeredReveal(
-                  order: 3,
+                  order: 4,
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(0, 0, 0, 24),
                     child: SizedBox(

@@ -381,7 +381,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                 child: _buildCard(
                                   imagePath:
                                       widget.selectedGender == YomuGender.female
-                                      ? 'assets/images/plaos.png'
+                                      ? 'assets/images/kklaso.png'
                                       : 'assets/images/pamiko.png',
                                   title: '現在のあなたの\nコンディションを分析',
                                   buttonLabel: 'スキャンする',
