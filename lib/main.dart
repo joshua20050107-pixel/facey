@@ -15,7 +15,7 @@ import 'services/notification_permission_service.dart';
 import 'screens/onboarding_start_screen.dart';
 import 'widgets/yomu_gender_two_choice.dart';
 
-const bool _skipOnboarding = false;
+const bool _skipOnboarding = true;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

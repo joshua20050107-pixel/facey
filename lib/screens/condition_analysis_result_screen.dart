@@ -37,6 +37,7 @@ class _ConditionAnalysisResultScreenState
     GlobalKey(),
     GlobalKey(),
     GlobalKey(),
+    GlobalKey(),
   ];
   late final AnimationController _flipController;
   late String _cardBackImagePath;
@@ -101,7 +102,7 @@ class _ConditionAnalysisResultScreenState
 
   Future<Uint8List?> _captureCurrentCardAsPng() async {
     final GlobalKey captureKey =
-        _cardCaptureKeys[_currentPageIndex.clamp(0, 3)];
+        _cardCaptureKeys[_currentPageIndex.clamp(0, 4)];
     for (int i = 0; i < 8; i++) {
       await SchedulerBinding.instance.endOfFrame;
       final RenderObject? renderObject = captureKey.currentContext
@@ -353,6 +354,45 @@ class _ConditionAnalysisResultScreenState
     );
   }
 
+  Widget _buildConditionMeterPage({
+    required int score,
+    required List<String> labels,
+    required List<int> values,
+  }) {
+    return SizedBox(
+      height: _resultCardHeight,
+      child: _buildCardWithFaceyOverlay(
+        _buildResultCardFrame(
+          child: Column(
+            children: [
+              _OverallHeaderSection(
+                imagePath: widget.imagePath,
+                score: score.clamp(0, 100),
+                title: 'コンディション',
+              ),
+              const SizedBox(height: 22),
+              _MetricPairCard(
+                left: FaceMetricScore(label: labels[0], value: values[0]),
+                right: FaceMetricScore(label: labels[1], value: values[1]),
+              ),
+              const SizedBox(height: 10),
+              _MetricPairCard(
+                left: FaceMetricScore(label: labels[2], value: values[2]),
+                right: FaceMetricScore(label: labels[3], value: values[3]),
+              ),
+              const SizedBox(height: 10),
+              _MetricPairCard(
+                left: FaceMetricScore(label: labels[4], value: values[4]),
+                right: FaceMetricScore(label: labels[5], value: values[5]),
+              ),
+              const SizedBox(height: 4),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final FaceAnalysisResult viewData =
@@ -363,6 +403,14 @@ class _ConditionAnalysisResultScreenState
       ...List<int>.filled((6 - viewData.metrics.length).clamp(0, 6), 0),
     ];
     const List<String> labels = <String>['清潔感', '肌', '雰囲気', '活力', '髪', '目元'];
+    const List<String> conditionMeterLabels = <String>[
+      '異性吸引力',
+      '自信オーラ',
+      '第一印象',
+      '潤い',
+      'シャープさ',
+      'ハリ',
+    ];
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -459,6 +507,34 @@ class _ConditionAnalysisResultScreenState
                                     ),
                                     child: RepaintBoundary(
                                       key: _cardCaptureKeys[1],
+                                      child: _buildConditionMeterPage(
+                                        score: viewData.overall,
+                                        labels: conditionMeterLabels,
+                                        values: values,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              _buildBottomActions(),
+                            ],
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: RepaintBoundary(
+                                      key: _cardCaptureKeys[2],
                                       child: SizedBox(
                                         height: _resultCardHeight,
                                         child: _buildCardWithFaceyOverlay(
@@ -546,7 +622,7 @@ class _ConditionAnalysisResultScreenState
                                       maxWidth: 392,
                                     ),
                                     child: RepaintBoundary(
-                                      key: _cardCaptureKeys[2],
+                                      key: _cardCaptureKeys[3],
                                       child: SizedBox(
                                         height: _resultCardHeight,
                                         child: _buildCardWithFaceyOverlay(
@@ -634,7 +710,7 @@ class _ConditionAnalysisResultScreenState
                                       maxWidth: 392,
                                     ),
                                     child: RepaintBoundary(
-                                      key: _cardCaptureKeys[3],
+                                      key: _cardCaptureKeys[4],
                                       child: SizedBox(
                                         height: _resultCardHeight,
                                         child: _buildCardWithFaceyOverlay(
@@ -753,7 +829,7 @@ class _ConditionAnalysisResultScreenState
                     offset: const Offset(0, -44),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
-                      children: List<Widget>.generate(4, (int index) {
+                      children: List<Widget>.generate(5, (int index) {
                         final bool active = _currentPageIndex == index;
                         return AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
