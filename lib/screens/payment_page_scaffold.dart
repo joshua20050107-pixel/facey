@@ -374,22 +374,27 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                           ),
                         ),
                       ),
-                      Positioned(
+                      const Positioned(
                         left: 0,
                         right: 0,
-                        bottom: 34,
-                        height: 92,
+                        bottom: 0,
+                        height: 170,
                         child: IgnorePointer(
-                          child: Container(color: Colors.black),
-                        ),
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: -12,
-                        height: 64,
-                        child: IgnorePointer(
-                          child: Container(color: Colors.black),
+                          child: DecoratedBox(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: <Color>[
+                                  Color(0x00000610),
+                                  Color(0x26000610),
+                                  Color(0x5A000610),
+                                  Color(0x8C000610),
+                                ],
+                                stops: <double>[0.0, 0.36, 0.72, 1.0],
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                       _buildStaggeredReveal(

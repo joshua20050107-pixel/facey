@@ -72,6 +72,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late final List<Timer?> _bottomIconClampTimers;
   late final AnimationController _bottomTargetSlideController;
   late final AnimationController _bottomCapsuleScaleController;
+  late final AnimationController _homeEnterController;
+  late final Animation<double> _homeEnterOpacity;
+  late final Animation<double> _homeEnterOffsetY;
   Timer? _bottomCapsuleClampTimer;
 
   @override
@@ -90,8 +93,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
       value: 1.0,
     );
+    _homeEnterController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    _homeEnterOpacity = CurvedAnimation(
+      parent: _homeEnterController,
+      curve: const Interval(0.1, 1.0, curve: Curves.easeOutCubic),
+    );
+    _homeEnterOffsetY = Tween<double>(begin: -22, end: 0).animate(
+      CurvedAnimation(parent: _homeEnterController, curve: Curves.easeOutCubic),
+    );
     _loadSavedGender();
     _loadSavedNotificationEnabled();
+    _homeEnterController.forward();
   }
 
   @override
@@ -105,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
     _bottomTargetSlideController.dispose();
     _bottomCapsuleScaleController.dispose();
+    _homeEnterController.dispose();
     super.dispose();
   }
 
@@ -308,89 +324,99 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Scaffold(
       extendBody: true,
       resizeToAvoidBottomInset: true,
-      bottomNavigationBar: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(34),
-              border: Border.all(
-                color: const Color(0xFF95A0B3).withValues(alpha: 0.2),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF000000).withValues(alpha: 0.48),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+      bottomNavigationBar: AnimatedBuilder(
+        animation: _homeEnterController,
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(34),
+                border: Border.all(
+                  color: const Color(0xFF95A0B3).withValues(alpha: 0.2),
                 ),
-              ],
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFF171C25).withValues(alpha: 0.9),
-                  const Color(0xFF0C1018).withValues(alpha: 0.95),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF000000).withValues(alpha: 0.48),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
                 ],
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    const Color(0xFF171C25).withValues(alpha: 0.9),
+                    const Color(0xFF0C1018).withValues(alpha: 0.95),
+                  ],
+                ),
               ),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: LayoutBuilder(
-                builder: (BuildContext context, BoxConstraints constraints) {
-                  final int itemCount = _bottomLabels.length;
-                  final double itemWidth = constraints.maxWidth / itemCount;
-                  return Stack(
-                    children: [
-                      AnimatedBuilder(
-                        animation: Listenable.merge(<Listenable>[
-                          _bottomTargetSlideController,
-                          _bottomCapsuleScaleController,
-                        ]),
-                        builder: (BuildContext context, Widget? child) {
-                          final double target = _bottomTargetSlideController
-                              .value
-                              .clamp(0.0, (itemCount - 1).toDouble());
-                          return Positioned(
-                            left: target * itemWidth,
-                            top: 0,
-                            bottom: 0,
-                            width: itemWidth,
-                            child: Transform.scale(
-                              scale: _bottomCapsuleScaleController.value.clamp(
-                                0.9,
-                                1.08,
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 2,
-                                ),
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(26),
-                                    color: const Color(
-                                      0xFF4B5566,
-                                    ).withValues(alpha: 0.55),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints constraints) {
+                    final int itemCount = _bottomLabels.length;
+                    final double itemWidth = constraints.maxWidth / itemCount;
+                    return Stack(
+                      children: [
+                        AnimatedBuilder(
+                          animation: Listenable.merge(<Listenable>[
+                            _bottomTargetSlideController,
+                            _bottomCapsuleScaleController,
+                          ]),
+                          builder: (BuildContext context, Widget? child) {
+                            final double target = _bottomTargetSlideController
+                                .value
+                                .clamp(0.0, (itemCount - 1).toDouble());
+                            return Positioned(
+                              left: target * itemWidth,
+                              top: 0,
+                              bottom: 0,
+                              width: itemWidth,
+                              child: Transform.scale(
+                                scale: _bottomCapsuleScaleController.value
+                                    .clamp(0.9, 1.08),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 2,
+                                  ),
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(26),
+                                      color: const Color(
+                                        0xFF4B5566,
+                                      ).withValues(alpha: 0.55),
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                      Row(
-                        children: List<Widget>.generate(
-                          _bottomLabels.length,
-                          _buildBottomItem,
+                            );
+                          },
                         ),
-                      ),
-                    ],
-                  );
-                },
+                        Row(
+                          children: List<Widget>.generate(
+                            _bottomLabels.length,
+                            _buildBottomItem,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
           ),
         ),
+        builder: (BuildContext context, Widget? child) {
+          return Opacity(
+            opacity: _homeEnterOpacity.value,
+            child: Transform.translate(
+              offset: Offset(0, _homeEnterOffsetY.value),
+              child: child,
+            ),
+          );
+        },
       ),
       body: Stack(
         children: [
@@ -454,29 +480,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
             ),
           ),
-          IndexedStack(
-            index: _selectedBottomIndex,
-            children: [
-              SafeArea(child: ScanTabScreen(selectedGender: _selectedGender)),
-              SafeArea(
-                child: ActivityTabScreen(selectedGender: _selectedGender),
-              ),
-              const SafeArea(child: GrowthLogTabScreen()),
-              const SafeArea(child: ChatTabScreen()),
-              SafeArea(
-                child: CoachSettingsScreen(
-                  notificationEnabled: _settingsNotificationEnabled,
-                  onNotificationChanged: _handleNotificationChanged,
-                  selectedGender: _selectedGender,
-                  onGenderChanged: (YomuGender value) {
-                    setState(() {
-                      _selectedGender = value;
-                    });
-                    _saveGender(value);
-                  },
+          AnimatedBuilder(
+            animation: _homeEnterController,
+            child: IndexedStack(
+              index: _selectedBottomIndex,
+              children: [
+                SafeArea(child: ScanTabScreen(selectedGender: _selectedGender)),
+                SafeArea(
+                  child: ActivityTabScreen(selectedGender: _selectedGender),
                 ),
-              ),
-            ],
+                const SafeArea(child: GrowthLogTabScreen()),
+                const SafeArea(child: ChatTabScreen()),
+                SafeArea(
+                  child: CoachSettingsScreen(
+                    notificationEnabled: _settingsNotificationEnabled,
+                    onNotificationChanged: _handleNotificationChanged,
+                    selectedGender: _selectedGender,
+                    onGenderChanged: (YomuGender value) {
+                      setState(() {
+                        _selectedGender = value;
+                      });
+                      _saveGender(value);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            builder: (BuildContext context, Widget? child) {
+              return Opacity(
+                opacity: _homeEnterOpacity.value,
+                child: Transform.translate(
+                  offset: Offset(0, _homeEnterOffsetY.value),
+                  child: child,
+                ),
+              );
+            },
           ),
         ],
       ),

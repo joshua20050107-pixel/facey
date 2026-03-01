@@ -17,11 +17,19 @@ class ScanNextScreen extends StatefulWidget {
     required this.selectedGender,
     this.goToSideProfileStepOnContinue = true,
     this.isConditionFlow = false,
+    this.appBarTitle = '正面からの写真をアップロード',
+    this.confirmAppBarTitle,
+    this.cameraOnlyMode = false,
+    this.onSavedGrowthImage,
   });
 
   final YomuGender selectedGender;
   final bool goToSideProfileStepOnContinue;
   final bool isConditionFlow;
+  final String appBarTitle;
+  final String? confirmAppBarTitle;
+  final bool cameraOnlyMode;
+  final ValueChanged<String>? onSavedGrowthImage;
 
   @override
   State<ScanNextScreen> createState() => _ScanNextScreenState();
@@ -43,6 +51,55 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
     super.dispose();
   }
 
+  Future<void> _disposeCameraSession() async {
+    final CameraController? controller = _cameraController;
+    _cameraController = null;
+    if (mounted) {
+      setState(() {
+        _cameraModeEnabled = false;
+        _initializingCamera = false;
+        _takingPicture = false;
+        _flashEnabled = false;
+      });
+    } else {
+      _cameraModeEnabled = false;
+      _initializingCamera = false;
+      _takingPicture = false;
+      _flashEnabled = false;
+    }
+    await controller?.dispose();
+  }
+
+  Future<void> _resetToStartState() async {
+    await _disposeCameraSession();
+    if (!mounted) return;
+    setState(() {
+      _cameraErrorText = null;
+    });
+  }
+
+  Future<void> _openConfirmScreen(String imagePath) async {
+    final Route<String?> route = NoSwipeBackMaterialPageRoute<String?>(
+      builder: (_) => ScanImageConfirmScreen(
+        initialImagePath: imagePath,
+        selectedGender: widget.selectedGender,
+        goToSideProfileStepOnContinue: widget.goToSideProfileStepOnContinue,
+        isConditionFlow: widget.isConditionFlow,
+        appBarTitle: widget.confirmAppBarTitle ?? '正面からの画像をアップロード',
+        cameraRetakeMode: widget.cameraOnlyMode,
+        saveToGrowthRecordMode: widget.cameraOnlyMode,
+        onSavedGrowthImage: widget.onSavedGrowthImage,
+      ),
+    );
+    final String? savedPath = await Navigator.of(context).push<String?>(route);
+    if (!mounted) return;
+    if (widget.cameraOnlyMode && savedPath != null && savedPath.isNotEmpty) {
+      Navigator.of(context).pop<String>(savedPath);
+      return;
+    }
+    await _resetToStartState();
+  }
+
   Future<void> _pickImage(ImageSource source) async {
     final XFile? file = await _picker.pickImage(
       source: source,
@@ -50,16 +107,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
       imageQuality: 92,
     );
     if (file == null || !mounted) return;
-    await Navigator.of(context).push<void>(
-      NoSwipeBackMaterialPageRoute<void>(
-        builder: (_) => ScanImageConfirmScreen(
-          initialImagePath: file.path,
-          selectedGender: widget.selectedGender,
-          goToSideProfileStepOnContinue: widget.goToSideProfileStepOnContinue,
-          isConditionFlow: widget.isConditionFlow,
-        ),
-      ),
-    );
+    await _openConfirmScreen(file.path);
   }
 
   Future<void> _startCameraMode() async {
@@ -117,16 +165,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
       final XFile file = await controller.takePicture();
       final String normalizedPath = await _normalizeFrontCapture(file.path);
       if (!mounted) return;
-      await Navigator.of(context).push<void>(
-        NoSwipeBackMaterialPageRoute<void>(
-          builder: (_) => ScanImageConfirmScreen(
-            initialImagePath: normalizedPath,
-            selectedGender: widget.selectedGender,
-            goToSideProfileStepOnContinue: widget.goToSideProfileStepOnContinue,
-            isConditionFlow: widget.isConditionFlow,
-          ),
-        ),
-      );
+      await _openConfirmScreen(normalizedPath);
     } finally {
       _takingPicture = false;
       if (mounted) {
@@ -232,7 +271,13 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
           ],
         ),
         child: TextButton(
-          onPressed: _showPickerOptions,
+          onPressed: () async {
+            if (widget.cameraOnlyMode) {
+              await _startCameraMode();
+              return;
+            }
+            await _showPickerOptions();
+          },
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
             overlayColor: Colors.white.withValues(alpha: 0.2),
@@ -240,8 +285,8 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
               borderRadius: BorderRadius.circular(30),
             ),
           ),
-          child: const Text(
-            'スキャン開始',
+          child: Text(
+            widget.cameraOnlyMode ? '写真を撮影' : 'スキャン開始',
             style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
           ),
         ),
@@ -355,10 +400,10 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
       appBar: AppBar(
         title: SizedBox(
           width: MediaQuery.of(context).size.width * 0.7,
-          child: const FittedBox(
+          child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(
-              '正面からの写真をアップロード',
+              widget.appBarTitle,
               maxLines: 1,
               style: TextStyle(
                 color: Colors.white,

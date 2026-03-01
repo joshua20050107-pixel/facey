@@ -42,17 +42,38 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage(ImageSource source) async {
-    final XFile? file = await _picker.pickImage(
-      source: source,
-      preferredCameraDevice: CameraDevice.front,
-      imageQuality: 92,
-    );
-    if (file == null || !mounted) return;
+  Future<void> _disposeCameraSession() async {
+    final CameraController? controller = _cameraController;
+    _cameraController = null;
+    if (mounted) {
+      setState(() {
+        _cameraModeEnabled = false;
+        _initializingCamera = false;
+        _takingPicture = false;
+        _flashEnabled = false;
+      });
+    } else {
+      _cameraModeEnabled = false;
+      _initializingCamera = false;
+      _takingPicture = false;
+      _flashEnabled = false;
+    }
+    await controller?.dispose();
+  }
+
+  Future<void> _resetToStartState() async {
+    await _disposeCameraSession();
+    if (!mounted) return;
+    setState(() {
+      _cameraErrorText = null;
+    });
+  }
+
+  Future<void> _openConfirmScreen(String imagePath) async {
     await Navigator.of(context).push<void>(
       NoSwipeBackMaterialPageRoute<void>(
         builder: (_) => ScanImageConfirmScreen(
-          initialImagePath: file.path,
+          initialImagePath: imagePath,
           selectedGender: widget.selectedGender,
           goToSideProfileStepOnContinue: false,
           appBarTitle: '横顔をアップロード',
@@ -60,6 +81,17 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
         ),
       ),
     );
+    await _resetToStartState();
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final XFile? file = await _picker.pickImage(
+      source: source,
+      preferredCameraDevice: CameraDevice.front,
+      imageQuality: 92,
+    );
+    if (file == null || !mounted) return;
+    await _openConfirmScreen(file.path);
   }
 
   Future<void> _startCameraMode() async {
@@ -117,17 +149,7 @@ class _SideProfileUploadScreenState extends State<SideProfileUploadScreen> {
       final XFile file = await controller.takePicture();
       final String normalizedPath = await _normalizeSideCapture(file.path);
       if (!mounted) return;
-      await Navigator.of(context).push<void>(
-        NoSwipeBackMaterialPageRoute<void>(
-          builder: (_) => ScanImageConfirmScreen(
-            initialImagePath: normalizedPath,
-            selectedGender: widget.selectedGender,
-            goToSideProfileStepOnContinue: false,
-            appBarTitle: '横顔をアップロード',
-            laserThumbnailPath: widget.frontImagePath,
-          ),
-        ),
-      );
+      await _openConfirmScreen(normalizedPath);
     } finally {
       _takingPicture = false;
       if (mounted) {

@@ -7,6 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
+import '../widgets/yomu_gender_two_choice.dart';
+import 'scan_next_screen.dart';
+
 class GrowthLogTabScreen extends StatefulWidget {
   const GrowthLogTabScreen({super.key});
 
@@ -38,11 +41,41 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   final Object _habitTapRegionGroup = Object();
   final RegExp _dateKeyPattern = RegExp(r'^\d{4}-\d{2}-\d{2}$');
   Timer? _habitLongPressTimer;
+  StreamSubscription<BoxEvent>? _prefsSubscription;
+  static const Set<String> _observedPrefsKeys = <String>{
+    _latestResultFrontImageKey,
+    _resultOverallSumKey,
+    _resultPotentialSumKey,
+    _resultCountKey,
+    _resultFrontImageHistoryKey,
+    _resultFrontImageHistoryMetaKey,
+    _resultMonthlyScoresKey,
+    _growthHabitsKey,
+  };
 
   @override
   void initState() {
     super.initState();
     _loadLatestScores();
+    _prefsSubscription = Hive.box<String>(_prefsBoxName).watch().listen((
+      BoxEvent event,
+    ) {
+      final Object? key = event.key;
+      if (key == null) {
+        unawaited(_loadLatestScores());
+        return;
+      }
+      if (key is String && _observedPrefsKeys.contains(key)) {
+        unawaited(_loadLatestScores());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _prefsSubscription?.cancel();
+    _habitLongPressTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadLatestScores() async {
@@ -70,6 +103,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
           .map((Map<String, dynamic> item) {
             final String path = (item['path'] ?? '').toString();
             final String sidePath = (item['sidePath'] ?? '').toString();
+            final bool imageOnly = item['imageOnly'] == true;
             final String addedAtRaw = (item['addedAt'] ?? '').toString();
             final DateTime? addedAt = DateTime.tryParse(addedAtRaw);
             if (path.isEmpty || !File(path).existsSync()) return null;
@@ -79,6 +113,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                   ? sidePath
                   : null,
               addedAt: addedAt ?? DateTime.now(),
+              imageOnly: imageOnly,
             );
           })
           .whereType<_FrontImageEntry>()
@@ -92,8 +127,11 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
           .split('\n')
           .where((String p) => p.isNotEmpty && File(p).existsSync())
           .map(
-            (String p) =>
-                _FrontImageEntry(path: p, addedAt: File(p).lastModifiedSync()),
+            (String p) => _FrontImageEntry(
+              path: p,
+              addedAt: File(p).lastModifiedSync(),
+              imageOnly: false,
+            ),
           )
           .toList();
     }
@@ -574,12 +612,6 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     _habitLongPressTimer = null;
   }
 
-  @override
-  void dispose() {
-    _cancelHabitLongPressTimer();
-    super.dispose();
-  }
-
   void _onHabitReorder(int oldIndex, int newIndex) {
     if (oldIndex == newIndex) return;
     setState(() {
@@ -609,6 +641,12 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   @override
   Widget build(BuildContext context) {
     final bool hasScores = _overallScore != null && _potentialScore != null;
+    final List<_FrontImageEntry> homeResultEntries = _frontImageHistory
+        .where((e) => !e.imageOnly && File(e.path).existsSync())
+        .toList();
+    final String? latestHomeResultImagePath = homeResultEntries.isNotEmpty
+        ? homeResultEntries.first.path
+        : null;
     final bool canOpenProgress = hasScores && _frontImageHistory.isNotEmpty;
     final int overallScore = _overallScore ?? 0;
     final int potentialScore = _potentialScore ?? 0;
@@ -671,7 +709,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                         hasScores: hasScores,
                         overallScore: overallScore,
                         potentialScore: potentialScore,
-                        imagePath: _latestFrontImagePath,
+                        imagePath: latestHomeResultImagePath,
                         onChevronTap: canOpenProgress
                             ? () {
                                 Navigator.of(context).push<void>(
@@ -683,7 +721,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                                       hasScores: hasScores,
                                       overallScore: overallScore,
                                       potentialScore: potentialScore,
-                                      imagePath: _latestFrontImagePath,
+                                      imagePath: latestHomeResultImagePath,
                                       imagePaths: _frontImageHistory,
                                       monthlyScores: _monthlyScores,
                                     ),
@@ -1483,16 +1521,25 @@ class _HabitInfoCard extends StatelessWidget {
 }
 
 class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
+  static const String _prefsBoxName = 'app_prefs';
+  static const String _genderKey = 'selected_gender';
+  static const String _resultFrontImageHistoryKey =
+      'result_front_image_history';
+  static const String _resultFrontImageHistoryMetaKey =
+      'result_front_image_history_meta';
   late final List<DateTime> _months;
   late int _selectedMonthIndex;
+  late final List<_FrontImageEntry> _imagePaths;
+  String? _deletingImagePath;
 
   @override
   void initState() {
     super.initState();
+    _imagePaths = <_FrontImageEntry>[...widget.imagePaths];
     final DateTime now = DateTime.now();
     final List<DateTime> monthCandidates = <DateTime>[
       DateTime(now.year, now.month),
-      ...widget.imagePaths.map(
+      ..._imagePaths.map(
         (_FrontImageEntry e) => DateTime(e.addedAt.year, e.addedAt.month),
       ),
       ...widget.monthlyScores.keys.map(_parseMonthKey).whereType<DateTime>(),
@@ -1522,11 +1569,12 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
 
   List<_FrontImageEntry> _entriesForSelectedMonth() {
     final DateTime target = _months[_selectedMonthIndex];
-    final List<_FrontImageEntry> entries = widget.imagePaths.where((
+    final List<_FrontImageEntry> entries = _imagePaths.where((
       _FrontImageEntry entry,
     ) {
       return entry.addedAt.year == target.year &&
-          entry.addedAt.month == target.month;
+          entry.addedAt.month == target.month &&
+          File(entry.path).existsSync();
     }).toList();
     entries.sort((a, b) => b.addedAt.compareTo(a.addedAt));
     return entries;
@@ -1546,6 +1594,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
   void _selectMonth(int nextIndex) {
     setState(() {
       _selectedMonthIndex = nextIndex;
+      _deletingImagePath = null;
     });
   }
 
@@ -1565,23 +1614,6 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
     return a.month.compareTo(b.month);
   }
 
-  FaceAnalysisResult _resultForScore(_MonthlyScore score) {
-    return FaceAnalysisResult(
-      overall: score.overallAvg.clamp(0, 100),
-      metrics: <FaceMetricScore>[
-        FaceMetricScore(
-          label: 'ポテンシャル',
-          value: score.potentialAvg.clamp(0, 100),
-        ),
-        const FaceMetricScore(label: '性的魅力', value: 82),
-        const FaceMetricScore(label: '印象', value: 73),
-        const FaceMetricScore(label: '清潔感', value: 61),
-        const FaceMetricScore(label: '骨格', value: 54),
-        const FaceMetricScore(label: '肌', value: 34),
-      ],
-    );
-  }
-
   void _goToPreviousMonth() {
     if (_selectedMonthIndex >= _months.length - 1) {
       final DateTime last = _months.last;
@@ -1598,6 +1630,120 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
       return;
     }
     _selectMonth(_selectedMonthIndex - 1);
+  }
+
+  Future<YomuGender> _loadSavedGender() async {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final String? saved = box.get(_genderKey);
+    if (saved == YomuGender.female.name) return YomuGender.female;
+    return YomuGender.male;
+  }
+
+  Future<void> _openFrontUploadScreen() async {
+    final YomuGender gender = await _loadSavedGender();
+    if (!mounted) return;
+    final String? savedPath = await Navigator.of(context).push<String>(
+      MaterialPageRoute<String>(
+        builder: (_) => ScanNextScreen(
+          selectedGender: gender,
+          appBarTitle: '現在のあなたを記録',
+          confirmAppBarTitle: '現在のあなたを記録',
+          cameraOnlyMode: true,
+          onSavedGrowthImage: (String path) {
+            _prependSavedImage(path);
+          },
+        ),
+      ),
+    );
+    if (savedPath != null && savedPath.isNotEmpty) {
+      _prependSavedImage(savedPath);
+    }
+  }
+
+  void _prependSavedImage(String path) {
+    if (path.isEmpty) return;
+    if (!File(path).existsSync()) return;
+    if (!mounted) return;
+    final DateTime nowMonth = DateTime(
+      DateTime.now().year,
+      DateTime.now().month,
+    );
+    setState(() {
+      _imagePaths.removeWhere((e) => e.path == path);
+      _imagePaths.insert(
+        0,
+        _FrontImageEntry(path: path, addedAt: DateTime.now(), imageOnly: true),
+      );
+      final int existingMonthIndex = _months.indexWhere(
+        (m) => m.year == nowMonth.year && m.month == nowMonth.month,
+      );
+      if (existingMonthIndex >= 0) {
+        _selectedMonthIndex = existingMonthIndex;
+      } else {
+        _months.insert(0, nowMonth);
+        _selectedMonthIndex = 0;
+      }
+    });
+  }
+
+  Future<void> _deleteImageOnlyEntry(_FrontImageEntry entry) async {
+    if (!entry.imageOnly) return;
+    setState(() {
+      _imagePaths.removeWhere((e) => e.path == entry.path);
+      if (_deletingImagePath == entry.path) {
+        _deletingImagePath = null;
+      }
+    });
+
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+
+    final String historyRaw = box.get(_resultFrontImageHistoryKey) ?? '';
+    final List<String> history = historyRaw
+        .split('\n')
+        .where((String p) => p.isNotEmpty && p != entry.path)
+        .toList();
+    await box.put(_resultFrontImageHistoryKey, history.join('\n'));
+
+    final String metaRaw = box.get(_resultFrontImageHistoryMetaKey) ?? '[]';
+    List<dynamic> metaList;
+    try {
+      metaList = jsonDecode(metaRaw) as List<dynamic>;
+    } catch (_) {
+      metaList = <dynamic>[];
+    }
+    final List<Map<String, dynamic>> normalized = metaList
+        .whereType<Map<String, dynamic>>()
+        .toList();
+    normalized.removeWhere((Map<String, dynamic> item) {
+      return item['path'] == entry.path;
+    });
+    await box.put(_resultFrontImageHistoryMetaKey, jsonEncode(normalized));
+
+    try {
+      final File file = File(entry.path);
+      if (file.existsSync()) {
+        await file.delete();
+      }
+    } catch (_) {
+      // ignore file cleanup errors
+    }
+  }
+
+  FaceAnalysisResult _resultForScore(_MonthlyScore score) {
+    return FaceAnalysisResult(
+      overall: score.overallAvg.clamp(0, 100),
+      metrics: <FaceMetricScore>[
+        FaceMetricScore(
+          label: 'ポテンシャル',
+          value: score.potentialAvg.clamp(0, 100),
+        ),
+        const FaceMetricScore(label: '性的魅力', value: 82),
+        const FaceMetricScore(label: '印象', value: 73),
+        const FaceMetricScore(label: '清潔感', value: 61),
+        const FaceMetricScore(label: '骨格', value: 54),
+        const FaceMetricScore(label: '肌', value: 34),
+      ],
+    );
   }
 
   @override
@@ -1620,200 +1766,302 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
         : potentialDelta < 0
         ? '↘ $potentialDelta'
         : null;
-    final String? selectedMonthLatestImagePath = monthEntries.isNotEmpty
-        ? monthEntries.first.path
+    final List<_FrontImageEntry> monthHomeResultEntries = monthEntries
+        .where((e) => !e.imageOnly && File(e.path).existsSync())
+        .toList();
+    final String? selectedMonthLatestImagePath =
+        monthHomeResultEntries.isNotEmpty
+        ? monthHomeResultEntries.first.path
         : null;
 
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF042448), Color(0xFF021A35), Color(0xFF000D20)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _deletingImagePath == null
+            ? null
+            : () {
+                setState(() {
+                  _deletingImagePath = null;
+                });
+              },
+        child: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF042448), Color(0xFF021A35), Color(0xFF000D20)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Transform.translate(
-                        offset: const Offset(-8, 0),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 40,
-                              height: 40,
-                              child: IconButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints.tightFor(
-                                  width: 40,
-                                  height: 40,
-                                ),
-                                icon: const Icon(
-                                  Icons.chevron_left_rounded,
-                                  size: 40,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 7),
-                            const Expanded(
-                              child: Text(
-                                '変化の記録',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.w900,
-                                  color: Color(0xFFF3F6FB),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Center(
+          child: SafeArea(
+            bottom: false,
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Transform.translate(
-                          offset: const Offset(0, -3),
+                          offset: const Offset(-8, 0),
                           child: Row(
-                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              IconButton(
-                                onPressed: _goToPreviousMonth,
-                                icon: const Icon(
-                                  Icons.chevron_left_rounded,
-                                  color: Colors.white,
+                              SizedBox(
+                                width: 40,
+                                height: 40,
+                                child: IconButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints.tightFor(
+                                    width: 40,
+                                    height: 40,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.chevron_left_rounded,
+                                    size: 40,
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                              Text(
-                                '${selectedMonth.year}年${selectedMonth.month}月',
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Color(0xFFE9EEF7),
-                                ),
-                              ),
-                              IconButton(
-                                onPressed: _goToNextMonth,
-                                icon: const Icon(
-                                  Icons.chevron_right_rounded,
-                                  color: Colors.white,
+                              const SizedBox(width: 7),
+                              const Expanded(
+                                child: Text(
+                                  '変化の記録',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 25,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFFF3F6FB),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 0),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Transform.translate(
-                        offset: const Offset(0, -3),
-                        child: _ProgressSummaryCard(
-                          overallText: overallText,
-                          potentialText: potentialText,
-                          potentialDeltaText: potentialDeltaText,
-                          hasScores: hasScores,
-                          overallScore: overallScore,
-                          potentialScore: potentialScore,
-                          imagePath: selectedMonthLatestImagePath,
-                          onChevronTap: () {
-                            Navigator.of(context).push<void>(
-                              MaterialPageRoute<void>(
-                                builder: (_) => _GrowthBlankScreen(
-                                  monthlyScores: widget.monthlyScores,
-                                ),
-                              ),
-                            );
-                          },
-                          showChevron: true,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: GridView.builder(
-                        padding: const EdgeInsets.only(bottom: 140),
-                        itemCount: monthEntries.length,
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 0,
-                              mainAxisSpacing: 0,
-                              childAspectRatio: 0.9,
-                            ),
-                        itemBuilder: (BuildContext context, int index) {
-                          final _FrontImageEntry entry = monthEntries[index];
-                          return GestureDetector(
-                            behavior: HitTestBehavior.opaque,
-                            onTap: () {
-                              final _MonthlyScore openScore =
-                                  _scoreForMonth(_selectedMonthIndex) ??
-                                  _MonthlyScore(
-                                    overallAvg: widget.overallScore,
-                                    potentialAvg: widget.potentialScore,
-                                    hasData: widget.hasScores,
-                                  );
-                              Navigator.of(context).push<void>(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => FaceAnalysisResultScreen(
-                                    imagePath: entry.path,
-                                    sideImagePath: entry.sidePath,
-                                    result: _resultForScore(openScore),
-                                    persistSummary: false,
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Center(
+                          child: Transform.translate(
+                            offset: const Offset(0, -3),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: _goToPreviousMonth,
+                                  icon: const Icon(
+                                    Icons.chevron_left_rounded,
+                                    color: Colors.white,
                                   ),
                                 ),
-                              );
-                            },
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.file(File(entry.path), fit: BoxFit.cover),
-                                Positioned(
-                                  right: 9,
-                                  bottom: 8,
-                                  child: Text(
-                                    _dateText(entry.addedAt),
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                      shadows: [
-                                        Shadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.45,
-                                          ),
-                                          blurRadius: 3,
-                                          offset: const Offset(0, 1),
-                                        ),
-                                      ],
-                                    ),
+                                Text(
+                                  '${selectedMonth.year}年${selectedMonth.month}月',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFFE9EEF7),
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: _goToNextMonth,
+                                  icon: const Icon(
+                                    Icons.chevron_right_rounded,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],
                             ),
-                          );
-                        },
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 0),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Transform.translate(
+                          offset: const Offset(0, -3),
+                          child: _ProgressSummaryCard(
+                            overallText: overallText,
+                            potentialText: potentialText,
+                            potentialDeltaText: potentialDeltaText,
+                            hasScores: hasScores,
+                            overallScore: overallScore,
+                            potentialScore: potentialScore,
+                            imagePath: selectedMonthLatestImagePath,
+                            onChevronTap: () {
+                              Navigator.of(context).push<void>(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => _GrowthBlankScreen(
+                                    monthlyScores: widget.monthlyScores,
+                                  ),
+                                ),
+                              );
+                            },
+                            showChevron: true,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: GridView.builder(
+                          padding: const EdgeInsets.only(bottom: 140),
+                          itemCount: monthEntries.length,
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 0,
+                                mainAxisSpacing: 0,
+                                childAspectRatio: 0.9,
+                              ),
+                          itemBuilder: (BuildContext context, int index) {
+                            final _FrontImageEntry entry = monthEntries[index];
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onLongPress: entry.imageOnly
+                                  ? () {
+                                      setState(() {
+                                        _deletingImagePath = entry.path;
+                                      });
+                                    }
+                                  : null,
+                              onTap: () {
+                                if (_deletingImagePath != null) {
+                                  setState(() {
+                                    _deletingImagePath = null;
+                                  });
+                                  return;
+                                }
+                                final bool isImageOnlyEntry =
+                                    entry.imageOnly || entry.sidePath == null;
+                                if (isImageOnlyEntry) {
+                                  final List<String> previewImagePaths =
+                                      monthEntries
+                                          .where(
+                                            (e) =>
+                                                e.imageOnly ||
+                                                e.sidePath == null,
+                                          )
+                                          .map((e) => e.path)
+                                          .where((p) => File(p).existsSync())
+                                          .toList();
+                                  if (previewImagePaths.isEmpty) return;
+                                  final int initialIndex = previewImagePaths
+                                      .indexOf(entry.path);
+                                  Navigator.of(context).push<void>(
+                                    imageViewerRouteClose(
+                                      BackImagePreviewScreen(
+                                        previewImagePaths: previewImagePaths,
+                                        initialIndex: initialIndex < 0
+                                            ? 0
+                                            : initialIndex,
+                                        heroTagForPath: (String path) =>
+                                            'growth_preview_$path',
+                                        onWillClose: (_) {},
+                                      ),
+                                    ),
+                                  );
+                                  return;
+                                }
+                                final _MonthlyScore openScore =
+                                    _scoreForMonth(_selectedMonthIndex) ??
+                                    _MonthlyScore(
+                                      overallAvg: widget.overallScore,
+                                      potentialAvg: widget.potentialScore,
+                                      hasData: widget.hasScores,
+                                    );
+                                Navigator.of(context).push<void>(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => FaceAnalysisResultScreen(
+                                      imagePath: entry.path,
+                                      sideImagePath: entry.sidePath,
+                                      result: _resultForScore(openScore),
+                                      persistSummary: false,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.file(
+                                    File(entry.path),
+                                    fit: BoxFit.cover,
+                                  ),
+                                  Positioned(
+                                    right: 9,
+                                    bottom: 8,
+                                    child: Text(
+                                      _dateText(entry.addedAt),
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white,
+                                        shadows: [
+                                          Shadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.45,
+                                            ),
+                                            blurRadius: 3,
+                                            offset: const Offset(0, 1),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  if (entry.imageOnly &&
+                                      _deletingImagePath == entry.path)
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: SizedBox(
+                                        width: 30,
+                                        height: 30,
+                                        child: DecoratedBox(
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xD9272B35),
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.88,
+                                              ),
+                                              width: 1.1,
+                                            ),
+                                          ),
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            iconSize: 16,
+                                            onPressed: () async {
+                                              await _deleteImageOnlyEntry(
+                                                entry,
+                                              );
+                                            },
+                                            icon: const Icon(
+                                              Icons.close_rounded,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const _FloatingAddButton(bottom: 112),
-            ],
+                _FloatingAddButton(
+                  bottom: 112,
+                  onPressed: () {
+                    unawaited(_openFrontUploadScreen());
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -2217,11 +2465,13 @@ class _FrontImageEntry {
     required this.path,
     required this.addedAt,
     this.sidePath,
+    this.imageOnly = false,
   });
 
   final String path;
   final String? sidePath;
   final DateTime addedAt;
+  final bool imageOnly;
 }
 
 class _MonthlyScore {

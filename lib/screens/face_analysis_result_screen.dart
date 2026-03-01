@@ -21,12 +21,15 @@ class ImageViewerRoute<T> extends PageRoute<T> {
     required this.page,
     required Duration transitionDuration,
     required Duration reverseTransitionDuration,
+    bool useFadeTransition = true,
   }) : _transitionDuration = transitionDuration,
-       _reverseTransitionDuration = reverseTransitionDuration;
+       _reverseTransitionDuration = reverseTransitionDuration,
+       _useFadeTransition = useFadeTransition;
 
   final Widget page;
   final Duration _transitionDuration;
   Duration _reverseTransitionDuration;
+  final bool _useFadeTransition;
 
   void setReverseDuration(Duration duration) {
     _reverseTransitionDuration = duration;
@@ -69,6 +72,7 @@ class ImageViewerRoute<T> extends PageRoute<T> {
     Animation<double> secondaryAnimation,
     Widget child,
   ) {
+    if (!_useFadeTransition) return child;
     return FadeTransition(opacity: animation, child: child);
   }
 }
@@ -84,8 +88,9 @@ Route<void> imageViewerRouteSwipe(Widget page) {
 Route<void> imageViewerRouteClose(Widget page) {
   return ImageViewerRoute<void>(
     page: page,
-    transitionDuration: const Duration(milliseconds: 180),
-    reverseTransitionDuration: const Duration(milliseconds: 320),
+    transitionDuration: Duration.zero,
+    reverseTransitionDuration: Duration.zero,
+    useFadeTransition: false,
   );
 }
 
