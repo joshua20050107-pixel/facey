@@ -263,59 +263,120 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                                                         ),
                                                         child: ClipRRect(
                                                           borderRadius: radius,
-                                                          child: index == 0
-                                                              ? LayoutBuilder(
-                                                                  builder:
-                                                                      (
-                                                                        BuildContext
-                                                                        context,
-                                                                        BoxConstraints
-                                                                        constraints,
-                                                                      ) {
-                                                                        return Stack(
-                                                                          children:
-                                                                              <
-                                                                                Widget
-                                                                              >[
-                                                                                const Positioned(
-                                                                                  left: 0,
-                                                                                  right: 25,
-                                                                                  top: 55,
-                                                                                  child: Text(
-                                                                                    'AIによるフィードバック',
-                                                                                    textAlign: TextAlign.center,
-                                                                                    style: TextStyle(
-                                                                                      color: Colors.white,
-                                                                                      fontSize: 20,
-                                                                                      fontFamily: 'Hiragino Kaku Gothic ProN',
-                                                                                      fontWeight: FontWeight.w900,
-                                                                                      letterSpacing: 0.1,
-                                                                                    ),
-                                                                                  ),
-                                                                                ),
-                                                                                Align(
-                                                                                  alignment: const Alignment(
-                                                                                    0,
-                                                                                    1.6,
-                                                                                  ),
-                                                                                  child: SizedBox(
-                                                                                    width:
-                                                                                        constraints.maxWidth *
-                                                                                        0.87,
-                                                                                    height:
-                                                                                        constraints.maxHeight *
-                                                                                        0.87,
-                                                                                    child: Image.asset(
-                                                                                      'assets/images/oka.png',
-                                                                                      fit: BoxFit.contain,
-                                                                                    ),
-                                                                                  ),
-                                                                                ),
-                                                                              ],
-                                                                        );
-                                                                      },
-                                                                )
-                                                              : const SizedBox.shrink(),
+                                                          child: LayoutBuilder(
+                                                            builder:
+                                                                (
+                                                                  BuildContext
+                                                                  context,
+                                                                  BoxConstraints
+                                                                  constraints,
+                                                                ) {
+                                                                  Widget
+                                                                  buildCardImage(
+                                                                    String
+                                                                    path, {
+                                                                    double
+                                                                        alignmentX =
+                                                                        0,
+                                                                    double
+                                                                        alignmentY =
+                                                                        1.6,
+                                                                    double
+                                                                        sizeScale =
+                                                                        0.87,
+                                                                  }) {
+                                                                    return Align(
+                                                                      alignment: Alignment(
+                                                                        alignmentX,
+                                                                        alignmentY,
+                                                                      ),
+                                                                      child: SizedBox(
+                                                                        width:
+                                                                            constraints.maxWidth *
+                                                                            sizeScale,
+                                                                        height:
+                                                                            constraints.maxHeight *
+                                                                            sizeScale,
+                                                                        child: Image.asset(
+                                                                          path,
+                                                                          fit: BoxFit
+                                                                              .contain,
+                                                                        ),
+                                                                      ),
+                                                                    );
+                                                                  }
+
+                                                                  if (index ==
+                                                                      0) {
+                                                                    return Stack(
+                                                                      children: <Widget>[
+                                                                        const Positioned(
+                                                                          left:
+                                                                              0,
+                                                                          right:
+                                                                              25,
+                                                                          top:
+                                                                              55,
+                                                                          child: Text(
+                                                                            'AIによるフィードバック',
+                                                                            textAlign:
+                                                                                TextAlign.center,
+                                                                            style: TextStyle(
+                                                                              color: Colors.white,
+                                                                              fontSize: 20,
+                                                                              fontFamily: 'Hiragino Kaku Gothic ProN',
+                                                                              fontWeight: FontWeight.w900,
+                                                                              letterSpacing: 0.1,
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        buildCardImage(
+                                                                          'assets/images/oka.png',
+                                                                        ),
+                                                                      ],
+                                                                    );
+                                                                  }
+
+                                                                  if (index ==
+                                                                      1) {
+                                                                    return Stack(
+                                                                      children: <Widget>[
+                                                                        const Positioned(
+                                                                          left:
+                                                                              0,
+                                                                          right:
+                                                                              25,
+                                                                          top:
+                                                                              55,
+                                                                          child: Text(
+                                                                            '専属のAIアシスタント',
+                                                                            textAlign:
+                                                                                TextAlign.center,
+                                                                            style: TextStyle(
+                                                                              color: Colors.white,
+                                                                              fontSize: 20,
+                                                                              fontFamily: 'Hiragino Kaku Gothic ProN',
+                                                                              fontWeight: FontWeight.w900,
+                                                                              letterSpacing: 0.1,
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        buildCardImage(
+                                                                          'assets/images/223.png',
+                                                                          alignmentX:
+                                                                              0.17,
+                                                                          alignmentY:
+                                                                              0.9,
+                                                                          sizeScale:
+                                                                              0.82,
+                                                                        ),
+                                                                      ],
+                                                                    );
+                                                                  }
+
+                                                                  return const SizedBox.shrink();
+                                                                },
+                                                          ),
                                                         ),
                                                       ),
                                                     );
