@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/legal_links.dart';
+
 class PaymentPageScaffold extends StatefulWidget {
   const PaymentPageScaffold({
     super.key,
@@ -34,12 +36,8 @@ class PaymentPageScaffold extends StatefulWidget {
 class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
     with SingleTickerProviderStateMixin {
   static const int _cardCount = 4;
-  static final Uri _privacyPolicyUrl = Uri.parse(
-    'https://mercury-ixora-4df.notion.site/30ab9bad745580b89262d3bead931a6b',
-  );
-  static final Uri _termsUrl = Uri.parse(
-    'https://mercury-ixora-4df.notion.site/Facey-30ab9bad745580b78192d675b7fa6b1b',
-  );
+  static final Uri _privacyPolicyUrl = Uri.parse(LegalLinks.privacyPolicyUrl);
+  static final Uri _termsUrl = Uri.parse(LegalLinks.termsUrl);
   late final PageController _cardsController;
   late final AnimationController _enterController;
   int _activeCardIndex = 0;
@@ -369,6 +367,74 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                                                                               0.9,
                                                                           sizeScale:
                                                                               0.82,
+                                                                        ),
+                                                                      ],
+                                                                    );
+                                                                  }
+
+                                                                  if (index ==
+                                                                      2) {
+                                                                    return Stack(
+                                                                      children: <Widget>[
+                                                                        const Positioned(
+                                                                          left:
+                                                                              0,
+                                                                          right:
+                                                                              25,
+                                                                          top:
+                                                                              55,
+                                                                          child: Text(
+                                                                            'あなたの魅力や変化を追跡',
+                                                                            textAlign:
+                                                                                TextAlign.center,
+                                                                            style: TextStyle(
+                                                                              color: Colors.white,
+                                                                              fontSize: 20,
+                                                                              fontFamily: 'Hiragino Kaku Gothic ProN',
+                                                                              fontWeight: FontWeight.w900,
+                                                                              letterSpacing: 0.1,
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        buildCardImage(
+                                                                          'assets/images/osas.png',
+                                                                          alignmentY:
+                                                                              1.2,
+                                                                          sizeScale:
+                                                                              0.87,
+                                                                        ),
+                                                                      ],
+                                                                    );
+                                                                  }
+
+                                                                  if (index ==
+                                                                      3) {
+                                                                    return Stack(
+                                                                      children: <Widget>[
+                                                                        const Positioned(
+                                                                          left:
+                                                                              0,
+                                                                          right:
+                                                                              80,
+                                                                          top:
+                                                                              55,
+                                                                          child: Text(
+                                                                            '習慣の継続サポート',
+                                                                            textAlign:
+                                                                                TextAlign.center,
+                                                                            style: TextStyle(
+                                                                              color: Colors.white,
+                                                                              fontSize: 20,
+                                                                              fontFamily: 'Hiragino Kaku Gothic ProN',
+                                                                              fontWeight: FontWeight.w900,
+                                                                              letterSpacing: 0.1,
+                                                                            ),
+                                                                          ),
+                                                                        ),
+                                                                        buildCardImage(
+                                                                          'assets/images/oさえp.png',
+                                                                          alignmentY:
+                                                                              1.2,
                                                                         ),
                                                                       ],
                                                                     );

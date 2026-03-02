@@ -109,9 +109,9 @@ class FaceAnalysisResult {
 
   factory FaceAnalysisResult.dummy() {
     return const FaceAnalysisResult(
-      overall: 91,
+      overall: 20,
       metrics: <FaceMetricScore>[
-        FaceMetricScore(label: 'ポテンシャル', value: 92),
+        FaceMetricScore(label: 'ポテンシャル', value: 40),
         FaceMetricScore(label: '性的魅力', value: 93),
         FaceMetricScore(label: '印象', value: 91),
         FaceMetricScore(label: '清潔感', value: 89),

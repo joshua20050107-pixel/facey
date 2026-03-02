@@ -525,8 +525,8 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
     required String frontImagePath,
     String? sideImagePath,
   }) async {
-    const int overallScore = 91;
-    const int potentialScore = 92;
+    const int overallScore = 20;
+    const int potentialScore = 40;
     final Box<String> box = Hive.box<String>(_prefsBoxName);
     await box.put(_latestResultOverallScoreKey, overallScore.toString());
     await box.put(_latestResultPotentialScoreKey, potentialScore.toString());

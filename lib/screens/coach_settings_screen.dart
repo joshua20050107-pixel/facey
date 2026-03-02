@@ -4,6 +4,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../constants/legal_links.dart';
 import 'upgrade_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
@@ -21,12 +22,8 @@ class CoachSettingsScreen extends StatelessWidget {
   final Future<void> Function(bool) onNotificationChanged;
   final YomuGender selectedGender;
   final ValueChanged<YomuGender> onGenderChanged;
-  static final Uri _privacyPolicyUrl = Uri.parse(
-    'https://mercury-ixora-4df.notion.site/30ab9bad745580b89262d3bead931a6b',
-  );
-  static final Uri _termsUrl = Uri.parse(
-    'https://mercury-ixora-4df.notion.site/Facey-30ab9bad745580b78192d675b7fa6b1b',
-  );
+  static final Uri _privacyPolicyUrl = Uri.parse(LegalLinks.privacyPolicyUrl);
+  static final Uri _termsUrl = Uri.parse(LegalLinks.termsUrl);
   static final Uri _contactMailUri = Uri(
     scheme: 'mailto',
     path: 'contactfacey@ymail.ne.jp',
