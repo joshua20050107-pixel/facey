@@ -9,6 +9,22 @@ import 'upgrade_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 
+class _SettingsHaptics {
+  const _SettingsHaptics._();
+
+  static void toggle() {
+    HapticFeedback.selectionClick();
+  }
+
+  static void row() {
+    HapticFeedback.selectionClick();
+  }
+
+  static void primary() {
+    HapticFeedback.mediumImpact();
+  }
+}
+
 class CoachSettingsScreen extends StatelessWidget {
   const CoachSettingsScreen({
     super.key,
@@ -30,6 +46,19 @@ class CoachSettingsScreen extends StatelessWidget {
     queryParameters: <String, String>{'subject': 'Facey お問い合わせ'},
   );
 
+  static Rect _shareOriginRect(BuildContext context) {
+    final RenderObject? renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) {
+      return const Rect.fromLTWH(1, 1, 1, 1);
+    }
+    final Offset origin = renderObject.localToGlobal(Offset.zero);
+    final Size size = renderObject.size;
+    if (size.width <= 0 || size.height <= 0) {
+      return const Rect.fromLTWH(1, 1, 1, 1);
+    }
+    return origin & size;
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color separatorColor = Colors.white.withValues(alpha: 0.1);
@@ -44,38 +73,52 @@ class CoachSettingsScreen extends StatelessWidget {
       Widget? trailing,
       bool highlighted = false,
       Color textColor = Colors.white,
-      VoidCallback? onTap,
+      Future<void> Function(BuildContext context)? onTap,
+      bool primaryAction = false,
     }) {
-      return InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          decoration: BoxDecoration(
-            color: highlighted
-                ? const Color(0xFF2A3358).withValues(alpha: 0.75)
-                : Colors.transparent,
+      return Builder(
+        builder: (BuildContext rowContext) {
+          return InkWell(
+            onTap: onTap == null
+                ? null
+                : () async {
+                    if (primaryAction) {
+                      _SettingsHaptics.primary();
+                    } else {
+                      _SettingsHaptics.row();
+                    }
+                    await onTap(rowContext);
+                  },
             borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, size: 26, color: mutedTextColor),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
-                  ),
-                ),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: highlighted
+                    ? const Color(0xFF2A3358).withValues(alpha: 0.75)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
               ),
-              ?trailing,
-            ],
-          ),
-        ),
+              child: Row(
+                children: [
+                  Icon(icon, size: 26, color: mutedTextColor),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                  ?trailing,
+                ],
+              ),
+            ),
+          );
+        },
       );
     }
 
@@ -98,6 +141,7 @@ class CoachSettingsScreen extends StatelessWidget {
                   trailing: Switch(
                     value: notificationEnabled,
                     onChanged: (bool value) {
+                      _SettingsHaptics.toggle();
                       onNotificationChanged(value);
                     },
                     activeThumbColor: Colors.white,
@@ -120,7 +164,8 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.workspace_premium_outlined,
                   label: 'アップグレード',
-                  onTap: () {
+                  primaryAction: true,
+                  onTap: (BuildContext rowContext) async {
                     Navigator.of(context).push(
                       PageRouteBuilder<void>(
                         transitionDuration: const Duration(milliseconds: 320),
@@ -161,7 +206,7 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.wc_rounded,
                   label: '性別',
-                  onTap: () {
+                  onTap: (BuildContext rowContext) async {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => GenderScreen(
@@ -176,7 +221,7 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.star_border_rounded,
                   label: 'アプリを評価',
-                  onTap: () async {
+                  onTap: (BuildContext rowContext) async {
                     try {
                       await inAppReview.requestReview();
                     } on MissingPluginException {
@@ -190,10 +235,11 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.share_outlined,
                   label: 'アプリを共有',
-                  onTap: () {
-                    Share.share(
+                  onTap: (BuildContext rowContext) async {
+                    await Share.share(
                       'Faceyを使ってみてください！\nhttps://mercury-ixora-4df.notion.site/Facey-30ab9bad745580b78192d675b7fa6b1b',
                       subject: 'Faceyを共有',
+                      sharePositionOrigin: _shareOriginRect(rowContext),
                     );
                   },
                 ),
@@ -201,7 +247,7 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.lock_outline_rounded,
                   label: 'プライバシーポリシー',
-                  onTap: () async {
+                  onTap: (BuildContext rowContext) async {
                     await launchUrl(
                       _privacyPolicyUrl,
                       mode: LaunchMode.externalApplication,
@@ -212,7 +258,7 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.description_outlined,
                   label: '利用規約',
-                  onTap: () async {
+                  onTap: (BuildContext rowContext) async {
                     await launchUrl(
                       _termsUrl,
                       mode: LaunchMode.externalApplication,
@@ -223,7 +269,7 @@ class CoachSettingsScreen extends StatelessWidget {
                 settingsRow(
                   icon: Icons.mail_outline_rounded,
                   label: 'お問い合わせ',
-                  onTap: () async {
+                  onTap: (BuildContext rowContext) async {
                     await launchUrl(_contactMailUri);
                   },
                 ),

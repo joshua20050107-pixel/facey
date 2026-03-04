@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../routes/scan_flow_material_page_route.dart';
 import '../services/facey_api_service.dart';
+import '../services/scan_flow_haptics.dart';
 import 'face_analysis_result_screen.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
@@ -27,6 +28,10 @@ class ScanTabScreen extends StatefulWidget {
 }
 
 class _ScanTabScreenState extends State<ScanTabScreen> {
+  static const bool _useDummyWarmup = bool.fromEnvironment(
+    'FACEY_USE_DUMMY_HOME_CONDITION',
+    defaultValue: true,
+  );
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultFrontImageKey = 'latest_result_front_image';
   static const String _latestResultSideImageKey = 'latest_result_side_image';
@@ -189,6 +194,13 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
 
   Future<void> _prepareApi() async {
     if (!mounted) return;
+    if (_useDummyWarmup) {
+      setState(() {
+        _isApiPreparing = false;
+        _apiInitError = null;
+      });
+      return;
+    }
     setState(() {
       _isApiPreparing = true;
       _apiInitError = null;
@@ -344,6 +356,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         ),
         child: TextButton(
           onPressed: () async {
+            ScanFlowHaptics.primary();
             await Navigator.of(context).push(_buildStartScanRoute());
           },
           style: TextButton.styleFrom(
@@ -401,6 +414,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         child: TextButton(
           onPressed: enabled
               ? () {
+                  ScanFlowHaptics.primary();
                   Navigator.of(context).push(
                     _buildResultScreenRoute(
                       imagePath: path!,
@@ -811,7 +825,10 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
             ),
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: _prepareApi,
+              onPressed: () {
+                ScanFlowHaptics.secondary();
+                _prepareApi();
+              },
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 side: const BorderSide(color: Colors.white54),

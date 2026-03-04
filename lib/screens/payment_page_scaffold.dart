@@ -1,7 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/legal_links.dart';
+
+class _PaywallHaptics {
+  const _PaywallHaptics._();
+
+  static void close() {
+    HapticFeedback.lightImpact();
+  }
+
+  static void primary() {
+    HapticFeedback.mediumImpact();
+  }
+
+  static void secondary() {
+    HapticFeedback.lightImpact();
+  }
+
+  static void link() {
+    HapticFeedback.selectionClick();
+  }
+}
 
 class PaymentPageScaffold extends StatefulWidget {
   const PaymentPageScaffold({
@@ -105,7 +126,10 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                 child: Padding(
                   padding: widget.closePadding,
                   child: IconButton(
-                    onPressed: widget.onClose,
+                    onPressed: () {
+                      _PaywallHaptics.close();
+                      widget.onClose();
+                    },
                     icon: widget.closeIcon,
                   ),
                 ),
@@ -134,7 +158,10 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                                   child: Padding(
                                     padding: widget.closePadding,
                                     child: IconButton(
-                                      onPressed: widget.onClose,
+                                      onPressed: () {
+                                        _PaywallHaptics.close();
+                                        widget.onClose();
+                                      },
                                       icon: widget.closeIcon,
                                     ),
                                   ),
@@ -534,7 +561,9 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                               width: double.infinity,
                               height: 60,
                               child: ElevatedButton(
-                                onPressed: () {},
+                                onPressed: () {
+                                  _PaywallHaptics.primary();
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFF2F4CF6),
                                   foregroundColor: Colors.white,
@@ -608,6 +637,7 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                                 child: Center(
                                   child: TextButton(
                                     onPressed: () async {
+                                      _PaywallHaptics.link();
                                       await launchUrl(
                                         _termsUrl,
                                         mode: LaunchMode.externalApplication,
@@ -638,7 +668,9 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                               Expanded(
                                 child: Center(
                                   child: TextButton(
-                                    onPressed: () {},
+                                    onPressed: () {
+                                      _PaywallHaptics.secondary();
+                                    },
                                     style: TextButton.styleFrom(
                                       foregroundColor: Colors.white.withValues(
                                         alpha: 0.9,
@@ -665,6 +697,7 @@ class _PaymentPageScaffoldState extends State<PaymentPageScaffold>
                                 child: Center(
                                   child: TextButton(
                                     onPressed: () async {
+                                      _PaywallHaptics.link();
                                       await launchUrl(
                                         _privacyPolicyUrl,
                                         mode: LaunchMode.externalApplication,

@@ -28,6 +28,21 @@ import UIKit
             generator.impactOccurred()
             result(nil)
           }
+        case "mediumImpact":
+          let generator = UIImpactFeedbackGenerator(style: .medium)
+          generator.prepare()
+          generator.impactOccurred()
+          result(nil)
+        case "selectionClick":
+          let generator = UISelectionFeedbackGenerator()
+          generator.prepare()
+          generator.selectionChanged()
+          result(nil)
+        case "successNotification":
+          let generator = UINotificationFeedbackGenerator()
+          generator.prepare()
+          generator.notificationOccurred(.success)
+          result(nil)
         default:
           result(FlutterMethodNotImplemented)
         }

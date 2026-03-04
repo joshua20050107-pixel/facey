@@ -10,6 +10,26 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'scan_next_screen.dart';
 
+class _GrowthHaptics {
+  const _GrowthHaptics._();
+
+  static void primary() {
+    HapticFeedback.mediumImpact();
+  }
+
+  static void secondary() {
+    HapticFeedback.selectionClick();
+  }
+
+  static void back() {
+    HapticFeedback.lightImpact();
+  }
+
+  static void destructive() {
+    HapticFeedback.heavyImpact();
+  }
+}
+
 class GrowthLogTabScreen extends StatefulWidget {
   const GrowthLogTabScreen({super.key});
 
@@ -518,6 +538,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                                                 ),
                                               ),
                                               onPressed: () {
+                                                _GrowthHaptics.primary();
                                                 if (!isGoalStep) {
                                                   final String title =
                                                       _truncateToMaxChars(
@@ -578,6 +599,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   }
 
   Future<void> _toggleHabit(String id) async {
+    _GrowthHaptics.secondary();
     final String todayKey = _todayKey();
     setState(() {
       _habits = _habits.map((_HabitItem item) {
@@ -603,6 +625,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
 
   Future<void> _deleteHabit(String id) async {
     if (_removingHabitIds.contains(id)) return;
+    _GrowthHaptics.destructive();
     setState(() {
       _removingHabitIds.add(id);
     });
@@ -629,7 +652,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     _habitLongPressTimer?.cancel();
     _habitLongPressTimer = Timer(const Duration(milliseconds: 320), () {
       if (!mounted || _editingHabitId == habitId) return;
-      HapticFeedback.mediumImpact();
+      _GrowthHaptics.primary();
       setState(() {
         _editingHabitId = habitId;
       });
@@ -660,6 +683,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   }
 
   void _openHabitPage(_HabitItem habit) {
+    _GrowthHaptics.secondary();
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => _HabitPlaceholderScreen(habit: habit),
@@ -741,6 +765,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                         imagePath: latestHomeResultImagePath,
                         onChevronTap: canOpenProgress
                             ? () {
+                                _GrowthHaptics.secondary();
                                 Navigator.of(context).push<void>(
                                   MaterialPageRoute<void>(
                                     builder: (_) => _GrowthProgressPicsScreen(
@@ -804,7 +829,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                           itemCount: _habits.length,
                           onReorderStart: (int index) {
                             _cancelHabitLongPressTimer();
-                            HapticFeedback.mediumImpact();
+                            _GrowthHaptics.primary();
                             if (index < 0 || index >= _habits.length) return;
                             setState(() {
                               _editingHabitId = _habits[index].id;
@@ -1126,9 +1151,11 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
         _FloatingAddButton(
           onPressed: () {
             if (_editingHabitId != null) {
+              _GrowthHaptics.secondary();
               _closeHabitActions();
               return;
             }
+            _GrowthHaptics.primary();
             _showAddHabitSheet();
           },
         ),
@@ -1235,12 +1262,14 @@ class _HabitPlaceholderScreenState extends State<_HabitPlaceholderScreen> {
   }
 
   void _goToPreviousMonth() {
+    _GrowthHaptics.secondary();
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month - 1);
     });
   }
 
   void _goToNextMonth() {
+    _GrowthHaptics.secondary();
     setState(() {
       _visibleMonth = DateTime(_visibleMonth.year, _visibleMonth.month + 1);
     });
@@ -1286,7 +1315,10 @@ class _HabitPlaceholderScreenState extends State<_HabitPlaceholderScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       IconButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () {
+                          _GrowthHaptics.back();
+                          Navigator.of(context).pop();
+                        },
                         icon: const Icon(
                           Icons.arrow_back_ios_new_rounded,
                           color: Colors.white,
@@ -1621,6 +1653,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
   }
 
   void _selectMonth(int nextIndex) {
+    _GrowthHaptics.secondary();
     setState(() {
       _selectedMonthIndex = nextIndex;
       _deletingImagePath = null;
@@ -1717,6 +1750,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
 
   Future<void> _deleteImageOnlyEntry(_FrontImageEntry entry) async {
     if (!entry.imageOnly) return;
+    _GrowthHaptics.destructive();
     setState(() {
       _imagePaths.removeWhere((e) => e.path == entry.path);
       if (_deletingImagePath == entry.path) {
@@ -1809,6 +1843,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
         onTap: _deletingImagePath == null
             ? null
             : () {
+                _GrowthHaptics.secondary();
                 setState(() {
                   _deletingImagePath = null;
                 });
@@ -1840,7 +1875,10 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                                 width: 40,
                                 height: 40,
                                 child: IconButton(
-                                  onPressed: () => Navigator.of(context).pop(),
+                                  onPressed: () {
+                                    _GrowthHaptics.back();
+                                    Navigator.of(context).pop();
+                                  },
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints.tightFor(
                                     width: 40,
@@ -1920,6 +1958,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                             potentialScore: potentialScore,
                             imagePath: selectedMonthLatestImagePath,
                             onChevronTap: () {
+                              _GrowthHaptics.secondary();
                               Navigator.of(context).push<void>(
                                 MaterialPageRoute<void>(
                                   builder: (_) => _GrowthBlankScreen(
@@ -1950,6 +1989,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                               behavior: HitTestBehavior.opaque,
                               onLongPress: entry.imageOnly
                                   ? () {
+                                      _GrowthHaptics.primary();
                                       setState(() {
                                         _deletingImagePath = entry.path;
                                       });
@@ -1957,6 +1997,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                                   : null,
                               onTap: () {
                                 if (_deletingImagePath != null) {
+                                  _GrowthHaptics.secondary();
                                   setState(() {
                                     _deletingImagePath = null;
                                   });
@@ -1978,6 +2019,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                                   if (previewImagePaths.isEmpty) return;
                                   final int initialIndex = previewImagePaths
                                       .indexOf(entry.path);
+                                  _GrowthHaptics.secondary();
                                   Navigator.of(context).push<void>(
                                     imageViewerRouteClose(
                                       BackImagePreviewScreen(
@@ -2000,6 +2042,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                                       potentialAvg: widget.potentialScore,
                                       hasData: widget.hasScores,
                                     );
+                                _GrowthHaptics.primary();
                                 Navigator.of(context).push<void>(
                                   MaterialPageRoute<void>(
                                     builder: (_) => FaceAnalysisResultScreen(
@@ -2086,6 +2129,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                 _FloatingAddButton(
                   bottom: 112,
                   onPressed: () {
+                    _GrowthHaptics.primary();
                     unawaited(_openFrontUploadScreen());
                   },
                 ),
@@ -2117,6 +2161,7 @@ class _GrowthBlankScreenState extends State<_GrowthBlankScreen> {
   }
 
   void _changeYear(int delta) {
+    _GrowthHaptics.secondary();
     setState(() {
       _year += delta;
     });
@@ -2149,7 +2194,10 @@ class _GrowthBlankScreenState extends State<_GrowthBlankScreen> {
                 Row(
                   children: [
                     IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
+                      onPressed: () {
+                        _GrowthHaptics.back();
+                        Navigator.of(context).pop();
+                      },
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints.tightFor(
                         width: 40,

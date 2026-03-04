@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
@@ -54,9 +53,6 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  static const MethodChannel _hapticsChannel = MethodChannel(
-    'com.facey/haptics',
-  );
   static const String _prefsBoxName = 'app_prefs';
   static const String _genderKey = 'selected_gender';
   static const String _notificationEnabledKey = 'settings_notification_enabled';
@@ -215,15 +211,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   ];
 
   Future<void> _triggerBottomNavHaptic() async {
-    if (kIsWeb) return;
-    if (defaultTargetPlatform != TargetPlatform.iOS) return;
-    try {
-      await _hapticsChannel.invokeMethod<void>('softImpact');
-    } on PlatformException {
-      HapticFeedback.lightImpact();
-    } on MissingPluginException {
-      HapticFeedback.lightImpact();
-    }
+    await HapticFeedback.lightImpact();
   }
 
   void _playBottomIconSpring(int index) {

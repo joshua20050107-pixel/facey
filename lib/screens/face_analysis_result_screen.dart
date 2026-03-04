@@ -16,6 +16,8 @@ import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../services/scan_flow_haptics.dart';
+
 class ImageViewerRoute<T> extends PageRoute<T> {
   ImageViewerRoute({
     required this.page,
@@ -162,16 +164,25 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       'result_front_image_history_meta';
   static const String _resultMonthlyScoresKey = 'result_monthly_scores';
   static const double _resultCardHeight = 500;
+  static const int _resultPageCount = 7;
   int _currentPageIndex = 0;
-  final GlobalKey _cardCaptureKey = GlobalKey();
+  final List<GlobalKey> _pageCaptureKeys = List<GlobalKey>.generate(
+    _resultPageCount,
+    (_) => GlobalKey(),
+  );
   late final AnimationController _flipController;
   late String _cardBackImagePath;
   bool _didPersistLatestCardThumbnail = false;
 
-  Future<Uint8List?> _captureCardAsPng() async {
+  Future<Uint8List?> _captureCardAsPng({int? pageIndex}) async {
+    final int targetIndex = (pageIndex ?? _currentPageIndex).clamp(
+      0,
+      _pageCaptureKeys.length - 1,
+    );
+    final GlobalKey captureKey = _pageCaptureKeys[targetIndex];
     for (int i = 0; i < 8; i++) {
       await SchedulerBinding.instance.endOfFrame;
-      final RenderObject? renderObject = _cardCaptureKey.currentContext
+      final RenderObject? renderObject = captureKey.currentContext
           ?.findRenderObject();
       if (renderObject is! RenderRepaintBoundary) continue;
       if (!renderObject.attached || renderObject.debugNeedsPaint) continue;
@@ -191,6 +202,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   }
 
   Future<void> _saveCardToGallery() async {
+    ScanFlowHaptics.secondary();
     try {
       final Uint8List? bytes = await _captureCardAsPng();
       if (bytes == null || !mounted) return;
@@ -212,6 +224,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   }
 
   Future<void> _shareCardImage() async {
+    ScanFlowHaptics.secondary();
     try {
       final Uint8List? bytes = await _captureCardAsPng();
       if (bytes == null) return;
@@ -232,7 +245,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   Future<void> _persistLatestCardThumbnail() async {
     if (_didPersistLatestCardThumbnail || !mounted) return;
     for (int i = 0; i < 8; i++) {
-      final Uint8List? bytes = await _captureCardAsPng();
+      final Uint8List? bytes = await _captureCardAsPng(pageIndex: 0);
       if (bytes != null && bytes.isNotEmpty) {
         final Directory appDir = await getApplicationDocumentsDirectory();
         final Directory imageDir = Directory('${appDir.path}/analysis_results');
@@ -570,7 +583,10 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       appBar: AppBar(
         leading: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: () => Navigator.of(context).pop(),
+          onTap: () {
+            ScanFlowHaptics.back();
+            Navigator.of(context).pop();
+          },
           child: const Center(child: Icon(Icons.close_rounded, size: 34)),
         ),
         title: Transform.translate(
@@ -634,7 +650,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                       maxWidth: 392,
                                     ),
                                     child: RepaintBoundary(
-                                      key: _cardCaptureKey,
+                                      key: _pageCaptureKeys[0],
                                       child: GestureDetector(
                                         onTap: _toggleCardFlip,
                                         onLongPress: _showBackImagePreview,
@@ -812,41 +828,173 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                     constraints: const BoxConstraints(
                                       maxWidth: 392,
                                     ),
-                                    child: SizedBox(
-                                      height: _resultCardHeight,
-                                      child: _buildCardWithFaceyOverlay(
-                                        _buildResultCardFrame(
-                                          child: Column(
+                                    child: RepaintBoundary(
+                                      key: _pageCaptureKeys[1],
+                                      child: SizedBox(
+                                        height: _resultCardHeight,
+                                        child: _buildCardWithFaceyOverlay(
+                                          _buildResultCardFrame(
+                                            child: Column(
+                                              children: [
+                                                const Spacer(flex: 2),
+                                                _MetricPairCard(
+                                                  left: secondPageMetrics[0],
+                                                  right: secondPageMetrics[1],
+                                                  potentialDeltaText:
+                                                      potentialDeltaText,
+                                                ),
+                                                const Spacer(flex: 1),
+                                                _MetricPairCard(
+                                                  left: secondPageMetrics[2],
+                                                  right: secondPageMetrics[3],
+                                                  potentialDeltaText:
+                                                      potentialDeltaText,
+                                                ),
+                                                const Spacer(flex: 1),
+                                                _MetricPairCard(
+                                                  left: secondPageMetrics[4],
+                                                  right: secondPageMetrics[5],
+                                                  potentialDeltaText:
+                                                      potentialDeltaText,
+                                                ),
+                                                const Spacer(flex: 1),
+                                                _MetricPairCard(
+                                                  left: secondPageMetrics[6],
+                                                  right: secondPageMetrics[7],
+                                                  potentialDeltaText:
+                                                      potentialDeltaText,
+                                                ),
+                                                const Spacer(flex: 2),
+                                              ],
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Row(
+                                children: [
+                                  _buildActionButton(
+                                    label: '保存',
+                                    icon: Icons.download_rounded,
+                                    onTap: _saveCardToGallery,
+                                  ),
+                                  const SizedBox(width: 14),
+                                  _buildActionButton(
+                                    label: '共有',
+                                    icon: Icons.send_rounded,
+                                    onTap: _shareCardImage,
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                          child: Column(
+                            children: [
+                              Transform.translate(
+                                offset: const Offset(0, -8),
+                                child: Align(
+                                  alignment: const Alignment(0, -0.02),
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 392,
+                                    ),
+                                    child: RepaintBoundary(
+                                      key: _pageCaptureKeys[2],
+                                      child: SizedBox(
+                                        height: _resultCardHeight,
+                                        child: _buildResultCardFrame(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            22,
+                                            18,
+                                            22,
+                                            22,
+                                          ),
+                                          child: Stack(
                                             children: [
-                                              const Spacer(flex: 2),
-                                              _MetricPairCard(
-                                                left: secondPageMetrics[0],
-                                                right: secondPageMetrics[1],
-                                                potentialDeltaText:
-                                                    potentialDeltaText,
+                                              Positioned(
+                                                top: 0,
+                                                right: 6,
+                                                child: ClipOval(
+                                                  child: Image.file(
+                                                    File(widget.imagePath),
+                                                    width: 85,
+                                                    height: 85,
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                ),
                                               ),
-                                              const Spacer(flex: 1),
-                                              _MetricPairCard(
-                                                left: secondPageMetrics[2],
-                                                right: secondPageMetrics[3],
-                                                potentialDeltaText:
-                                                    potentialDeltaText,
+                                              Positioned.fill(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 0,
+                                                      ),
+                                                  child: Column(
+                                                    children: [
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '総合スコア',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 31,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '${viewData.overall}',
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 83,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                height: 1,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 30,
+                                                      ),
+                                                      _OverallBellCurve(
+                                                        score: viewData.overall,
+                                                      ),
+                                                      const Spacer(),
+                                                      Text(
+                                                        'あなたのスコアは全体の$betterThan%を上回っています',
+                                                        textAlign:
+                                                            TextAlign.center,
+                                                        style: TextStyle(
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.52,
+                                                              ),
+                                                          fontSize: 16,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 4),
+                                                    ],
+                                                  ),
+                                                ),
                                               ),
-                                              const Spacer(flex: 1),
-                                              _MetricPairCard(
-                                                left: secondPageMetrics[4],
-                                                right: secondPageMetrics[5],
-                                                potentialDeltaText:
-                                                    potentialDeltaText,
-                                              ),
-                                              const Spacer(flex: 1),
-                                              _MetricPairCard(
-                                                left: secondPageMetrics[6],
-                                                right: secondPageMetrics[7],
-                                                potentialDeltaText:
-                                                    potentialDeltaText,
-                                              ),
-                                              const Spacer(flex: 2),
                                             ],
                                           ),
                                         ),
@@ -886,89 +1034,107 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                     constraints: const BoxConstraints(
                                       maxWidth: 392,
                                     ),
-                                    child: SizedBox(
-                                      height: _resultCardHeight,
-                                      child: _buildResultCardFrame(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          22,
-                                          18,
-                                          22,
-                                          22,
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            Positioned(
-                                              top: 0,
-                                              right: 6,
-                                              child: ClipOval(
-                                                child: Image.file(
-                                                  File(widget.imagePath),
-                                                  width: 85,
-                                                  height: 85,
-                                                  fit: BoxFit.cover,
+                                    child: RepaintBoundary(
+                                      key: _pageCaptureKeys[3],
+                                      child: SizedBox(
+                                        height: _resultCardHeight,
+                                        child: _buildResultCardFrame(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            22,
+                                            18,
+                                            22,
+                                            22,
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              Positioned(
+                                                top: 0,
+                                                right: 6,
+                                                child: ClipOval(
+                                                  child: Image.file(
+                                                    File(widget.imagePath),
+                                                    width: 85,
+                                                    height: 85,
+                                                    fit: BoxFit.cover,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            Positioned.fill(
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 0,
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '総合スコア',
+                                              Positioned.fill(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 0,
+                                                      ),
+                                                  child: Column(
+                                                    children: [
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Row(
+                                                          crossAxisAlignment:
+                                                              CrossAxisAlignment
+                                                                  .center,
+                                                          children: [
+                                                            const Text(
+                                                              'ポテンシャル',
+                                                              style: TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 31,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '$potentialScore',
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 83,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w700,
+                                                                height: 1,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 30,
+                                                      ),
+                                                      _OverallBellCurve(
+                                                        score: potentialScore,
+                                                      ),
+                                                      const Spacer(),
+                                                      Text(
+                                                        'あなたのポテンシャルは全体の$potentialBetterThan%を上回っています',
+                                                        textAlign:
+                                                            TextAlign.center,
                                                         style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 31,
+                                                          color: Colors.white
+                                                              .withValues(
+                                                                alpha: 0.52,
+                                                              ),
+                                                          fontSize: 16,
                                                           fontWeight:
                                                               FontWeight.w500,
                                                         ),
                                                       ),
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '${viewData.overall}',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 83,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          height: 1,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 30),
-                                                    _OverallBellCurve(
-                                                      score: viewData.overall,
-                                                    ),
-                                                    const Spacer(),
-                                                    Text(
-                                                      'あなたのスコアは全体の$betterThan%を上回っています',
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: TextStyle(
-                                                        color: Colors.white
-                                                            .withValues(
-                                                              alpha: 0.52,
-                                                            ),
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                  ],
+                                                      const SizedBox(height: 4),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1006,98 +1172,84 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                     constraints: const BoxConstraints(
                                       maxWidth: 392,
                                     ),
-                                    child: SizedBox(
-                                      height: _resultCardHeight,
-                                      child: _buildResultCardFrame(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          22,
-                                          18,
-                                          22,
-                                          22,
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            Positioned(
-                                              top: 0,
-                                              right: 6,
-                                              child: ClipOval(
-                                                child: Image.file(
-                                                  File(widget.imagePath),
-                                                  width: 85,
-                                                  height: 85,
-                                                  fit: BoxFit.cover,
+                                    child: RepaintBoundary(
+                                      key: _pageCaptureKeys[4],
+                                      child: SizedBox(
+                                        height: _resultCardHeight,
+                                        child: _buildResultCardFrame(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            22,
+                                            18,
+                                            22,
+                                            22,
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              Positioned(
+                                                top: 0,
+                                                right: 6,
+                                                child: ClipOval(
+                                                  child: Image.file(
+                                                    File(widget.imagePath),
+                                                    width: 85,
+                                                    height: 85,
+                                                    fit: BoxFit.cover,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            Positioned.fill(
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 0,
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Row(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                          const Text(
-                                                            'ポテンシャル',
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 31,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                            ),
+                                              Positioned.fill(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 0,
+                                                      ),
+                                                  child: Column(
+                                                    children: [
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          'あなたの魅力',
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 31,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 63,
+                                                      ),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '目元にやわらかい印象があり、親しみやすさがしっかり出ています。\n'
+                                                          '鼻筋と輪郭のバランスが良く、正面から見たときに顔立ちが整って見えるタイプです。\n'
+                                                          '口元も清潔感があり、全体として好印象につながる顔立ちです。',
+                                                          style: TextStyle(
+                                                            color: Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.74,
+                                                                ),
+                                                            fontSize: 16,
+                                                            height: 1.55,
+                                                            fontWeight:
+                                                                FontWeight.w500,
                                                           ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 2),
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '$potentialScore',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 83,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          height: 1,
                                                         ),
                                                       ),
-                                                    ),
-                                                    const SizedBox(height: 30),
-                                                    _OverallBellCurve(
-                                                      score: potentialScore,
-                                                    ),
-                                                    const Spacer(),
-                                                    Text(
-                                                      'あなたのポテンシャルは全体の$potentialBetterThan%を上回っています',
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: TextStyle(
-                                                        color: Colors.white
-                                                            .withValues(
-                                                              alpha: 0.52,
-                                                            ),
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 4),
-                                                  ],
+                                                      const Spacer(),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1135,181 +1287,81 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                     constraints: const BoxConstraints(
                                       maxWidth: 392,
                                     ),
-                                    child: SizedBox(
-                                      height: _resultCardHeight,
-                                      child: _buildResultCardFrame(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          22,
-                                          18,
-                                          22,
-                                          22,
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            Positioned(
-                                              top: 0,
-                                              right: 6,
-                                              child: ClipOval(
-                                                child: Image.file(
-                                                  File(widget.imagePath),
-                                                  width: 85,
-                                                  height: 85,
-                                                  fit: BoxFit.cover,
+                                    child: RepaintBoundary(
+                                      key: _pageCaptureKeys[5],
+                                      child: SizedBox(
+                                        height: _resultCardHeight,
+                                        child: _buildResultCardFrame(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            22,
+                                            18,
+                                            22,
+                                            22,
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              Positioned(
+                                                top: 0,
+                                                right: 6,
+                                                child: ClipOval(
+                                                  child: Image.file(
+                                                    File(widget.imagePath),
+                                                    width: 85,
+                                                    height: 85,
+                                                    fit: BoxFit.cover,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            Positioned.fill(
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 0,
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        'あなたの魅力',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 31,
-                                                          fontWeight:
-                                                              FontWeight.w500,
+                                              Positioned.fill(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 0,
+                                                      ),
+                                                  child: Column(
+                                                    children: [
+                                                      const Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '改善点',
+                                                          style: TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 31,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
                                                         ),
                                                       ),
-                                                    ),
-                                                    const SizedBox(height: 63),
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '目元にやわらかい印象があり、親しみやすさがしっかり出ています。\n'
-                                                        '鼻筋と輪郭のバランスが良く、正面から見たときに顔立ちが整って見えるタイプです。\n'
-                                                        '口元も清潔感があり、全体として好印象につながる顔立ちです。',
-                                                        style: TextStyle(
-                                                          color: Colors.white
-                                                              .withValues(
-                                                                alpha: 0.74,
-                                                              ),
-                                                          fontSize: 16,
-                                                          height: 1.55,
-                                                          fontWeight:
-                                                              FontWeight.w500,
+                                                      const SizedBox(
+                                                        height: 72,
+                                                      ),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '輪郭はすでに整っているので、次は肌の質感を上げると全体の印象がさらに伸びます。\n'
+                                                          '眉の形をほんの少しだけ整えると、目元の強さが自然に引き立ちます。\n'
+                                                          '髪型は額まわりに軽さを作ると、顔全体がよりシャープに見えます。',
+                                                          style: TextStyle(
+                                                            color: Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.74,
+                                                                ),
+                                                            fontSize: 16,
+                                                            height: 1.55,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
                                                         ),
                                                       ),
-                                                    ),
-                                                    const Spacer(),
-                                                  ],
+                                                      const Spacer(),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(height: 14),
-                              Row(
-                                children: [
-                                  _buildActionButton(
-                                    label: '保存',
-                                    icon: Icons.download_rounded,
-                                    onTap: _saveCardToGallery,
-                                  ),
-                                  const SizedBox(width: 14),
-                                  _buildActionButton(
-                                    label: '共有',
-                                    icon: Icons.send_rounded,
-                                    onTap: _shareCardImage,
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                        SingleChildScrollView(
-                          padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-                          child: Column(
-                            children: [
-                              Transform.translate(
-                                offset: const Offset(0, -8),
-                                child: Align(
-                                  alignment: const Alignment(0, -0.02),
-                                  child: ConstrainedBox(
-                                    constraints: const BoxConstraints(
-                                      maxWidth: 392,
-                                    ),
-                                    child: SizedBox(
-                                      height: _resultCardHeight,
-                                      child: _buildResultCardFrame(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          22,
-                                          18,
-                                          22,
-                                          22,
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            Positioned(
-                                              top: 0,
-                                              right: 6,
-                                              child: ClipOval(
-                                                child: Image.file(
-                                                  File(widget.imagePath),
-                                                  width: 85,
-                                                  height: 85,
-                                                  fit: BoxFit.cover,
-                                                ),
-                                              ),
-                                            ),
-                                            Positioned.fill(
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 0,
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    const Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '改善点',
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 31,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 72),
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '輪郭はすでに整っているので、次は肌の質感を上げると全体の印象がさらに伸びます。\n'
-                                                        '眉の形をほんの少しだけ整えると、目元の強さが自然に引き立ちます。\n'
-                                                        '髪型は額まわりに軽さを作ると、顔全体がよりシャープに見えます。',
-                                                        style: TextStyle(
-                                                          color: Colors.white
-                                                              .withValues(
-                                                                alpha: 0.74,
-                                                              ),
-                                                          fontSize: 16,
-                                                          height: 1.55,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    const Spacer(),
-                                                  ],
-                                                ),
-                                              ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1347,76 +1399,85 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                     constraints: const BoxConstraints(
                                       maxWidth: 392,
                                     ),
-                                    child: SizedBox(
-                                      height: _resultCardHeight,
-                                      child: _buildResultCardFrame(
-                                        padding: const EdgeInsets.fromLTRB(
-                                          22,
-                                          18,
-                                          22,
-                                          22,
-                                        ),
-                                        child: Stack(
-                                          children: [
-                                            Positioned(
-                                              top: 0,
-                                              right: 6,
-                                              child: ClipOval(
-                                                child: Image.file(
-                                                  File(widget.imagePath),
-                                                  width: 85,
-                                                  height: 85,
-                                                  fit: BoxFit.cover,
+                                    child: RepaintBoundary(
+                                      key: _pageCaptureKeys[6],
+                                      child: SizedBox(
+                                        height: _resultCardHeight,
+                                        child: _buildResultCardFrame(
+                                          padding: const EdgeInsets.fromLTRB(
+                                            22,
+                                            18,
+                                            22,
+                                            22,
+                                          ),
+                                          child: Stack(
+                                            children: [
+                                              Positioned(
+                                                top: 0,
+                                                right: 6,
+                                                child: ClipOval(
+                                                  child: Image.file(
+                                                    File(widget.imagePath),
+                                                    width: 85,
+                                                    height: 85,
+                                                    fit: BoxFit.cover,
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                            Positioned.fill(
-                                              child: Padding(
-                                                padding: const EdgeInsets.only(
-                                                  top: 0,
-                                                ),
-                                                child: Column(
-                                                  children: [
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '次の一手',
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 31,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
+                                              Positioned.fill(
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.only(
+                                                        top: 0,
                                                       ),
-                                                    ),
-                                                    const SizedBox(height: 72),
-                                                    Align(
-                                                      alignment:
-                                                          Alignment.centerLeft,
-                                                      child: Text(
-                                                        '明日から1週間は朝と夜の保湿を固定し、肌の質感を安定させましょう。'
-                                                        '次のヘアカットでは前髪を少し軽めにし、サイドのボリュームを抑えると全体のバランスが整います。'
-                                                        '眉は上ラインを触りすぎず下側の産毛だけを整えることで、目元を自然にシャープに見せられます。'
-                                                        '写真は正面よりやや斜め（10〜15度）で、自然光の近くで撮ると印象がより良く見えます。',
-                                                        style: TextStyle(
-                                                          color: Colors.white
-                                                              .withValues(
-                                                                alpha: 0.74,
+                                                  child: Column(
+                                                    children: [
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '次の一手',
+                                                          style:
+                                                              const TextStyle(
+                                                                color: Colors
+                                                                    .white,
+                                                                fontSize: 31,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w500,
                                                               ),
-                                                          fontSize: 16,
-                                                          height: 1.55,
-                                                          fontWeight:
-                                                              FontWeight.w500,
                                                         ),
                                                       ),
-                                                    ),
-                                                    const Spacer(),
-                                                  ],
+                                                      const SizedBox(
+                                                        height: 72,
+                                                      ),
+                                                      Align(
+                                                        alignment: Alignment
+                                                            .centerLeft,
+                                                        child: Text(
+                                                          '明日から1週間は朝と夜の保湿を固定し、肌の質感を安定させましょう。'
+                                                          '次のヘアカットでは前髪を少し軽めにし、サイドのボリュームを抑えると全体のバランスが整います。'
+                                                          '眉は上ラインを触りすぎず下側の産毛だけを整えることで、目元を自然にシャープに見せられます。'
+                                                          '写真は正面よりやや斜め（10〜15度）で、自然光の近くで撮ると印象がより良く見えます。',
+                                                          style: TextStyle(
+                                                            color: Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.74,
+                                                                ),
+                                                            fontSize: 16,
+                                                            height: 1.55,
+                                                            fontWeight:
+                                                                FontWeight.w500,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      const Spacer(),
+                                                    ],
+                                                  ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),
@@ -1445,8 +1506,10 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                     ),
                                   ),
                                   child: TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(context).pop(),
+                                    onPressed: () {
+                                      ScanFlowHaptics.primary();
+                                      Navigator.of(context).pop();
+                                    },
                                     style: TextButton.styleFrom(
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(29),
@@ -1650,6 +1713,7 @@ class _BackImagePreviewScreenState extends State<BackImagePreviewScreen>
 
   void _popByCloseButton() {
     if (_popping) return;
+    ScanFlowHaptics.back();
     _popping = true;
 
     _setPopSpeed(const Duration(milliseconds: 320));

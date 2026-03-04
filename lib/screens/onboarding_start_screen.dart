@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:math';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:permission_handler/permission_handler.dart';
 
@@ -13,6 +15,47 @@ import '../routes/no_swipe_back_material_page_route.dart';
 const int _kOnboardingGaugeSteps = 10;
 final RouteObserver<PageRoute<dynamic>> onboardingRouteObserver =
     RouteObserver<PageRoute<dynamic>>();
+
+class _OnboardingHaptics {
+  static DateTime _lastLoadingPulseAt = DateTime.fromMillisecondsSinceEpoch(0);
+
+  static bool get _supportsHaptics =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+
+  static Future<void> _fire(Future<void> Function() action) async {
+    if (!_supportsHaptics) return;
+    try {
+      await action();
+    } catch (_) {
+      // Ignore haptics failures.
+    }
+  }
+
+  static void nextAction() {
+    if (!_supportsHaptics) return;
+    HapticFeedback.lightImpact();
+  }
+
+  static void optionSelect() {
+    if (!_supportsHaptics) return;
+    HapticFeedback.selectionClick();
+  }
+
+  static Future<void> loadingPulse() {
+    final DateTime now = DateTime.now();
+    if (now.difference(_lastLoadingPulseAt).inMilliseconds < 650) {
+      return Future<void>.value();
+    }
+    _lastLoadingPulseAt = now;
+    return _fire(HapticFeedback.lightImpact);
+  }
+
+  static Future<void> loadingDone() {
+    return _fire(HapticFeedback.mediumImpact);
+  }
+}
 
 class _OnboardingGradientBackground extends StatelessWidget {
   const _OnboardingGradientBackground({required this.child});
@@ -161,28 +204,53 @@ class _OnboardingStartScreenState extends State<OnboardingStartScreen> {
   bool _showFirstImage = false;
   bool _showSecondImage = false;
   bool _showNextButton = false;
+  bool _isNavigating = false;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Preload early onboarding images to avoid first-interaction jank.
+      unawaited(
+        Future.wait(<Future<void>>[
+          precacheImage(const AssetImage('assets/images/っぺろん.png'), context),
+          precacheImage(const AssetImage('assets/images/頑固者.png'), context),
+        ]),
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       setState(() {
         _showFirstImage = true;
       });
-      Future<void>.delayed(const Duration(milliseconds: 900), () {
+      Future<void>.delayed(const Duration(milliseconds: 420), () {
         if (!mounted) return;
         setState(() {
           _showSecondImage = true;
         });
       });
-      Future<void>.delayed(const Duration(milliseconds: 2200), () {
+      Future<void>.delayed(const Duration(milliseconds: 900), () {
         if (!mounted) return;
         setState(() {
           _showNextButton = true;
         });
       });
     });
+  }
+
+  void _handleFirstNextTap() {
+    if (_isNavigating) return;
+    _isNavigating = true;
+    _OnboardingGaugeMemory.lastStep = 0;
+    _OnboardingEvaluationMemory.score = 50;
+    _OnboardingEvaluationMemory.hasMovedSlider = false;
+    Navigator.of(context).push(
+      _OnboardingNoTransitionRoute<void>(
+        builder: (_) => const OnboardingNextScreen(),
+      ),
+    );
+    _OnboardingHaptics.nextAction();
   }
 
   @override
@@ -264,21 +332,14 @@ class _OnboardingStartScreenState extends State<OnboardingStartScreen> {
                                 letterSpacing: 0.2,
                               ),
                               shadowColor: Colors.transparent,
+                              animationDuration: Duration.zero,
+                              enableFeedback: false,
                             ).copyWith(
                               overlayColor: WidgetStatePropertyAll(
                                 Colors.black.withValues(alpha: 0.06),
                               ),
                             ),
-                        onPressed: () {
-                          _OnboardingGaugeMemory.lastStep = 0;
-                          _OnboardingEvaluationMemory.score = 50;
-                          _OnboardingEvaluationMemory.hasMovedSlider = false;
-                          Navigator.of(context).push(
-                            _OnboardingNoTransitionRoute<void>(
-                              builder: (_) => const OnboardingNextScreen(),
-                            ),
-                          );
-                        },
+                        onPressed: _handleFirstNextTap,
                         child: const Text('次へ'),
                       ),
                     ),
@@ -310,7 +371,7 @@ class _OnboardingNextScreenState extends State<OnboardingNextScreen>
     super.initState();
     _introController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 650),
     )..forward();
   }
 
@@ -345,6 +406,7 @@ class _OnboardingNextScreenState extends State<OnboardingNextScreen>
   }
 
   void _goToNextPage(BuildContext context) {
+    _OnboardingHaptics.nextAction();
     Navigator.of(context).push(
       _OnboardingNoTransitionRoute<void>(
         builder: (_) => const OnboardingGenderDoneScreen(),
@@ -353,6 +415,7 @@ class _OnboardingNextScreenState extends State<OnboardingNextScreen>
   }
 
   void _handleGenderTap(String label) {
+    _OnboardingHaptics.optionSelect();
     setState(() {
       _selectedGender = label;
     });
@@ -730,7 +793,7 @@ class _OnboardingGenderDoneScreenState extends State<OnboardingGenderDoneScreen>
     super.initState();
     _introController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 650),
     )..forward();
   }
 
@@ -903,6 +966,7 @@ class _OnboardingGenderDoneScreenState extends State<OnboardingGenderDoneScreen>
                         ),
                         onPressed: _hasMovedSlider
                             ? () {
+                                _OnboardingHaptics.nextAction();
                                 Navigator.of(context).push(
                                   _OnboardingNoTransitionRoute<void>(
                                     builder: (_) =>
@@ -1325,6 +1389,7 @@ class _OnboardingPerceptionScreenState extends State<OnboardingPerceptionScreen>
                       onPressed: _selected == null
                           ? null
                           : () {
+                              _OnboardingHaptics.nextAction();
                               Navigator.of(context).push(
                                 _OnboardingNoTransitionRoute<void>(
                                   builder: (_) =>
@@ -1496,6 +1561,7 @@ class _OnboardingConcernScreenState extends State<OnboardingConcernScreen>
                       onPressed: _selected.isEmpty
                           ? null
                           : () {
+                              _OnboardingHaptics.nextAction();
                               Navigator.of(context).push(
                                 _OnboardingNoTransitionRoute<void>(
                                   builder: (_) =>
@@ -1647,6 +1713,7 @@ class _OnboardingReactionScreenState extends State<OnboardingReactionScreen>
                       onPressed: _selected == null
                           ? null
                           : () {
+                              _OnboardingHaptics.nextAction();
                               Navigator.of(context).push(
                                 _OnboardingNoTransitionRoute<void>(
                                   builder: (_) =>
@@ -1798,6 +1865,7 @@ class _OnboardingReasonScreenState extends State<OnboardingReasonScreen>
                         onPressed: _selected == null
                             ? null
                             : () {
+                                _OnboardingHaptics.nextAction();
                                 Navigator.of(context).push(
                                   _OnboardingNoTransitionRoute<void>(
                                     builder: (_) =>
@@ -1978,6 +2046,7 @@ class _OnboardingFinalStepScreenState extends State<OnboardingFinalStepScreen>
                               ),
                             ),
                             onPressed: () {
+                              _OnboardingHaptics.nextAction();
                               Navigator.of(context).push(
                                 _OnboardingNoTransitionRoute<void>(
                                   builder: (_) =>
@@ -2169,6 +2238,7 @@ class _OnboardingExtraStepScreenState extends State<OnboardingExtraStepScreen>
                           ),
                         ),
                         onPressed: () {
+                          _OnboardingHaptics.nextAction();
                           Navigator.of(context).push(
                             _OnboardingNoTransitionRoute<void>(
                               builder: (_) => const OnboardingLastInfoScreen(),
@@ -2205,7 +2275,6 @@ class _OnboardingFeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 180,
       padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -2215,6 +2284,7 @@ class _OnboardingFeatureCard extends StatelessWidget {
         ),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           Container(
             width: 52,
@@ -2243,14 +2313,18 @@ class _OnboardingFeatureCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            subtitle,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Color(0xFFB8C5E0),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              height: 1.38,
+          Flexible(
+            child: Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFB8C5E0),
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                height: 1.38,
+              ),
             ),
           ),
         ],
@@ -2487,6 +2561,7 @@ class _OnboardingLastInfoScreenState extends State<OnboardingLastInfoScreen>
                           ),
                         ),
                         onPressed: () {
+                          _OnboardingHaptics.nextAction();
                           Navigator.of(context).push(
                             _OnboardingNoTransitionRoute<void>(
                               builder: (_) => const OnboardingLastDoneScreen(),
@@ -2596,6 +2671,7 @@ class _OnboardingLastDoneScreenState extends State<OnboardingLastDoneScreen> {
                         ),
                       ),
                       onPressed: () {
+                        _OnboardingHaptics.nextAction();
                         Navigator.of(context).push(
                           _OnboardingNoTransitionRoute<void>(
                             builder: (_) => const OnboardingOptimizingScreen(),
@@ -2667,6 +2743,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
       _isFinalizingProgress = true;
       return;
     }
+    unawaited(_OnboardingHaptics.loadingPulse());
     _scheduleNextProgressStep();
   }
 
@@ -2679,6 +2756,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
     if (current >= 0.96) {
       _isFinalizingProgress = true;
       _statusDetail = '最終チェック中';
+      unawaited(_OnboardingHaptics.loadingPulse());
       _progressTimer = Timer(
         Duration(milliseconds: 350 + _random.nextInt(350)),
         () {
@@ -2694,6 +2772,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                 setState(() {
                   _statusDetail = '環境構築が完了しました';
                 });
+                unawaited(_OnboardingHaptics.loadingDone());
                 _OnboardingOptimizingMemory.completed = true;
               });
         },
@@ -2726,6 +2805,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
         _statusDetail = _statusDetails[_statusIndex];
         _lastStatusChangedAt = now;
       });
+      unawaited(_OnboardingHaptics.loadingPulse());
     }
     _progressController
         .animateTo(
@@ -2841,6 +2921,7 @@ class _OnboardingOptimizingScreenState extends State<OnboardingOptimizingScreen>
                           ),
                           onPressed: done
                               ? () async {
+                                  _OnboardingHaptics.nextAction();
                                   Navigator.of(context).pushAndRemoveUntil(
                                     _OnboardingFinishRoute<void>(
                                       builder: (_) => const UpgradeScreen(),
@@ -3318,7 +3399,10 @@ class _PerceptionOptionButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: TextButton(
-        onPressed: onTap,
+        onPressed: () {
+          _OnboardingHaptics.optionSelect();
+          onTap();
+        },
         style: TextButton.styleFrom(
           backgroundColor: selected
               ? const Color(0xFF000000)
@@ -3389,7 +3473,10 @@ class _QuestionOptionButton extends StatelessWidget {
             ),
           ),
           child: TextButton(
-            onPressed: onTap,
+            onPressed: () {
+              _OnboardingHaptics.optionSelect();
+              onTap();
+            },
             style: TextButton.styleFrom(
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
@@ -3410,7 +3497,10 @@ class _QuestionOptionButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: OutlinedButton(
-        onPressed: onTap,
+        onPressed: () {
+          _OnboardingHaptics.optionSelect();
+          onTap();
+        },
         style: OutlinedButton.styleFrom(
           backgroundColor: selected
               ? const Color(0xFF000000)

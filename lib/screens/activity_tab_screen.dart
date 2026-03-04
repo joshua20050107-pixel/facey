@@ -7,6 +7,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'condition_analysis_result_screen.dart';
 import '../routes/no_swipe_back_material_page_route.dart';
 import '../services/facey_api_service.dart';
+import '../services/scan_flow_haptics.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
@@ -30,6 +31,10 @@ class ActivityTabScreen extends StatefulWidget {
 }
 
 class _ActivityTabScreenState extends State<ActivityTabScreen> {
+  static const bool _useDummyWarmup = bool.fromEnvironment(
+    'FACEY_USE_DUMMY_HOME_CONDITION',
+    defaultValue: true,
+  );
   static const String _prefsBoxName = 'app_prefs';
   static const String _conditionLatestResultFrontImageKey =
       'condition_latest_result_front_image';
@@ -177,6 +182,13 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
 
   Future<void> _prepareApi() async {
     if (!mounted) return;
+    if (_useDummyWarmup) {
+      setState(() {
+        _isApiPreparing = false;
+        _apiInitError = null;
+      });
+      return;
+    }
     setState(() {
       _isApiPreparing = true;
       _apiInitError = null;
@@ -507,7 +519,10 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
             ),
             const SizedBox(height: 12),
             OutlinedButton(
-              onPressed: _prepareApi,
+              onPressed: () {
+                ScanFlowHaptics.secondary();
+                _prepareApi();
+              },
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white,
                 side: const BorderSide(color: Colors.white54),
@@ -600,6 +615,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                   scale: scale,
                                   useHomeTitleStyle: true,
                                   onButtonTap: () async {
+                                    ScanFlowHaptics.primary();
                                     await Navigator.of(context).push(
                                       NoSwipeBackMaterialPageRoute<void>(
                                         builder: (_) => ScanNextScreen(
@@ -652,6 +668,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                                 !_isPendingConditionAnalysis,
                                             onButtonTap: resultButtonEnabled
                                                 ? () {
+                                                    ScanFlowHaptics.primary();
                                                     final String? path =
                                                         _latestConditionFrontImagePath;
                                                     if (path == null ||

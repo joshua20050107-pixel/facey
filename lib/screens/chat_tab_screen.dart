@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'custom_image_picker_screen.dart';
 import 'face_analysis_result_screen.dart';
 import '../services/facey_api_service.dart';
+import '../services/scan_flow_haptics.dart';
 
 class ChatTabScreen extends StatefulWidget {
   const ChatTabScreen({super.key});
@@ -18,6 +19,10 @@ class ChatTabScreen extends StatefulWidget {
 
 class _ChatTabScreenState extends State<ChatTabScreen> {
   static const int _maxComposerImages = 5;
+  static const bool _useDummyChat = bool.fromEnvironment(
+    'FACEY_USE_DUMMY_CHAT',
+    defaultValue: true,
+  );
   static const TextStyle _userBubbleTextStyle = TextStyle(
     color: Color(0xFF0C1220),
     fontSize: 14,
@@ -66,6 +71,13 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
       _isApiPreparing = true;
       _apiInitError = null;
     });
+    if (_useDummyChat) {
+      if (!mounted) return;
+      setState(() {
+        _isApiPreparing = false;
+      });
+      return;
+    }
     try {
       await FaceyApiService.waitUntilReady();
       if (!mounted) return;
@@ -82,6 +94,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
   }
 
   void _refreshChat() {
+    ScanFlowHaptics.secondary();
     setState(() {
       _messages.clear();
       _messageController.clear();
@@ -94,6 +107,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 
   Future<void> _pickFromGallery() async {
     if (!_canAddMoreImages) return;
+    ScanFlowHaptics.secondary();
     if (kIsWeb) {
       final List<XFile> picked = await _picker.pickMultiImage(imageQuality: 90);
       if (!mounted || picked.isEmpty) return;
@@ -134,6 +148,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 
   void _removeComposerImage(int index) {
     if (index < 0 || index >= _composerImages.length) return;
+    ScanFlowHaptics.toggle();
     setState(() {
       _composerImages.removeAt(index);
     });
@@ -145,6 +160,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
         .map((XFile file) => file.path)
         .toList();
     if (inputText.isEmpty && imagePaths.isEmpty) return;
+    ScanFlowHaptics.primary();
 
     setState(() {
       _messages.add(
@@ -178,8 +194,9 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
           })
           .toList();
 
-      final String reply = await FaceyApiService.sendChat(
+      final String reply = await _sendChatRequest(
         message: inputText.isEmpty ? '画像を送信しました。' : inputText,
+        imagePaths: imagePaths,
         history: history,
       );
 
@@ -221,11 +238,51 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 
   String _heroTagForPath(String path) => 'chat_preview_$path';
 
+  Future<String> _sendChatRequest({
+    required String message,
+    required List<String> imagePaths,
+    required List<FaceyChatTurn> history,
+  }) async {
+    if (_useDummyChat) {
+      return _buildDummyReply(
+        message: message,
+        imagePaths: imagePaths,
+        history: history,
+      );
+    }
+    return FaceyApiService.sendChat(message: message, history: history);
+  }
+
+  Future<String> _buildDummyReply({
+    required String message,
+    required List<String> imagePaths,
+    required List<FaceyChatTurn> history,
+  }) async {
+    await Future<void>.delayed(const Duration(milliseconds: 380));
+    final bool hasImages = imagePaths.isNotEmpty;
+    final bool firstTurn = history
+        .where((FaceyChatTurn t) => t.role == 'user')
+        .isEmpty;
+    final String normalizedMessage = message.trim();
+
+    if (firstTurn && hasImages) {
+      return '画像ありがとうございます。第一印象・清潔感・表情の3軸で見ています。まずは「髪」「眉」「姿勢」のどれを優先して改善したいですか？';
+    }
+    if (hasImages) {
+      return '画像ベースでの提案です。次の1週間は「照明を正面45度」「あごを軽く引く」「口角を少し上げる」を固定すると、印象のブレを抑えられます。';
+    }
+    if (normalizedMessage.contains('何') || normalizedMessage.contains('なに')) {
+      return '今すぐ着手しやすい順に、1. 眉の輪郭を整える 2. 髪のボリューム位置を上げる 3. 姿勢を胸から開く、がおすすめです。';
+    }
+    return '了解です。次の改善アクションを短期で回しましょう。今日: 撮影条件を固定、今週: 1ポイントだけ改善、来週: 再撮影して比較、の流れが効果的です。';
+  }
+
   Future<void> _openImageReview(
     List<String> imagePaths, {
     int initialIndex = 0,
   }) async {
     if (imagePaths.isEmpty) return;
+    ScanFlowHaptics.toggle();
     final int safeInitialIndex = initialIndex.clamp(0, imagePaths.length - 1);
     await Navigator.of(context).push(
       PageRouteBuilder<void>(
@@ -592,7 +649,10 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                 top: 58,
                 right: 0,
                 child: TextButton(
-                  onPressed: _prepareApi,
+                  onPressed: () {
+                    ScanFlowHaptics.secondary();
+                    _prepareApi();
+                  },
                   child: const Text('再接続'),
                 ),
               ),

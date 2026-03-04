@@ -11,6 +11,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../routes/scan_flow_material_page_route.dart';
+import '../services/scan_flow_haptics.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'side_profile_upload_screen.dart';
 
@@ -119,6 +120,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
           actions: [
             CupertinoActionSheetAction(
               onPressed: () async {
+                ScanFlowHaptics.secondary();
                 Navigator.of(context).pop();
                 await _startRetakeCameraMode();
               },
@@ -129,6 +131,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
             ),
             CupertinoActionSheetAction(
               onPressed: () async {
+                ScanFlowHaptics.secondary();
                 Navigator.of(context).pop();
                 await _replaceImage(ImageSource.gallery);
               },
@@ -136,7 +139,10 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
             ),
           ],
           cancelButton: CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              ScanFlowHaptics.back();
+              Navigator.of(context).pop();
+            },
             isDefaultAction: true,
             child: const Text('キャンセル', style: TextStyle(color: Colors.white)),
           ),
@@ -269,7 +275,12 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap: cameraReady ? _captureRetakeAndApply : null,
+              onTap: cameraReady
+                  ? () {
+                      ScanFlowHaptics.capture();
+                      _captureRetakeAndApply();
+                    }
+                  : null,
             ),
           ),
         ),
@@ -320,6 +331,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
         ),
         child: TextButton(
           onPressed: () async {
+            ScanFlowHaptics.secondary();
             if (widget.cameraRetakeMode) {
               await _startRetakeCameraMode();
               return;
@@ -362,6 +374,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
         ),
         child: TextButton(
           onPressed: () async {
+            ScanFlowHaptics.primary();
             if (widget.saveToGrowthRecordMode) {
               final String savedPath = await _saveToGrowthRecord();
               widget.onSavedGrowthImage?.call(savedPath);
@@ -731,6 +744,7 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
           leading: IconButton(
             icon: const Icon(Icons.chevron_left_rounded, size: 36),
             onPressed: () async {
+              ScanFlowHaptics.back();
               await _backToScanStart();
             },
           ),

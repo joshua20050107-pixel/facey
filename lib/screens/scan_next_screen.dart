@@ -8,6 +8,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 
 import '../routes/scan_flow_material_page_route.dart';
+import '../services/scan_flow_haptics.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'scan_image_confirm_screen.dart';
 
@@ -220,6 +221,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
           actions: [
             CupertinoActionSheetAction(
               onPressed: () async {
+                ScanFlowHaptics.secondary();
                 Navigator.of(context).pop();
                 await _startCameraMode();
               },
@@ -230,6 +232,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
             ),
             CupertinoActionSheetAction(
               onPressed: () async {
+                ScanFlowHaptics.secondary();
                 Navigator.of(context).pop();
                 await _pickImage(ImageSource.gallery);
               },
@@ -237,7 +240,10 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
             ),
           ],
           cancelButton: CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              ScanFlowHaptics.back();
+              Navigator.of(context).pop();
+            },
             isDefaultAction: true,
             child: const Text('キャンセル', style: TextStyle(color: Colors.white)),
           ),
@@ -272,6 +278,7 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
         ),
         child: TextButton(
           onPressed: () async {
+            ScanFlowHaptics.primary();
             if (widget.cameraOnlyMode) {
               await _startCameraMode();
               return;
@@ -319,7 +326,12 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
             shape: const CircleBorder(),
             child: InkWell(
               customBorder: const CircleBorder(),
-              onTap: cameraReady ? _captureAndContinue : null,
+              onTap: cameraReady
+                  ? () {
+                      ScanFlowHaptics.capture();
+                      _captureAndContinue();
+                    }
+                  : null,
             ),
           ),
         ),
@@ -373,7 +385,12 @@ class _ScanNextScreenState extends State<ScanNextScreen> {
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
-        onTap: enabled ? _toggleFlash : null,
+        onTap: enabled
+            ? () {
+                ScanFlowHaptics.toggle();
+                _toggleFlash();
+              }
+            : null,
         child: SizedBox(
           width: 40,
           height: 40,
