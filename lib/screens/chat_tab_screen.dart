@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import 'custom_image_picker_screen.dart';
 import 'face_analysis_result_screen.dart';
+import '../services/facey_api_service.dart';
 
 class ChatTabScreen extends StatefulWidget {
   const ChatTabScreen({super.key});
@@ -16,8 +17,6 @@ class ChatTabScreen extends StatefulWidget {
 }
 
 class _ChatTabScreenState extends State<ChatTabScreen> {
-  static const String _fixedAssistantReply =
-      'いいですね。まずは睡眠・食事・運動の3つを1週間だけ整えて、変化を記録してみましょう。';
   static const int _maxComposerImages = 5;
   static const TextStyle _userBubbleTextStyle = TextStyle(
     color: Color(0xFF0C1220),
@@ -31,11 +30,15 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _composerImages = <XFile>[];
   final List<_ChatMessage> _messages = <_ChatMessage>[];
+  bool _isApiPreparing = true;
+  bool _isSending = false;
+  String? _apiInitError;
 
   @override
   void initState() {
     super.initState();
     _messageController.addListener(_handleMessageChanged);
+    unawaited(_prepareApi());
   }
 
   @override
@@ -52,8 +55,31 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
   }
 
   bool get _isSendEnabled =>
-      _messageController.text.trim().isNotEmpty || _composerImages.isNotEmpty;
+      !_isApiPreparing &&
+      !_isSending &&
+      (_messageController.text.trim().isNotEmpty || _composerImages.isNotEmpty);
   bool get _canAddMoreImages => _composerImages.length < _maxComposerImages;
+
+  Future<void> _prepareApi() async {
+    if (!mounted) return;
+    setState(() {
+      _isApiPreparing = true;
+      _apiInitError = null;
+    });
+    try {
+      await FaceyApiService.waitUntilReady();
+      if (!mounted) return;
+      setState(() {
+        _isApiPreparing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isApiPreparing = false;
+        _apiInitError = 'API接続に失敗しました。';
+      });
+    }
+  }
 
   void _refreshChat() {
     setState(() {
@@ -130,6 +156,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
       );
       _messageController.clear();
       _composerImages.clear();
+      _isSending = true;
     });
     _scrollChatToBottom();
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -137,18 +164,48 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
       FocusManager.instance.primaryFocus?.unfocus();
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    if (!mounted) return;
+    try {
+      final List<_ChatMessage> previousMessages = _messages.length > 1
+          ? _messages.sublist(0, _messages.length - 1)
+          : const <_ChatMessage>[];
+      final List<FaceyChatTurn> history = previousMessages
+          .where((_ChatMessage m) => m.text.trim().isNotEmpty)
+          .map((_ChatMessage m) {
+            return FaceyChatTurn(
+              role: m.role == _ChatRole.assistant ? 'assistant' : 'user',
+              text: m.text.trim(),
+            );
+          })
+          .toList();
 
-    setState(() {
-      _messages.add(
-        const _ChatMessage(
-          role: _ChatRole.assistant,
-          text: _fixedAssistantReply,
-        ),
+      final String reply = await FaceyApiService.sendChat(
+        message: inputText.isEmpty ? '画像を送信しました。' : inputText,
+        history: history,
       );
-    });
-    _scrollChatToBottom();
+
+      if (!mounted) return;
+      setState(() {
+        _messages.add(_ChatMessage(role: _ChatRole.assistant, text: reply));
+      });
+      _scrollChatToBottom();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _messages.add(
+          const _ChatMessage(
+            role: _ChatRole.assistant,
+            text: '通信エラーです。時間を置いて再試行してください。',
+          ),
+        );
+      });
+      _scrollChatToBottom();
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
+    }
   }
 
   void _scrollChatToBottom() {
@@ -519,10 +576,25 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
               ],
             ),
             if (_messages.isEmpty)
-              const Positioned.fill(
+              Positioned.fill(
                 top: 52,
                 bottom: 118,
-                child: IgnorePointer(child: _ChatEmptyStateOverlay()),
+                child: IgnorePointer(
+                  child: _ChatEmptyStateOverlay(
+                    subtitle: _isApiPreparing
+                        ? 'API準備中です。準備ができるまでお待ちください'
+                        : _apiInitError ?? '改善点やこれからの行動・気になることを\n相談してみてください',
+                  ),
+                ),
+              ),
+            if (_apiInitError != null)
+              Positioned(
+                top: 58,
+                right: 0,
+                child: TextButton(
+                  onPressed: _prepareApi,
+                  child: const Text('再接続'),
+                ),
               ),
           ],
         ),
@@ -532,7 +604,9 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 }
 
 class _ChatEmptyStateOverlay extends StatelessWidget {
-  const _ChatEmptyStateOverlay();
+  const _ChatEmptyStateOverlay({required this.subtitle});
+
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -582,7 +656,7 @@ class _ChatEmptyStateOverlay extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '改善点やこれからの行動・気になることを\n相談してみてください',
+              subtitle,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.56),

@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../routes/scan_flow_material_page_route.dart';
+import '../services/facey_api_service.dart';
 import 'face_analysis_result_screen.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
@@ -45,6 +46,8 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   String? _latestResultSideImagePath;
   bool _isPendingFaceAnalysis = false;
   double _pendingFaceAnalysisProgress = 0;
+  bool _isApiPreparing = true;
+  String? _apiInitError;
   Timer? _analysisUnlockTimer;
   Timer? _analysisProgressTimer;
   StreamSubscription<BoxEvent>? _prefsSubscription;
@@ -53,6 +56,7 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   void initState() {
     super.initState();
     _loadLatestResult();
+    unawaited(_prepareApi());
     _prefsSubscription = Hive.box<String>(_prefsBoxName).watch().listen((
       BoxEvent event,
     ) {
@@ -181,6 +185,28 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
         _pendingFaceAnalysisProgress = 0;
       }
     });
+  }
+
+  Future<void> _prepareApi() async {
+    if (!mounted) return;
+    setState(() {
+      _isApiPreparing = true;
+      _apiInitError = null;
+    });
+    try {
+      await FaceyApiService.waitUntilReady();
+      await FaceyApiService.warmupHome();
+      if (!mounted) return;
+      setState(() {
+        _isApiPreparing = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isApiPreparing = false;
+        _apiInitError = 'API接続に失敗しました。';
+      });
+    }
   }
 
   double _progressFromRemainingMs(int remainingMs) {
@@ -758,6 +784,45 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isApiPreparing) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 14),
+            Text(
+              'APIを準備しています...',
+              style: TextStyle(color: Color(0xFFB9C0CF), fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_apiInitError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _apiInitError!,
+              style: const TextStyle(color: Color(0xFFFFCDD2), fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _prepareApi,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white54),
+              ),
+              child: const Text('再試行'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double widthScale = (constraints.maxWidth / 430).clamp(0.82, 1.0);

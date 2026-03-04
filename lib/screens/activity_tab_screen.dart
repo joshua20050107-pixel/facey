@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import 'condition_analysis_result_screen.dart';
 import '../routes/no_swipe_back_material_page_route.dart';
+import '../services/facey_api_service.dart';
 import 'scan_next_screen.dart';
 import '../widgets/top_header.dart';
 import '../widgets/yomu_gender_two_choice.dart';
@@ -46,6 +47,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
   String? _latestConditionFrontImagePath;
   bool _isPendingConditionAnalysis = false;
   double _pendingConditionAnalysisProgress = 0;
+  bool _isApiPreparing = true;
+  String? _apiInitError;
   Timer? _analysisUnlockTimer;
   Timer? _analysisProgressTimer;
 
@@ -53,6 +56,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
   void initState() {
     super.initState();
     _loadLatestConditionResult();
+    unawaited(_prepareApi());
     _prefsSubscription = Hive.box<String>(_prefsBoxName).watch().listen((
       BoxEvent event,
     ) {
@@ -169,6 +173,28 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
   double _progressFromRemainingMs(int remainingMs) {
     final double raw = 1 - (remainingMs / _pendingConditionAnalysisDurationMs);
     return raw.clamp(0.0, 1.0);
+  }
+
+  Future<void> _prepareApi() async {
+    if (!mounted) return;
+    setState(() {
+      _isApiPreparing = true;
+      _apiInitError = null;
+    });
+    try {
+      await FaceyApiService.waitUntilReady();
+      await FaceyApiService.warmupCondition();
+      if (!mounted) return;
+      setState(() {
+        _isApiPreparing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isApiPreparing = false;
+        _apiInitError = 'API接続に失敗しました。';
+      });
+    }
   }
 
   void _resetToFirstPage() {
@@ -454,6 +480,45 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isApiPreparing) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 14),
+            Text(
+              'APIを準備しています...',
+              style: TextStyle(color: Color(0xFFB9C0CF), fontSize: 14),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_apiInitError != null) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _apiInitError!,
+              style: const TextStyle(color: Color(0xFFFFCDD2), fontSize: 14),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: _prepareApi,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white,
+                side: const BorderSide(color: Colors.white54),
+              ),
+              child: const Text('再試行'),
+            ),
+          ],
+        ),
+      );
+    }
+
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double widthScale = (constraints.maxWidth / 430).clamp(0.82, 1.0);

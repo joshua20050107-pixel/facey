@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-
 import 'screens/activity_tab_screen.dart';
 import 'screens/chat_tab_screen.dart';
 import 'screens/coach_settings_screen.dart';

@@ -30,6 +30,17 @@ class ConditionAnalysisResultScreen extends StatefulWidget {
 class _ConditionAnalysisResultScreenState
     extends State<ConditionAnalysisResultScreen>
     with SingleTickerProviderStateMixin {
+  static const FaceAnalysisResult _conditionDummyResult = FaceAnalysisResult(
+    overall: 92,
+    metrics: <FaceMetricScore>[
+      FaceMetricScore(label: '清潔感', value: 94),
+      FaceMetricScore(label: '肌', value: 91),
+      FaceMetricScore(label: '雰囲気', value: 93),
+      FaceMetricScore(label: '活力', value: 89),
+      FaceMetricScore(label: '髪', value: 92),
+      FaceMetricScore(label: '目元', value: 90),
+    ],
+  );
   static const double _resultCardHeight = 500;
   final PageController _pageController = PageController();
   final List<GlobalKey> _cardCaptureKeys = <GlobalKey>[
@@ -395,8 +406,7 @@ class _ConditionAnalysisResultScreenState
 
   @override
   Widget build(BuildContext context) {
-    final FaceAnalysisResult viewData =
-        widget.result ?? FaceAnalysisResult.dummy();
+    final FaceAnalysisResult viewData = widget.result ?? _conditionDummyResult;
     final List<int> values = <int>[
       for (final FaceMetricScore m in viewData.metrics.take(6))
         m.value.clamp(0, 100),
