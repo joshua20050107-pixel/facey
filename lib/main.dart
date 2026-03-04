@@ -66,6 +66,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   static final SpringDescription _bottomTargetSlideSpring =
       SpringDescription.withDampingRatio(mass: 1, stiffness: 260, ratio: 0.78);
   int _selectedBottomIndex = 0;
+  int _scanPageResetSignal = 0;
+  int _activityPageResetSignal = 0;
   bool _settingsNotificationEnabled = false;
   YomuGender _selectedGender = YomuGender.male;
   late final List<AnimationController> _bottomIconScaleControllers;
@@ -286,6 +288,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _playBottomIconSpring(index);
           _playBottomCapsuleSpring();
           _slideBottomTargetTo(index);
+          if (index == 0) {
+            _scanPageResetSignal++;
+          } else if (index == 1) {
+            _activityPageResetSignal++;
+          }
           setState(() {
             _selectedBottomIndex = index;
           });
@@ -485,9 +492,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             child: IndexedStack(
               index: _selectedBottomIndex,
               children: [
-                SafeArea(child: ScanTabScreen(selectedGender: _selectedGender)),
                 SafeArea(
-                  child: ActivityTabScreen(selectedGender: _selectedGender),
+                  child: ScanTabScreen(
+                    selectedGender: _selectedGender,
+                    resetPageSignal: _scanPageResetSignal,
+                  ),
+                ),
+                SafeArea(
+                  child: ActivityTabScreen(
+                    selectedGender: _selectedGender,
+                    resetPageSignal: _activityPageResetSignal,
+                  ),
                 ),
                 const SafeArea(child: GrowthLogTabScreen()),
                 const SafeArea(child: ChatTabScreen()),

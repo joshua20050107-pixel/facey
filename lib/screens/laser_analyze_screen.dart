@@ -46,6 +46,8 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
       'condition_latest_result_front_image';
   static const String _conditionLatestResultSideImageKey =
       'condition_latest_result_side_image';
+  static const String _conditionResultFrontImageHistoryKey =
+      'condition_result_front_image_history';
   late final AnimationController _laserController;
   late final Animation<double> _laserProgress;
   late final AnimationController _resultController;
@@ -147,6 +149,20 @@ class _LaserAnalyzeShellState extends State<LaserAnalyzeShell>
       await prefs.put(sideKey, persistentSidePath);
     } else {
       await prefs.delete(sideKey);
+    }
+    if (widget.isConditionFlow) {
+      final String historyRaw =
+          prefs.get(_conditionResultFrontImageHistoryKey) ?? '';
+      final List<String> history = historyRaw
+          .split('\n')
+          .where((String p) => p.isNotEmpty)
+          .toList();
+      history.remove(persistentFrontPath);
+      history.insert(0, persistentFrontPath);
+      if (history.length > 120) {
+        history.removeRange(120, history.length);
+      }
+      await prefs.put(_conditionResultFrontImageHistoryKey, history.join('\n'));
     }
     _didNavigate = true;
     navigator.pushAndRemoveUntil(

@@ -10,10 +10,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
-import '../routes/no_swipe_back_material_page_route.dart';
 import '../routes/scan_flow_material_page_route.dart';
 import '../widgets/yomu_gender_two_choice.dart';
-import 'laser_analyze_screen.dart';
 import 'side_profile_upload_screen.dart';
 
 class ScanImageConfirmScreen extends StatefulWidget {
@@ -59,9 +57,20 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
   static const String _resultMonthlyScoresKey = 'result_monthly_scores';
   static const String _pendingFaceAnalysisUntilMsKey =
       'pending_face_analysis_until_ms';
+  static const String _pendingConditionAnalysisUntilMsKey =
+      'pending_condition_analysis_until_ms';
   static const String _homeScanTargetPageKey = 'home_scan_target_page';
   static const String _homeScanTargetAppliedAckKey =
       'home_scan_target_applied_ack';
+  static const String _activityScanTargetPageKey = 'activity_scan_target_page';
+  static const String _activityScanTargetAppliedAckKey =
+      'activity_scan_target_applied_ack';
+  static const String _conditionLatestResultFrontImageKey =
+      'condition_latest_result_front_image';
+  static const String _conditionLatestResultSideImageKey =
+      'condition_latest_result_side_image';
+  static const String _conditionResultFrontImageHistoryKey =
+      'condition_result_front_image_history';
   static const String _resultFrontImageHistoryKey =
       'result_front_image_history';
   static const String _resultFrontImageHistoryMetaKey =
@@ -427,16 +436,46 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
               }
               return;
             }
-            if (!mounted) return;
-            Navigator.of(context).push(
-              NoSwipeBackMaterialPageRoute<void>(
-                builder: (_) => LaserAnalyzeShell(
-                  imagePath: laserImagePath,
-                  sideImagePath: sideImagePath,
-                  isConditionFlow: widget.isConditionFlow,
-                ),
-              ),
+            final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+            await prefs.put(
+              _conditionLatestResultFrontImageKey,
+              laserImagePath,
             );
+            if (sideImagePath != null && sideImagePath.isNotEmpty) {
+              await prefs.put(
+                _conditionLatestResultSideImageKey,
+                sideImagePath,
+              );
+            } else {
+              await prefs.delete(_conditionLatestResultSideImageKey);
+            }
+            await _persistConditionHistory(frontImagePath: laserImagePath);
+            final int pendingUntilMs =
+                DateTime.now().millisecondsSinceEpoch + 8000;
+            await prefs.put(
+              _pendingConditionAnalysisUntilMsKey,
+              pendingUntilMs.toString(),
+            );
+            final String activityPageAckToken = DateTime.now()
+                .microsecondsSinceEpoch
+                .toString();
+            await prefs.delete(_activityScanTargetAppliedAckKey);
+            await prefs.put(
+              _activityScanTargetPageKey,
+              '1:$activityPageAckToken',
+            );
+            await WidgetsBinding.instance.endOfFrame;
+            await _waitActivityTargetPageApplied(prefs, activityPageAckToken);
+            if (!mounted) return;
+            final NavigatorState navigator = Navigator.of(context);
+            final Route<dynamic>? currentRoute = ModalRoute.of(context);
+            if (currentRoute != null && navigator.canPop()) {
+              navigator.removeRouteBelow(currentRoute);
+            }
+            if (navigator.canPop()) {
+              ScanFlowMaterialPageRoute.armVerticalReverseFor(currentRoute);
+              navigator.pop();
+            }
           },
           style: TextButton.styleFrom(
             foregroundColor: Colors.white,
@@ -636,6 +675,38 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
       if (ack == ackToken) return;
       await Future<void>.delayed(poll);
     }
+  }
+
+  Future<void> _waitActivityTargetPageApplied(
+    Box<String> prefs,
+    String ackToken,
+  ) async {
+    const Duration timeout = Duration(milliseconds: 280);
+    const Duration poll = Duration(milliseconds: 12);
+    final DateTime deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final String? ack = prefs.get(_activityScanTargetAppliedAckKey);
+      if (ack == ackToken) return;
+      await Future<void>.delayed(poll);
+    }
+  }
+
+  Future<void> _persistConditionHistory({
+    required String frontImagePath,
+  }) async {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final String historyRaw =
+        box.get(_conditionResultFrontImageHistoryKey) ?? '';
+    final List<String> history = historyRaw
+        .split('\n')
+        .where((String p) => p.isNotEmpty)
+        .toList();
+    history.remove(frontImagePath);
+    history.insert(0, frontImagePath);
+    if (history.length > 120) {
+      history.removeRange(120, history.length);
+    }
+    await box.put(_conditionResultFrontImageHistoryKey, history.join('\n'));
   }
 
   Future<void> _backToScanStart() async {

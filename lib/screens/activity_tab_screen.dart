@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -15,11 +16,13 @@ class ActivityTabScreen extends StatefulWidget {
     this.title = 'Condition',
     this.subtitle = '現在のあなたの状態を観測します',
     required this.selectedGender,
+    this.resetPageSignal = 0,
   });
 
   final String title;
   final String subtitle;
   final YomuGender selectedGender;
+  final int resetPageSignal;
 
   @override
   State<ActivityTabScreen> createState() => _ActivityTabScreenState();
@@ -29,34 +32,163 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
   static const String _prefsBoxName = 'app_prefs';
   static const String _conditionLatestResultFrontImageKey =
       'condition_latest_result_front_image';
+  static const String _conditionResultFrontImageHistoryKey =
+      'condition_result_front_image_history';
+  static const String _pendingConditionAnalysisUntilMsKey =
+      'pending_condition_analysis_until_ms';
+  static const String _activityScanTargetPageKey = 'activity_scan_target_page';
+  static const String _activityScanTargetAppliedAckKey =
+      'activity_scan_target_applied_ack';
+  static const int _pendingConditionAnalysisDurationMs = 8000;
+  StreamSubscription<BoxEvent>? _prefsSubscription;
   final PageController _pageController = PageController(viewportFraction: 0.93);
   int _currentPageIndex = 0;
   String? _latestConditionFrontImagePath;
+  bool _isPendingConditionAnalysis = false;
+  double _pendingConditionAnalysisProgress = 0;
+  Timer? _analysisUnlockTimer;
+  Timer? _analysisProgressTimer;
 
   @override
   void initState() {
     super.initState();
     _loadLatestConditionResult();
+    _prefsSubscription = Hive.box<String>(_prefsBoxName).watch().listen((
+      BoxEvent event,
+    ) {
+      final Object? key = event.key;
+      if (key == null ||
+          key == _conditionLatestResultFrontImageKey ||
+          key == _pendingConditionAnalysisUntilMsKey) {
+        _loadLatestConditionResult();
+        return;
+      }
+      if (key == _activityScanTargetPageKey) {
+        final Box<String> box = Hive.box<String>(_prefsBoxName);
+        final String raw = box.get(_activityScanTargetPageKey) ?? '';
+        if (raw.isEmpty) return;
+        final List<String> parts = raw.split(':');
+        final int? target = int.tryParse(parts.first);
+        if (target == null) return;
+        final String ackToken = parts.length > 1 ? parts[1] : '';
+        if (_pageController.hasClients) {
+          _pageController.jumpToPage(target);
+        }
+        if (mounted) {
+          setState(() {
+            _currentPageIndex = target;
+          });
+        }
+        if (ackToken.isNotEmpty) {
+          unawaited(box.put(_activityScanTargetAppliedAckKey, ackToken));
+        }
+        unawaited(box.delete(_activityScanTargetPageKey));
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant ActivityTabScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.resetPageSignal != widget.resetPageSignal) {
+      _resetToFirstPage();
+    }
   }
 
   @override
   void dispose() {
+    _prefsSubscription?.cancel();
+    _analysisUnlockTimer?.cancel();
+    _analysisProgressTimer?.cancel();
     _pageController.dispose();
     super.dispose();
   }
 
   void _loadLatestConditionResult() {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
-    final String? frontPath = box.get(_conditionLatestResultFrontImageKey);
+    _analysisUnlockTimer?.cancel();
+    _analysisProgressTimer?.cancel();
+    final int nowMs = DateTime.now().millisecondsSinceEpoch;
+    final int? pendingUntilMs = int.tryParse(
+      box.get(_pendingConditionAnalysisUntilMsKey) ?? '',
+    );
+    final bool isPending = pendingUntilMs != null && pendingUntilMs > nowMs;
+    if (isPending) {
+      final int remainingMs = pendingUntilMs - nowMs;
+      _pendingConditionAnalysisProgress = _progressFromRemainingMs(remainingMs);
+      _analysisProgressTimer = Timer.periodic(
+        const Duration(milliseconds: 90),
+        (_) {
+          if (!mounted) return;
+          final int now = DateTime.now().millisecondsSinceEpoch;
+          final int left = pendingUntilMs - now;
+          if (left <= 0) {
+            _analysisProgressTimer?.cancel();
+            return;
+          }
+          setState(() {
+            _pendingConditionAnalysisProgress = _progressFromRemainingMs(left);
+          });
+        },
+      );
+      _analysisUnlockTimer = Timer(
+        Duration(milliseconds: pendingUntilMs - nowMs),
+        () async {
+          final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+          await prefs.delete(_pendingConditionAnalysisUntilMsKey);
+          if (!mounted) return;
+          _loadLatestConditionResult();
+        },
+      );
+    } else if (pendingUntilMs != null) {
+      unawaited(box.delete(_pendingConditionAnalysisUntilMsKey));
+      _pendingConditionAnalysisProgress = 0;
+    }
+    final String? rawFrontPath = box.get(_conditionLatestResultFrontImageKey);
+    final String? frontPath =
+        rawFrontPath != null &&
+            rawFrontPath.isNotEmpty &&
+            File(rawFrontPath).existsSync()
+        ? rawFrontPath
+        : _resolveFallbackConditionFrontPath(box);
+    if (frontPath != null &&
+        frontPath.isNotEmpty &&
+        frontPath != rawFrontPath) {
+      unawaited(box.put(_conditionLatestResultFrontImageKey, frontPath));
+    }
     if (!mounted) return;
     setState(() {
-      _latestConditionFrontImagePath =
-          frontPath != null &&
-              frontPath.isNotEmpty &&
-              File(frontPath).existsSync()
-          ? frontPath
-          : null;
+      _latestConditionFrontImagePath = frontPath;
+      _isPendingConditionAnalysis = isPending;
+      if (!isPending) {
+        _pendingConditionAnalysisProgress = 0;
+      }
     });
+  }
+
+  double _progressFromRemainingMs(int remainingMs) {
+    final double raw = 1 - (remainingMs / _pendingConditionAnalysisDurationMs);
+    return raw.clamp(0.0, 1.0);
+  }
+
+  void _resetToFirstPage() {
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(0);
+    }
+    if (!mounted) return;
+    setState(() {
+      _currentPageIndex = 0;
+    });
+  }
+
+  String? _resolveFallbackConditionFrontPath(Box<String> box) {
+    final String historyRaw =
+        box.get(_conditionResultFrontImageHistoryKey) ?? '';
+    for (final String path in historyRaw.split('\n')) {
+      if (path.isEmpty) continue;
+      if (File(path).existsSync()) return path;
+    }
+    return null;
   }
 
   Route<void> _buildResultScreenRoute({required String imagePath}) {
@@ -175,7 +307,10 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
     required VoidCallback? onButtonTap,
     bool useHomeTitleStyle = false,
     bool applyDarkOverlay = false,
+    Color darkOverlayColor = const Color(0x66000000),
+    bool showTitle = true,
   }) {
+    final bool isAssetPath = imagePath.startsWith('assets/');
     return Stack(
       alignment: Alignment.center,
       children: [
@@ -208,9 +343,14 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                Image.asset(imagePath, fit: BoxFit.cover),
-                if (applyDarkOverlay)
-                  const ColoredBox(color: Color(0x66000000)),
+                isAssetPath
+                    ? Image.asset(imagePath, fit: BoxFit.cover)
+                    : Image.file(
+                        File(imagePath),
+                        fit: BoxFit.cover,
+                        filterQuality: FilterQuality.high,
+                      ),
+                if (applyDarkOverlay) ColoredBox(color: darkOverlayColor),
                 IgnorePointer(
                   child: Align(
                     alignment: Alignment.bottomCenter,
@@ -245,41 +385,42 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
             ),
           ),
         ),
-        Positioned(
-          left: useHomeTitleStyle ? imageWidth * 0.002 : 24,
-          right: useHomeTitleStyle ? imageWidth * 0.002 : 24,
-          bottom: useHomeTitleStyle ? imageWidth * 0.34 : 120,
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: useHomeTitleStyle
-                ? const TextStyle(
-                    color: Color(0xF2FFFFFF),
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Hiragino Kaku Gothic ProN',
-                    letterSpacing: 0.0,
-                    shadows: <Shadow>[
-                      Shadow(
-                        color: Color(0xAA000000),
-                        blurRadius: 14,
-                        offset: Offset(0, 3),
-                      ),
-                      Shadow(
-                        color: Color(0x66000000),
-                        blurRadius: 4,
-                        offset: Offset(0, 1),
-                      ),
-                    ],
-                  )
-                : const TextStyle(
-                    color: Color(0xF2FFFFFF),
-                    fontSize: 29,
-                    fontWeight: FontWeight.w900,
-                    fontFamily: 'Hiragino Kaku Gothic ProN',
-                  ),
+        if (showTitle)
+          Positioned(
+            left: useHomeTitleStyle ? imageWidth * 0.002 : 24,
+            right: useHomeTitleStyle ? imageWidth * 0.002 : 24,
+            bottom: useHomeTitleStyle ? imageWidth * 0.34 : 120,
+            child: Text(
+              title,
+              textAlign: TextAlign.center,
+              style: useHomeTitleStyle
+                  ? const TextStyle(
+                      color: Color(0xF2FFFFFF),
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Hiragino Kaku Gothic ProN',
+                      letterSpacing: 0.0,
+                      shadows: <Shadow>[
+                        Shadow(
+                          color: Color(0xAA000000),
+                          blurRadius: 14,
+                          offset: Offset(0, 3),
+                        ),
+                        Shadow(
+                          color: Color(0x66000000),
+                          blurRadius: 4,
+                          offset: Offset(0, 1),
+                        ),
+                      ],
+                    )
+                  : const TextStyle(
+                      color: Color(0xF2FFFFFF),
+                      fontSize: 29,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: 'Hiragino Kaku Gothic ProN',
+                    ),
+            ),
           ),
-        ),
         Positioned(
           left: imageWidth * 0.055,
           right: imageWidth * 0.055,
@@ -326,6 +467,11 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
         final double imageWidth = (428 * scale).clamp(268.0, 446.0);
         final double cardHeight = (imageWidth / (1045 / 1629)) * 0.94;
         final double pageGap = (1.4 * scale).clamp(1.0, 2.0);
+        final bool hasLatestResult =
+            _latestConditionFrontImagePath != null &&
+            _latestConditionFrontImagePath!.isNotEmpty;
+        final bool resultButtonEnabled =
+            hasLatestResult && !_isPendingConditionAnalysis;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -410,7 +556,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                               child: SizedBox(
                                 width: imageWidth,
                                 height: cardHeight,
-                                child: _latestConditionFrontImagePath == null
+                                child: !hasLatestResult
                                     ? const Center(
                                         child: Text(
                                           '分析結果が表示されます',
@@ -422,26 +568,81 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                           ),
                                         ),
                                       )
-                                    : _buildCard(
-                                        imagePath:
-                                            _latestConditionFrontImagePath!,
-                                        title: '分析結果',
-                                        buttonLabel: '結果を見る',
-                                        imageWidth: imageWidth,
-                                        scale: scale,
-                                        applyDarkOverlay: true,
-                                        onButtonTap: () {
-                                          final String? path =
-                                              _latestConditionFrontImagePath;
-                                          if (path == null || path.isEmpty) {
-                                            return;
-                                          }
-                                          Navigator.of(context).push(
-                                            _buildResultScreenRoute(
-                                              imagePath: path,
+                                    : Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          _buildCard(
+                                            imagePath:
+                                                _latestConditionFrontImagePath!,
+                                            title: '分析結果',
+                                            buttonLabel: '結果を見る',
+                                            imageWidth: imageWidth,
+                                            scale: scale,
+                                            applyDarkOverlay: true,
+                                            darkOverlayColor:
+                                                _isPendingConditionAnalysis
+                                                ? const Color(0xA6000000)
+                                                : const Color(0x66000000),
+                                            showTitle:
+                                                !_isPendingConditionAnalysis,
+                                            onButtonTap: resultButtonEnabled
+                                                ? () {
+                                                    final String? path =
+                                                        _latestConditionFrontImagePath;
+                                                    if (path == null ||
+                                                        path.isEmpty) {
+                                                      return;
+                                                    }
+                                                    Navigator.of(context).push(
+                                                      _buildResultScreenRoute(
+                                                        imagePath: path,
+                                                      ),
+                                                    );
+                                                  }
+                                                : null,
+                                          ),
+                                          if (_isPendingConditionAnalysis)
+                                            IgnorePointer(
+                                              child: SizedBox(
+                                                width: 112,
+                                                height: 112,
+                                                child: Stack(
+                                                  alignment: Alignment.center,
+                                                  children: [
+                                                    SizedBox(
+                                                      width: 96,
+                                                      height: 96,
+                                                      child: CircularProgressIndicator(
+                                                        value:
+                                                            _pendingConditionAnalysisProgress,
+                                                        strokeWidth: 6,
+                                                        strokeCap:
+                                                            StrokeCap.round,
+                                                        color: Colors.white,
+                                                        backgroundColor:
+                                                            const Color(
+                                                              0x3DFFFFFF,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      '${(_pendingConditionAnalysisProgress * 100).round()}%',
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 28,
+                                                        height: 1.0,
+                                                        fontWeight:
+                                                            FontWeight.w900,
+                                                        fontFamily:
+                                                            'Hiragino Kaku Gothic ProN',
+                                                        letterSpacing: 0.2,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
                                             ),
-                                          );
-                                        },
+                                        ],
                                       ),
                               ),
                             ),

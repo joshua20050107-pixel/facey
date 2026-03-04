@@ -80,20 +80,11 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
 
   Future<void> _loadLatestScores() async {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
-    final int overallSum =
+    final int storedOverallSum =
         int.tryParse(box.get(_resultOverallSumKey) ?? '') ?? 0;
-    final int potentialSum =
+    final int storedPotentialSum =
         int.tryParse(box.get(_resultPotentialSumKey) ?? '') ?? 0;
-    final int count = int.tryParse(box.get(_resultCountKey) ?? '') ?? 0;
-    final int? overallParsed = count > 0 ? (overallSum / count).round() : null;
-    final int? potentialParsed = count > 0
-        ? (potentialSum / count).round()
-        : null;
-    final String? latestFrontPath = box.get(_latestResultFrontImageKey);
-    final bool hasLatestImage =
-        latestFrontPath != null &&
-        latestFrontPath.isNotEmpty &&
-        File(latestFrontPath).existsSync();
+    final int storedCount = int.tryParse(box.get(_resultCountKey) ?? '') ?? 0;
     final String metaRaw = box.get(_resultFrontImageHistoryMetaKey) ?? '[]';
     List<_FrontImageEntry> history = <_FrontImageEntry>[];
     try {
@@ -137,6 +128,9 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     }
     final String monthlyRaw = box.get(_resultMonthlyScoresKey) ?? '{}';
     Map<String, _MonthlyScore> monthlyScores = <String, _MonthlyScore>{};
+    int monthlyOverallSum = 0;
+    int monthlyPotentialSum = 0;
+    int monthlyCount = 0;
     try {
       final Map<String, dynamic> monthlyMap = Map<String, dynamic>.from(
         jsonDecode(monthlyRaw) as Map<String, dynamic>,
@@ -152,6 +146,9 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
                 .toInt();
         final int count = (data['count'] is num ? data['count'] as num : 0)
             .toInt();
+        monthlyOverallSum += overallSum;
+        monthlyPotentialSum += potentialSum;
+        monthlyCount += count;
         return MapEntry<String, _MonthlyScore>(
           key,
           _MonthlyScore(
@@ -163,6 +160,29 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
       });
     } catch (_) {
       monthlyScores = <String, _MonthlyScore>{};
+    }
+    final int effectiveCount = storedCount > 0 ? storedCount : monthlyCount;
+    final int effectiveOverallSum = storedCount > 0
+        ? storedOverallSum
+        : monthlyOverallSum;
+    final int effectivePotentialSum = storedCount > 0
+        ? storedPotentialSum
+        : monthlyPotentialSum;
+    final int? overallParsed = effectiveCount > 0
+        ? (effectiveOverallSum / effectiveCount).round()
+        : null;
+    final int? potentialParsed = effectiveCount > 0
+        ? (effectivePotentialSum / effectiveCount).round()
+        : null;
+    final String? rawLatestFrontPath = box.get(_latestResultFrontImageKey);
+    String? effectiveLatestFrontPath =
+        rawLatestFrontPath != null &&
+            rawLatestFrontPath.isNotEmpty &&
+            File(rawLatestFrontPath).existsSync()
+        ? rawLatestFrontPath
+        : null;
+    if (effectiveLatestFrontPath == null && history.isNotEmpty) {
+      effectiveLatestFrontPath = history.first.path;
     }
     final String habitsRaw = box.get(_growthHabitsKey) ?? '[]';
     List<_HabitItem> habits = <_HabitItem>[];
@@ -184,11 +204,20 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     setState(() {
       _overallScore = overallParsed?.clamp(0, 100);
       _potentialScore = potentialParsed?.clamp(0, 100);
-      _latestFrontImagePath = hasLatestImage ? latestFrontPath : null;
+      _latestFrontImagePath = effectiveLatestFrontPath;
       _frontImageHistory = history;
       _monthlyScores = monthlyScores;
       _habits = habits;
     });
+    if (effectiveLatestFrontPath != null &&
+        effectiveLatestFrontPath != rawLatestFrontPath) {
+      await box.put(_latestResultFrontImageKey, effectiveLatestFrontPath);
+    }
+    if (storedCount <= 0 && monthlyCount > 0) {
+      await box.put(_resultOverallSumKey, monthlyOverallSum.toString());
+      await box.put(_resultPotentialSumKey, monthlyPotentialSum.toString());
+      await box.put(_resultCountKey, monthlyCount.toString());
+    }
     if (normalizedHabitsRaw != habitsRaw) {
       await box.put(_growthHabitsKey, normalizedHabitsRaw);
     }
@@ -641,12 +670,12 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   @override
   Widget build(BuildContext context) {
     final bool hasScores = _overallScore != null && _potentialScore != null;
-    final List<_FrontImageEntry> homeResultEntries = _frontImageHistory
-        .where((e) => !e.imageOnly && File(e.path).existsSync())
+    final List<_FrontImageEntry> existingEntries = _frontImageHistory
+        .where((e) => File(e.path).existsSync())
         .toList();
-    final String? latestHomeResultImagePath = homeResultEntries.isNotEmpty
-        ? homeResultEntries.first.path
-        : null;
+    final String? latestHomeResultImagePath = existingEntries.isNotEmpty
+        ? existingEntries.first.path
+        : _latestFrontImagePath;
     final bool canOpenProgress = hasScores && _frontImageHistory.isNotEmpty;
     final int overallScore = _overallScore ?? 0;
     final int potentialScore = _potentialScore ?? 0;
@@ -1767,7 +1796,7 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
         ? '↘ $potentialDelta'
         : null;
     final List<_FrontImageEntry> monthHomeResultEntries = monthEntries
-        .where((e) => !e.imageOnly && File(e.path).existsSync())
+        .where((e) => File(e.path).existsSync())
         .toList();
     final String? selectedMonthLatestImagePath =
         monthHomeResultEntries.isNotEmpty
