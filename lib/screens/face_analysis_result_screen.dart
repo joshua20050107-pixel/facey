@@ -8,14 +8,14 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:photo_view/photo_view_gallery.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../services/facey_api_service.dart';
 import '../services/scan_flow_haptics.dart';
 
 class ImageViewerRoute<T> extends PageRoute<T> {
@@ -104,10 +104,21 @@ class FaceMetricScore {
 }
 
 class FaceAnalysisResult {
-  const FaceAnalysisResult({required this.overall, required this.metrics});
+  const FaceAnalysisResult({
+    required this.overall,
+    required this.metrics,
+    this.detailMetrics = const <FaceMetricScore>[],
+    this.strengthsSummary = '',
+    this.improvementsSummary = '',
+    this.nextAction = '',
+  });
 
   final int overall;
   final List<FaceMetricScore> metrics;
+  final List<FaceMetricScore> detailMetrics;
+  final String strengthsSummary;
+  final String improvementsSummary;
+  final String nextAction;
 
   factory FaceAnalysisResult.dummy() {
     return const FaceAnalysisResult(
@@ -154,6 +165,14 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       'latest_result_overall_score';
   static const String _latestResultPotentialScoreKey =
       'latest_result_potential_score';
+  static const String _latestResultAnalysisJsonKey =
+      'latest_result_analysis_json';
+  static const String _latestResultAnalysisFrontPathKey =
+      'latest_result_analysis_front_path';
+  static const String _latestResultAnalysisSidePathKey =
+      'latest_result_analysis_side_path';
+  static const String _resultAnalysisByFrontPathKey =
+      'result_analysis_by_front_path';
   static const String _resultOverallSumKey = 'result_overall_sum';
   static const String _resultPotentialSumKey = 'result_potential_sum';
   static const String _resultCountKey = 'result_count';
@@ -163,6 +182,24 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   static const String _resultFrontImageHistoryMetaKey =
       'result_front_image_history_meta';
   static const String _resultMonthlyScoresKey = 'result_monthly_scores';
+  static const List<String> _primaryMetricLabels = <String>[
+    'ポテンシャル',
+    '性的魅力',
+    '印象',
+    '清潔感',
+    '骨格',
+    '肌',
+  ];
+  static const List<String> _detailMetricLabels = <String>[
+    '男性らしさ',
+    '自信',
+    '親しみやすさ',
+    '髪の毛',
+    'シャープさ',
+    '目力',
+    '顎ライン',
+    '眉',
+  ];
   static const double _resultCardHeight = 500;
   static const int _resultPageCount = 7;
   int _currentPageIndex = 0;
@@ -173,6 +210,9 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   late final AnimationController _flipController;
   late String _cardBackImagePath;
   bool _didPersistLatestCardThumbnail = false;
+  FaceAnalysisResult? _apiResult;
+  bool _isApiLoading = false;
+  String? _apiResultError;
 
   Future<Uint8List?> _captureCardAsPng({int? pageIndex}) async {
     final int targetIndex = (pageIndex ?? _currentPageIndex).clamp(
@@ -264,9 +304,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     }
   }
 
-  Future<void> _persistLatestSummaryScores() async {
-    final FaceAnalysisResult viewData =
-        widget.result ?? FaceAnalysisResult.dummy();
+  Future<void> _persistLatestSummaryScores(FaceAnalysisResult viewData) async {
     final List<FaceMetricScore> metrics = List<FaceMetricScore>.from(
       viewData.metrics,
     );
@@ -369,6 +407,207 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
     await box.put(_resultFrontImageHistoryMetaKey, jsonEncode(normalized));
   }
 
+  Map<String, dynamic> _encodeResult(FaceAnalysisResult result) {
+    return <String, dynamic>{
+      'overall': result.overall,
+      'metrics': result.metrics
+          .map(
+            (FaceMetricScore metric) => <String, dynamic>{
+              'label': metric.label,
+              'value': metric.value,
+            },
+          )
+          .toList(),
+      'detailMetrics': result.detailMetrics
+          .map(
+            (FaceMetricScore metric) => <String, dynamic>{
+              'label': metric.label,
+              'value': metric.value,
+            },
+          )
+          .toList(),
+      'strengthsSummary': result.strengthsSummary,
+      'improvementsSummary': result.improvementsSummary,
+      'nextAction': result.nextAction,
+    };
+  }
+
+  Future<void> _persistLatestAnalysis(FaceAnalysisResult result) async {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final Map<String, dynamic> encoded = _encodeResult(result);
+    await box.put(_latestResultAnalysisFrontPathKey, widget.imagePath);
+    if (widget.sideImagePath != null && widget.sideImagePath!.isNotEmpty) {
+      await box.put(_latestResultAnalysisSidePathKey, widget.sideImagePath!);
+    } else {
+      await box.delete(_latestResultAnalysisSidePathKey);
+    }
+    await box.put(_latestResultAnalysisJsonKey, jsonEncode(encoded));
+
+    final String rawByPath = box.get(_resultAnalysisByFrontPathKey) ?? '{}';
+    Map<String, dynamic> byPath;
+    try {
+      byPath = Map<String, dynamic>.from(
+        jsonDecode(rawByPath) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      byPath = <String, dynamic>{};
+    }
+    byPath[widget.imagePath] = encoded;
+    await box.put(_resultAnalysisByFrontPathKey, jsonEncode(byPath));
+  }
+
+  FaceAnalysisResult? _loadPersistedAnalysisForCurrentImage() {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final String? frontPath = box.get(_latestResultAnalysisFrontPathKey);
+    if (frontPath != widget.imagePath) return null;
+
+    final String currentSide = widget.sideImagePath ?? '';
+    final String savedSide = box.get(_latestResultAnalysisSidePathKey) ?? '';
+    if (currentSide != savedSide) return null;
+
+    final String raw = box.get(_latestResultAnalysisJsonKey) ?? '';
+    if (raw.isEmpty) return null;
+    try {
+      final Map<String, dynamic> map = Map<String, dynamic>.from(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+      return _parseHomeAnalysis(map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  int _toScore(Object? value, int fallback) {
+    final int parsed = switch (value) {
+      int v => v,
+      double v => v.round(),
+      String v => int.tryParse(v) ?? fallback,
+      _ => fallback,
+    };
+    return parsed.clamp(0, 100);
+  }
+
+  List<FaceMetricScore> _parseMetricList(
+    Object? raw,
+    List<String> fallbackLabels,
+  ) {
+    final List<dynamic> list = raw is List<dynamic> ? raw : <dynamic>[];
+    return List<FaceMetricScore>.generate(fallbackLabels.length, (int index) {
+      final Object? item = index < list.length ? list[index] : null;
+      final Map<String, dynamic> map = item is Map<String, dynamic>
+          ? item
+          : <String, dynamic>{};
+      final String label = (map['label'] ?? fallbackLabels[index])
+          .toString()
+          .trim();
+      final int value = _toScore(map['value'], 50);
+      return FaceMetricScore(
+        label: label.isEmpty ? fallbackLabels[index] : label,
+        value: value,
+      );
+    });
+  }
+
+  FaceAnalysisResult _parseHomeAnalysis(Map<String, dynamic> json) {
+    const List<String> primaryLabels = <String>[
+      'ポテンシャル',
+      '性的魅力',
+      '印象',
+      '清潔感',
+      '骨格',
+      '肌',
+    ];
+    const List<String> detailLabels = <String>[
+      '男性らしさ',
+      '自信',
+      '親しみやすさ',
+      '髪の毛',
+      'シャープさ',
+      '目力',
+      '顎ライン',
+      '眉',
+    ];
+    final int overall = _toScore(json['overall'], 50);
+    final List<FaceMetricScore> metrics = _parseMetricList(
+      json['metrics'],
+      primaryLabels,
+    );
+    final List<FaceMetricScore> detailMetrics = _parseMetricList(
+      json['detailMetrics'],
+      detailLabels,
+    );
+    final String strengthsSummary = (json['strengthsSummary'] ?? '')
+        .toString()
+        .trim();
+    final String improvementsSummary = (json['improvementsSummary'] ?? '')
+        .toString()
+        .trim();
+    final String nextAction = (json['nextAction'] ?? '').toString().trim();
+
+    return FaceAnalysisResult(
+      overall: overall,
+      metrics: metrics,
+      detailMetrics: detailMetrics,
+      strengthsSummary: strengthsSummary,
+      improvementsSummary: improvementsSummary,
+      nextAction: nextAction,
+    );
+  }
+
+  Future<void> _loadHomeAnalysis() async {
+    if (widget.result != null) return;
+    final FaceAnalysisResult? cached = widget.persistSummary
+        ? _loadPersistedAnalysisForCurrentImage()
+        : null;
+    if (cached != null) {
+      if (!mounted) return;
+      setState(() {
+        _apiResult = cached;
+        _isApiLoading = false;
+        _apiResultError = null;
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _isApiLoading = true;
+      _apiResultError = null;
+    });
+    try {
+      final Uint8List frontImageBytes = await File(
+        widget.imagePath,
+      ).readAsBytes();
+      final Uint8List? sideImageBytes =
+          widget.sideImagePath != null && widget.sideImagePath!.isNotEmpty
+          ? await File(widget.sideImagePath!).readAsBytes()
+          : null;
+      final String gender = _isFemaleSelected() ? 'female' : 'male';
+      final Map<String, dynamic> analysis = await FaceyApiService.analyzeHome(
+        frontImageBytes: frontImageBytes,
+        sideImageBytes: sideImageBytes,
+        gender: gender,
+      );
+      final FaceAnalysisResult parsed = _parseHomeAnalysis(analysis);
+      if (!mounted) return;
+      setState(() {
+        _apiResult = parsed;
+        _isApiLoading = false;
+        _apiResultError = null;
+      });
+      if (widget.persistSummary) {
+        unawaited(_persistLatestSummaryScores(parsed));
+        unawaited(_persistLatestAnalysis(parsed));
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _apiResult = null;
+        _isApiLoading = false;
+        _apiResultError = '解析APIの取得に失敗しました。';
+      });
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -377,10 +616,14 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
       duration: const Duration(milliseconds: 300),
     );
     _cardBackImagePath = widget.imagePath;
+    unawaited(_loadHomeAnalysis());
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!widget.persistSummary) return;
       _persistLatestCardThumbnail();
-      _persistLatestSummaryScores();
+      final FaceAnalysisResult? resolved = widget.result ?? _apiResult;
+      if (resolved != null) {
+        unawaited(_persistLatestSummaryScores(resolved));
+      }
     });
   }
 
@@ -433,20 +676,6 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
   bool _isFemaleSelected() {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
     return box.get(_genderKey) == 'female';
-  }
-
-  String _metricLabelForGender(String label, bool isFemale) {
-    if (!isFemale) return label;
-    if (label == '性的魅力') return '色気';
-    if (label == '骨格') return '骨格バランス';
-    if (label == '自信') return '上品さ';
-    if (label == 'シャープさ') return '目元';
-    if (label == '目力') return '透明感';
-    if (label == '親しみやすさ') return '小顔度';
-    if (label == '顎ライン') return 'フェイスライン';
-    if (label == '眉') return '雰囲気';
-    if (label == '男性らしさ') return '女性らしさ';
-    return label;
   }
 
   Widget _buildResultCardFrame({
@@ -528,47 +757,79 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
 
   @override
   Widget build(BuildContext context) {
-    final bool isFemale = _isFemaleSelected();
-    final FaceAnalysisResult viewData =
-        widget.result ?? FaceAnalysisResult.dummy();
-    List<FaceMetricScore> metrics = viewData.metrics
-        .map(
-          (FaceMetricScore metric) => FaceMetricScore(
-            label: _metricLabelForGender(metric.label, isFemale),
-            value: metric.value,
+    final FaceAnalysisResult? resolvedResult = widget.result ?? _apiResult;
+    if (resolvedResult == null) {
+      return Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: AppBar(
+          leading: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () {
+              ScanFlowHaptics.back();
+              Navigator.of(context).pop();
+            },
+            child: const Center(child: Icon(Icons.close_rounded, size: 34)),
           ),
-        )
-        .toList();
-    final List<FaceMetricScore> secondPageMetrics = <FaceMetricScore>[
-      FaceMetricScore(
-        label: _metricLabelForGender('男性らしさ', isFemale),
-        value: 92,
-      ),
-      FaceMetricScore(label: _metricLabelForGender('自信', isFemale), value: 83),
-      FaceMetricScore(
-        label: _metricLabelForGender('親しみやすさ', isFemale),
-        value: 76,
-      ),
-      FaceMetricScore(label: _metricLabelForGender('髪の毛', isFemale), value: 68),
-      FaceMetricScore(
-        label: _metricLabelForGender('シャープさ', isFemale),
-        value: 58,
-      ),
-      FaceMetricScore(label: _metricLabelForGender('目力', isFemale), value: 47),
-      FaceMetricScore(
-        label: _metricLabelForGender('顎ライン', isFemale),
-        value: 37,
-      ),
-      FaceMetricScore(label: _metricLabelForGender('眉', isFemale), value: 25),
-    ];
-    if (isFemale) {
-      final FaceMetricScore temp = secondPageMetrics[2];
-      secondPageMetrics[2] = secondPageMetrics[5];
-      secondPageMetrics[5] = temp;
+          backgroundColor: Colors.transparent,
+          foregroundColor: Colors.white,
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+        ),
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.file(File(widget.imagePath), fit: BoxFit.cover),
+            ColoredBox(color: Colors.black.withValues(alpha: 0.9)),
+            Center(
+              child: _isApiLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _apiResultError ?? '解析結果を取得できませんでした。',
+                          style: const TextStyle(
+                            color: Color(0xFFFFCDD2),
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: _loadHomeAnalysis,
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Colors.white54),
+                          ),
+                          child: const Text('再試行'),
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      );
     }
-    while (metrics.length < 6) {
-      metrics.add(const FaceMetricScore(label: '-', value: 0));
-    }
+    final FaceAnalysisResult viewData = resolvedResult;
+    final List<FaceMetricScore> metrics = List<FaceMetricScore>.generate(
+      _primaryMetricLabels.length,
+      (int index) => FaceMetricScore(
+        label: _primaryMetricLabels[index],
+        value: index < viewData.metrics.length
+            ? viewData.metrics[index].value.clamp(0, 100)
+            : 50,
+      ),
+    );
+    final List<FaceMetricScore> secondPageMetrics =
+        List<FaceMetricScore>.generate(
+          _detailMetricLabels.length,
+          (int index) => FaceMetricScore(
+            label: _detailMetricLabels[index],
+            value: index < viewData.detailMetrics.length
+                ? viewData.detailMetrics[index].value.clamp(0, 100)
+                : 50,
+          ),
+        );
     final int potentialScore = metrics.first.value.clamp(0, 100);
     final int potentialDeltaFromOverall = potentialScore - viewData.overall;
     final String potentialDeltaText = potentialDeltaFromOverall >= 0
@@ -576,6 +837,15 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
         : '$potentialDeltaFromOverall';
     final int betterThan = (viewData.overall + 20).clamp(0, 99).toInt();
     final int potentialBetterThan = (potentialScore + 2).clamp(0, 99).toInt();
+    final String strengthsSummary = viewData.strengthsSummary.isNotEmpty
+        ? viewData.strengthsSummary
+        : '目元にやわらかい印象があり、親しみやすさがしっかり出ています。\n鼻筋と輪郭のバランスが良く、正面から見たときに顔立ちが整って見えるタイプです。\n口元も清潔感があり、全体として好印象につながる顔立ちです。';
+    final String improvementsSummary = viewData.improvementsSummary.isNotEmpty
+        ? viewData.improvementsSummary
+        : '輪郭はすでに整っているので、次は肌の質感を上げると全体の印象がさらに伸びます。\n眉の形をほんの少しだけ整えると、目元の強さが自然に引き立ちます。\n髪型は額まわりに軽さを作ると、顔全体がよりシャープに見えます。';
+    final String nextAction = viewData.nextAction.isNotEmpty
+        ? viewData.nextAction
+        : '明日から1週間は朝と夜の保湿を固定し、肌の質感を安定させましょう。次のヘアカットでは前髪を少し軽めにし、サイドのボリュームを抑えると全体のバランスが整います。眉は上ラインを触りすぎず下側の産毛だけを整えることで、目元を自然にシャープに見せられます。';
     final int visiblePageCount = 7;
 
     return Scaffold(
@@ -1228,9 +1498,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                         alignment: Alignment
                                                             .centerLeft,
                                                         child: Text(
-                                                          '目元にやわらかい印象があり、親しみやすさがしっかり出ています。\n'
-                                                          '鼻筋と輪郭のバランスが良く、正面から見たときに顔立ちが整って見えるタイプです。\n'
-                                                          '口元も清潔感があり、全体として好印象につながる顔立ちです。',
+                                                          strengthsSummary,
                                                           style: TextStyle(
                                                             color: Colors.white
                                                                 .withValues(
@@ -1340,9 +1608,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                         alignment: Alignment
                                                             .centerLeft,
                                                         child: Text(
-                                                          '輪郭はすでに整っているので、次は肌の質感を上げると全体の印象がさらに伸びます。\n'
-                                                          '眉の形をほんの少しだけ整えると、目元の強さが自然に引き立ちます。\n'
-                                                          '髪型は額まわりに軽さを作ると、顔全体がよりシャープに見えます。',
+                                                          improvementsSummary,
                                                           style: TextStyle(
                                                             color: Colors.white
                                                                 .withValues(
@@ -1455,10 +1721,7 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
                                                         alignment: Alignment
                                                             .centerLeft,
                                                         child: Text(
-                                                          '明日から1週間は朝と夜の保湿を固定し、肌の質感を安定させましょう。'
-                                                          '次のヘアカットでは前髪を少し軽めにし、サイドのボリュームを抑えると全体のバランスが整います。'
-                                                          '眉は上ラインを触りすぎず下側の産毛だけを整えることで、目元を自然にシャープに見せられます。'
-                                                          '写真は正面よりやや斜め（10〜15度）で、自然光の近くで撮ると印象がより良く見えます。',
+                                                          nextAction,
                                                           style: TextStyle(
                                                             color: Colors.white
                                                                 .withValues(

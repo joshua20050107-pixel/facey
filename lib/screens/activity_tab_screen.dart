@@ -31,30 +31,28 @@ class ActivityTabScreen extends StatefulWidget {
 }
 
 class _ActivityTabScreenState extends State<ActivityTabScreen> {
-  static const bool _useDummyWarmup = bool.fromEnvironment(
-    'FACEY_USE_DUMMY_HOME_CONDITION',
-    defaultValue: true,
-  );
   static const String _prefsBoxName = 'app_prefs';
   static const String _conditionLatestResultFrontImageKey =
       'condition_latest_result_front_image';
+  static const String _conditionLatestResultSideImageKey =
+      'condition_latest_result_side_image';
   static const String _conditionResultFrontImageHistoryKey =
       'condition_result_front_image_history';
   static const String _pendingConditionAnalysisUntilMsKey =
       'pending_condition_analysis_until_ms';
+  static const String _pendingConditionAnalysisStartedAtMsKey =
+      'pending_condition_analysis_started_at_ms';
   static const String _activityScanTargetPageKey = 'activity_scan_target_page';
   static const String _activityScanTargetAppliedAckKey =
       'activity_scan_target_applied_ack';
-  static const int _pendingConditionAnalysisDurationMs = 8000;
+  static const int _pendingConditionAnalysisVisualDurationMs = 18000;
   StreamSubscription<BoxEvent>? _prefsSubscription;
   final PageController _pageController = PageController(viewportFraction: 0.93);
   int _currentPageIndex = 0;
   String? _latestConditionFrontImagePath;
+  String? _latestConditionSideImagePath;
   bool _isPendingConditionAnalysis = false;
   double _pendingConditionAnalysisProgress = 0;
-  bool _isApiPreparing = true;
-  String? _apiInitError;
-  Timer? _analysisUnlockTimer;
   Timer? _analysisProgressTimer;
 
   @override
@@ -68,6 +66,7 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
       final Object? key = event.key;
       if (key == null ||
           key == _conditionLatestResultFrontImageKey ||
+          key == _conditionLatestResultSideImageKey ||
           key == _pendingConditionAnalysisUntilMsKey) {
         _loadLatestConditionResult();
         return;
@@ -107,7 +106,6 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
   @override
   void dispose() {
     _prefsSubscription?.cancel();
-    _analysisUnlockTimer?.cancel();
     _analysisProgressTimer?.cancel();
     _pageController.dispose();
     super.dispose();
@@ -115,42 +113,48 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
 
   void _loadLatestConditionResult() {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
-    _analysisUnlockTimer?.cancel();
     _analysisProgressTimer?.cancel();
     final int nowMs = DateTime.now().millisecondsSinceEpoch;
-    final int? pendingUntilMs = int.tryParse(
-      box.get(_pendingConditionAnalysisUntilMsKey) ?? '',
-    );
-    final bool isPending = pendingUntilMs != null && pendingUntilMs > nowMs;
+    final String pendingStatus =
+        (box.get(_pendingConditionAnalysisUntilMsKey) ?? '').trim();
+    final bool isPending = pendingStatus == 'running';
     if (isPending) {
-      final int remainingMs = pendingUntilMs - nowMs;
-      _pendingConditionAnalysisProgress = _progressFromRemainingMs(remainingMs);
+      final int startedAtMs =
+          int.tryParse(
+            box.get(_pendingConditionAnalysisStartedAtMsKey) ?? '',
+          ) ??
+          nowMs;
+      _pendingConditionAnalysisProgress = _progressFromElapsedMs(
+        nowMs - startedAtMs,
+      );
       _analysisProgressTimer = Timer.periodic(
         const Duration(milliseconds: 90),
         (_) {
           if (!mounted) return;
-          final int now = DateTime.now().millisecondsSinceEpoch;
-          final int left = pendingUntilMs - now;
-          if (left <= 0) {
+          final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+          final String status =
+              (prefs.get(_pendingConditionAnalysisUntilMsKey) ?? '').trim();
+          if (status != 'running') {
             _analysisProgressTimer?.cancel();
+            _loadLatestConditionResult();
             return;
           }
+          final int now = DateTime.now().millisecondsSinceEpoch;
+          final int started =
+              int.tryParse(
+                prefs.get(_pendingConditionAnalysisStartedAtMsKey) ?? '',
+              ) ??
+              now;
           setState(() {
-            _pendingConditionAnalysisProgress = _progressFromRemainingMs(left);
+            _pendingConditionAnalysisProgress = _progressFromElapsedMs(
+              now - started,
+            );
           });
         },
       );
-      _analysisUnlockTimer = Timer(
-        Duration(milliseconds: pendingUntilMs - nowMs),
-        () async {
-          final Box<String> prefs = Hive.box<String>(_prefsBoxName);
-          await prefs.delete(_pendingConditionAnalysisUntilMsKey);
-          if (!mounted) return;
-          _loadLatestConditionResult();
-        },
-      );
-    } else if (pendingUntilMs != null) {
+    } else if (pendingStatus.isNotEmpty) {
       unawaited(box.delete(_pendingConditionAnalysisUntilMsKey));
+      unawaited(box.delete(_pendingConditionAnalysisStartedAtMsKey));
       _pendingConditionAnalysisProgress = 0;
     }
     final String? rawFrontPath = box.get(_conditionLatestResultFrontImageKey);
@@ -165,9 +169,20 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
         frontPath != rawFrontPath) {
       unawaited(box.put(_conditionLatestResultFrontImageKey, frontPath));
     }
+    final String? rawSidePath = box.get(_conditionLatestResultSideImageKey);
+    final String? sidePath =
+        rawSidePath != null &&
+            rawSidePath.isNotEmpty &&
+            File(rawSidePath).existsSync()
+        ? rawSidePath
+        : null;
+    if (rawSidePath != null && rawSidePath.isNotEmpty && sidePath == null) {
+      unawaited(box.delete(_conditionLatestResultSideImageKey));
+    }
     if (!mounted) return;
     setState(() {
       _latestConditionFrontImagePath = frontPath;
+      _latestConditionSideImagePath = sidePath;
       _isPendingConditionAnalysis = isPending;
       if (!isPending) {
         _pendingConditionAnalysisProgress = 0;
@@ -175,37 +190,16 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
     });
   }
 
-  double _progressFromRemainingMs(int remainingMs) {
-    final double raw = 1 - (remainingMs / _pendingConditionAnalysisDurationMs);
-    return raw.clamp(0.0, 1.0);
+  double _progressFromElapsedMs(int elapsedMs) {
+    final double raw = elapsedMs / _pendingConditionAnalysisVisualDurationMs;
+    return raw.clamp(0.0, 0.95);
   }
 
   Future<void> _prepareApi() async {
-    if (!mounted) return;
-    if (_useDummyWarmup) {
-      setState(() {
-        _isApiPreparing = false;
-        _apiInitError = null;
-      });
-      return;
-    }
-    setState(() {
-      _isApiPreparing = true;
-      _apiInitError = null;
-    });
     try {
-      await FaceyApiService.waitUntilReady();
-      await FaceyApiService.warmupCondition();
-      if (!mounted) return;
-      setState(() {
-        _isApiPreparing = false;
-      });
+      await FaceyApiService.warmupForStartup();
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isApiPreparing = false;
-        _apiInitError = 'API接続に失敗しました。';
-      });
+      // Warmup is best-effort and stays in the background.
     }
   }
 
@@ -229,7 +223,10 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
     return null;
   }
 
-  Route<void> _buildResultScreenRoute({required String imagePath}) {
+  Route<void> _buildResultScreenRoute({
+    required String imagePath,
+    String? sideImagePath,
+  }) {
     return PageRouteBuilder<void>(
       transitionDuration: const Duration(milliseconds: 320),
       reverseTransitionDuration: const Duration(milliseconds: 420),
@@ -239,7 +236,10 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
             Animation<double> animation,
             Animation<double> secondaryAnimation,
           ) {
-            return ConditionAnalysisResultScreen(imagePath: imagePath);
+            return ConditionAnalysisResultScreen(
+              imagePath: imagePath,
+              sideImagePath: sideImagePath,
+            );
           },
       transitionsBuilder:
           (
@@ -492,48 +492,6 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isApiPreparing) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 14),
-            Text(
-              'APIを準備しています...',
-              style: TextStyle(color: Color(0xFFB9C0CF), fontSize: 14),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_apiInitError != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _apiInitError!,
-              style: const TextStyle(color: Color(0xFFFFCDD2), fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                ScanFlowHaptics.secondary();
-                _prepareApi();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white54),
-              ),
-              child: const Text('再試行'),
-            ),
-          ],
-        ),
-      );
-    }
-
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double widthScale = (constraints.maxWidth / 430).clamp(0.82, 1.0);
@@ -678,6 +636,8 @@ class _ActivityTabScreenState extends State<ActivityTabScreen> {
                                                     Navigator.of(context).push(
                                                       _buildResultScreenRoute(
                                                         imagePath: path,
+                                                        sideImagePath:
+                                                            _latestConditionSideImagePath,
                                                       ),
                                                     );
                                                   }

@@ -19,10 +19,6 @@ class ChatTabScreen extends StatefulWidget {
 
 class _ChatTabScreenState extends State<ChatTabScreen> {
   static const int _maxComposerImages = 5;
-  static const bool _useDummyChat = bool.fromEnvironment(
-    'FACEY_USE_DUMMY_CHAT',
-    defaultValue: true,
-  );
   static const TextStyle _userBubbleTextStyle = TextStyle(
     color: Color(0xFF0C1220),
     fontSize: 14,
@@ -60,7 +56,6 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
   }
 
   bool get _isSendEnabled =>
-      !_isApiPreparing &&
       !_isSending &&
       (_messageController.text.trim().isNotEmpty || _composerImages.isNotEmpty);
   bool get _canAddMoreImages => _composerImages.length < _maxComposerImages;
@@ -71,24 +66,20 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
       _isApiPreparing = true;
       _apiInitError = null;
     });
-    if (_useDummyChat) {
-      if (!mounted) return;
-      setState(() {
-        _isApiPreparing = false;
-      });
-      return;
-    }
     try {
       await FaceyApiService.waitUntilReady();
       if (!mounted) return;
       setState(() {
         _isApiPreparing = false;
       });
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() {
         _isApiPreparing = false;
-        _apiInitError = 'API接続に失敗しました。';
+        _apiInitError =
+            'API接続に失敗しました。\n'
+            'baseUrl: ${FaceyApiService.baseUrl}\n'
+            '$error';
       });
     }
   }
@@ -156,7 +147,8 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 
   Future<void> _sendMessage() async {
     final String inputText = _messageController.text.trim();
-    final List<String> imagePaths = _composerImages
+    final List<XFile> imageFiles = List<XFile>.from(_composerImages);
+    final List<String> imagePaths = imageFiles
         .map((XFile file) => file.path)
         .toList();
     if (inputText.isEmpty && imagePaths.isEmpty) return;
@@ -170,19 +162,39 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
           imagePaths: imagePaths,
         ),
       );
+      _messages.add(
+        const _ChatMessage(
+          role: _ChatRole.assistant,
+          text: '',
+          isLoading: true,
+        ),
+      );
       _messageController.clear();
       _composerImages.clear();
       _isSending = true;
     });
-    _scrollChatToBottom();
+    final int loadingMessageIndex = _messages.length - 1;
+    _jumpChatToBottom();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       FocusManager.instance.primaryFocus?.unfocus();
     });
 
     try {
-      final List<_ChatMessage> previousMessages = _messages.length > 1
-          ? _messages.sublist(0, _messages.length - 1)
+      if (_isApiPreparing) {
+        await FaceyApiService.waitUntilReady();
+        if (!mounted) return;
+        setState(() {
+          _isApiPreparing = false;
+          _apiInitError = null;
+        });
+      }
+
+      final List<_ChatMessage> nonLoadingMessages = _messages
+          .where((_ChatMessage m) => !m.isLoading)
+          .toList();
+      final List<_ChatMessage> previousMessages = nonLoadingMessages.length > 1
+          ? nonLoadingMessages.sublist(0, nonLoadingMessages.length - 1)
           : const <_ChatMessage>[];
       final List<FaceyChatTurn> history = previousMessages
           .where((_ChatMessage m) => m.text.trim().isNotEmpty)
@@ -196,24 +208,30 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
 
       final String reply = await _sendChatRequest(
         message: inputText.isEmpty ? '画像を送信しました。' : inputText,
-        imagePaths: imagePaths,
+        imageFiles: imageFiles,
         history: history,
       );
 
       if (!mounted) return;
       setState(() {
-        _messages.add(_ChatMessage(role: _ChatRole.assistant, text: reply));
+        _messages[loadingMessageIndex] = _ChatMessage(
+          role: _ChatRole.assistant,
+          text: reply,
+          animateTyping: true,
+        );
       });
-      _scrollChatToBottom();
-    } catch (_) {
+      _jumpChatToBottom();
+    } catch (error) {
       if (!mounted) return;
       setState(() {
-        _messages.add(
-          const _ChatMessage(
-            role: _ChatRole.assistant,
-            text: '通信エラーです。時間を置いて再試行してください。',
-          ),
+        _messages[loadingMessageIndex] = const _ChatMessage(
+          role: _ChatRole.assistant,
+          text: '通信エラーです。画面上の「再接続」で再試行してください。',
         );
+        _apiInitError =
+            '送信に失敗しました。\n'
+            'baseUrl: ${FaceyApiService.baseUrl}\n'
+            '$error';
       });
       _scrollChatToBottom();
     } finally {
@@ -236,45 +254,49 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
     });
   }
 
+  void _jumpChatToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_chatScrollController.hasClients) return;
+      _chatScrollController.jumpTo(
+        _chatScrollController.position.maxScrollExtent,
+      );
+    });
+  }
+
+  void _markTypingComplete(int index, String expectedText) {
+    if (!mounted) return;
+    if (index < 0 || index >= _messages.length) return;
+    final _ChatMessage current = _messages[index];
+    if (current.role != _ChatRole.assistant ||
+        current.isLoading ||
+        !current.animateTyping ||
+        current.text != expectedText) {
+      return;
+    }
+    setState(() {
+      _messages[index] = current.copyWith(animateTyping: false);
+    });
+  }
+
   String _heroTagForPath(String path) => 'chat_preview_$path';
 
   Future<String> _sendChatRequest({
     required String message,
-    required List<String> imagePaths,
+    required List<XFile> imageFiles,
     required List<FaceyChatTurn> history,
   }) async {
-    if (_useDummyChat) {
-      return _buildDummyReply(
-        message: message,
-        imagePaths: imagePaths,
-        history: history,
-      );
+    final List<List<int>> imageBytesList = <List<int>>[];
+    for (final XFile file in imageFiles) {
+      final List<int> bytes = await file.readAsBytes();
+      if (bytes.isNotEmpty) {
+        imageBytesList.add(bytes);
+      }
     }
-    return FaceyApiService.sendChat(message: message, history: history);
-  }
-
-  Future<String> _buildDummyReply({
-    required String message,
-    required List<String> imagePaths,
-    required List<FaceyChatTurn> history,
-  }) async {
-    await Future<void>.delayed(const Duration(milliseconds: 380));
-    final bool hasImages = imagePaths.isNotEmpty;
-    final bool firstTurn = history
-        .where((FaceyChatTurn t) => t.role == 'user')
-        .isEmpty;
-    final String normalizedMessage = message.trim();
-
-    if (firstTurn && hasImages) {
-      return '画像ありがとうございます。第一印象・清潔感・表情の3軸で見ています。まずは「髪」「眉」「姿勢」のどれを優先して改善したいですか？';
-    }
-    if (hasImages) {
-      return '画像ベースでの提案です。次の1週間は「照明を正面45度」「あごを軽く引く」「口角を少し上げる」を固定すると、印象のブレを抑えられます。';
-    }
-    if (normalizedMessage.contains('何') || normalizedMessage.contains('なに')) {
-      return '今すぐ着手しやすい順に、1. 眉の輪郭を整える 2. 髪のボリューム位置を上げる 3. 姿勢を胸から開く、がおすすめです。';
-    }
-    return '了解です。次の改善アクションを短期で回しましょう。今日: 撮影条件を固定、今週: 1ポイントだけ改善、来週: 再撮影して比較、の流れが効果的です。';
+    return FaceyApiService.sendChat(
+      message: message,
+      history: history,
+      imageBytesList: imageBytesList,
+    );
   }
 
   Future<void> _openImageReview(
@@ -399,19 +421,33 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                 ),
                 child: isUser
                     ? _buildUserMessage(message)
+                    : message.isLoading
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 8,
+                        ),
+                        child: const _ThreeDotsLoadingIndicator(),
+                      )
                     : Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 4,
                           vertical: 8,
                         ),
-                        child: Text(
-                          message.text,
+                        child: _TypewriterAssistantText(
+                          key: ValueKey<String>(
+                            'assistant_${index}_${message.text.hashCode}_${message.animateTyping}',
+                          ),
+                          text: message.text,
+                          animate: message.animateTyping,
                           style: TextStyle(
                             color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                             height: 1.45,
                           ),
+                          onCompleted: () =>
+                              _markTypingComplete(index, message.text),
                         ),
                       ),
               ),
@@ -593,7 +629,7 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                       Transform.translate(
                         offset: const Offset(5, 4),
                         child: IconButton(
-                          onPressed: _refreshChat,
+                          onPressed: _isSending ? null : _refreshChat,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(
                             minWidth: 58,
@@ -638,9 +674,8 @@ class _ChatTabScreenState extends State<ChatTabScreen> {
                 bottom: 118,
                 child: IgnorePointer(
                   child: _ChatEmptyStateOverlay(
-                    subtitle: _isApiPreparing
-                        ? 'API準備中です。準備ができるまでお待ちください'
-                        : _apiInitError ?? '改善点やこれからの行動・気になることを\n相談してみてください',
+                    subtitle:
+                        _apiInitError ?? '改善点やこれからの行動・気になることを\n相談してみてください',
                   ),
                 ),
               ),
@@ -739,11 +774,223 @@ class _ChatMessage {
     required this.role,
     required this.text,
     this.imagePaths = const <String>[],
+    this.isLoading = false,
+    this.animateTyping = false,
   });
 
   final _ChatRole role;
   final String text;
   final List<String> imagePaths;
+  final bool isLoading;
+  final bool animateTyping;
+
+  _ChatMessage copyWith({
+    _ChatRole? role,
+    String? text,
+    List<String>? imagePaths,
+    bool? isLoading,
+    bool? animateTyping,
+  }) {
+    return _ChatMessage(
+      role: role ?? this.role,
+      text: text ?? this.text,
+      imagePaths: imagePaths ?? this.imagePaths,
+      isLoading: isLoading ?? this.isLoading,
+      animateTyping: animateTyping ?? this.animateTyping,
+    );
+  }
+}
+
+class _ThreeDotsLoadingIndicator extends StatefulWidget {
+  const _ThreeDotsLoadingIndicator();
+
+  @override
+  State<_ThreeDotsLoadingIndicator> createState() =>
+      _ThreeDotsLoadingIndicatorState();
+}
+
+class _ThreeDotsLoadingIndicatorState extends State<_ThreeDotsLoadingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: const Color(0xFF1A2438).withValues(alpha: 0.58),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (BuildContext context, _) {
+            final double t = _controller.value;
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List<Widget>.generate(3, (int i) {
+                final double phase = ((t - (i * 0.16)) % 1.0 + 1.0) % 1.0;
+                final bool rising = phase < 0.5;
+                final double progress = rising ? phase * 2 : (1 - phase) * 2;
+                final double size = 6 + (progress * 3.4);
+                final double alpha = 0.35 + (progress * 0.65);
+                return Padding(
+                  padding: EdgeInsets.only(right: i == 2 ? 0 : 6),
+                  child: Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withValues(alpha: alpha),
+                    ),
+                  ),
+                );
+              }),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _TypewriterAssistantText extends StatefulWidget {
+  const _TypewriterAssistantText({
+    super.key,
+    required this.text,
+    required this.style,
+    required this.animate,
+    this.onCompleted,
+  });
+
+  final String text;
+  final TextStyle style;
+  final bool animate;
+  final VoidCallback? onCompleted;
+
+  @override
+  State<_TypewriterAssistantText> createState() =>
+      _TypewriterAssistantTextState();
+}
+
+class _TypewriterAssistantTextState extends State<_TypewriterAssistantText>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late List<int> _runes;
+  double _charProgress = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this);
+    _setupAnimation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TypewriterAssistantText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text != widget.text || oldWidget.animate != widget.animate) {
+      _setupAnimation();
+    }
+  }
+
+  void _setupAnimation() {
+    _controller.stop();
+    _controller.reset();
+    _controller.removeListener(_handleTick);
+    _controller.removeStatusListener(_handleStatusChanged);
+
+    _runes = widget.text.runes.toList(growable: false);
+    final int textLength = _runes.length;
+    if (!widget.animate || textLength <= 1) {
+      _charProgress = textLength.toDouble();
+      if (mounted) setState(() {});
+      return;
+    }
+
+    final int durationMs = (textLength * 24).clamp(260, 4200).toInt();
+    _controller.duration = Duration(milliseconds: durationMs);
+    _charProgress = 0;
+    _controller.addListener(_handleTick);
+    _controller.addStatusListener(_handleStatusChanged);
+    _controller.forward();
+  }
+
+  void _handleTick() {
+    final double next = (_controller.value * _runes.length).clamp(
+      0.0,
+      _runes.length.toDouble(),
+    );
+    if ((next - _charProgress).abs() < 0.001) return;
+    setState(() {
+      _charProgress = next;
+    });
+  }
+
+  void _handleStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      widget.onCompleted?.call();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_handleTick);
+    _controller.removeStatusListener(_handleStatusChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final double safeProgress = _charProgress.clamp(
+      0,
+      _runes.length.toDouble(),
+    );
+    final int fullCount = safeProgress.floor();
+    final double tailAlpha = (safeProgress - fullCount).clamp(0.0, 1.0);
+    final int visibleCount = fullCount + (tailAlpha > 0 ? 1 : 0);
+    if (visibleCount <= 0) {
+      return const SizedBox.shrink();
+    }
+    final List<InlineSpan> spans = <InlineSpan>[];
+    for (int i = 0; i < visibleCount && i < _runes.length; i++) {
+      final String char = String.fromCharCode(_runes[i]);
+      final bool isNewest = i == fullCount && tailAlpha > 0;
+      spans.add(
+        TextSpan(
+          text: char,
+          style: widget.style.copyWith(
+            color: widget.style.color?.withValues(
+              alpha: isNewest ? tailAlpha : 1.0,
+            ),
+          ),
+        ),
+      );
+    }
+    final double revealProgress = _runes.isEmpty
+        ? 1.0
+        : (visibleCount / _runes.length).clamp(0.0, 1.0);
+    final double opacity = widget.animate
+        ? (0.55 + (0.45 * revealProgress))
+        : 1.0;
+    return Opacity(
+      opacity: opacity,
+      child: RichText(
+        text: TextSpan(children: spans, style: widget.style),
+      ),
+    );
+  }
 }
 
 class _PreviewImage extends StatelessWidget {

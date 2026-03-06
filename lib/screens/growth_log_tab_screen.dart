@@ -1588,6 +1588,8 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
       'result_front_image_history';
   static const String _resultFrontImageHistoryMetaKey =
       'result_front_image_history_meta';
+  static const String _resultAnalysisByFrontPathKey =
+      'result_analysis_by_front_path';
   late final List<DateTime> _months;
   late int _selectedMonthIndex;
   late final List<_FrontImageEntry> _imagePaths;
@@ -1674,6 +1676,84 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
   int _compareMonth(DateTime a, DateTime b) {
     if (a.year != b.year) return a.year.compareTo(b.year);
     return a.month.compareTo(b.month);
+  }
+
+  int _scoreFrom(dynamic value, int fallback) {
+    if (value is int) return value.clamp(0, 100);
+    if (value is double) return value.round().clamp(0, 100);
+    if (value is String) return (int.tryParse(value) ?? fallback).clamp(0, 100);
+    return fallback.clamp(0, 100);
+  }
+
+  FaceAnalysisResult? _loadResultForPath(String frontImagePath) {
+    final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final String raw = box.get(_resultAnalysisByFrontPathKey) ?? '{}';
+    try {
+      final Map<String, dynamic> byPath = Map<String, dynamic>.from(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+      final Object? hit = byPath[frontImagePath];
+      if (hit is! Map<String, dynamic>) return null;
+      final List<dynamic> metricsRaw = (hit['metrics'] as List?) ?? <dynamic>[];
+      final List<dynamic> detailRaw =
+          (hit['detailMetrics'] as List?) ?? <dynamic>[];
+      const List<String> primaryLabels = <String>[
+        'ポテンシャル',
+        '性的魅力',
+        '印象',
+        '清潔感',
+        '骨格',
+        '肌',
+      ];
+      const List<String> detailLabels = <String>[
+        '男性らしさ',
+        '自信',
+        '親しみやすさ',
+        '髪の毛',
+        'シャープさ',
+        '目力',
+        '顎ライン',
+        '眉',
+      ];
+      final List<FaceMetricScore> metrics = List<FaceMetricScore>.generate(
+        primaryLabels.length,
+        (int index) {
+          final dynamic item = index < metricsRaw.length
+              ? metricsRaw[index]
+              : null;
+          final Map<String, dynamic> map = item is Map<String, dynamic>
+              ? item
+              : <String, dynamic>{};
+          return FaceMetricScore(
+            label: primaryLabels[index],
+            value: _scoreFrom(map['value'], 50),
+          );
+        },
+      );
+      final List<FaceMetricScore> detailMetrics =
+          List<FaceMetricScore>.generate(detailLabels.length, (int index) {
+            final dynamic item = index < detailRaw.length
+                ? detailRaw[index]
+                : null;
+            final Map<String, dynamic> map = item is Map<String, dynamic>
+                ? item
+                : <String, dynamic>{};
+            return FaceMetricScore(
+              label: detailLabels[index],
+              value: _scoreFrom(map['value'], 50),
+            );
+          });
+      return FaceAnalysisResult(
+        overall: _scoreFrom(hit['overall'], 50),
+        metrics: metrics,
+        detailMetrics: detailMetrics,
+        strengthsSummary: (hit['strengthsSummary'] ?? '').toString(),
+        improvementsSummary: (hit['improvementsSummary'] ?? '').toString(),
+        nextAction: (hit['nextAction'] ?? '').toString(),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   void _goToPreviousMonth() {
@@ -1790,23 +1870,6 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
     } catch (_) {
       // ignore file cleanup errors
     }
-  }
-
-  FaceAnalysisResult _resultForScore(_MonthlyScore score) {
-    return FaceAnalysisResult(
-      overall: score.overallAvg.clamp(0, 100),
-      metrics: <FaceMetricScore>[
-        FaceMetricScore(
-          label: 'ポテンシャル',
-          value: score.potentialAvg.clamp(0, 100),
-        ),
-        const FaceMetricScore(label: '性的魅力', value: 82),
-        const FaceMetricScore(label: '印象', value: 73),
-        const FaceMetricScore(label: '清潔感', value: 61),
-        const FaceMetricScore(label: '骨格', value: 54),
-        const FaceMetricScore(label: '肌', value: 34),
-      ],
-    );
   }
 
   @override
@@ -2035,20 +2098,15 @@ class _GrowthProgressPicsScreenState extends State<_GrowthProgressPicsScreen> {
                                   );
                                   return;
                                 }
-                                final _MonthlyScore openScore =
-                                    _scoreForMonth(_selectedMonthIndex) ??
-                                    _MonthlyScore(
-                                      overallAvg: widget.overallScore,
-                                      potentialAvg: widget.potentialScore,
-                                      hasData: widget.hasScores,
-                                    );
+                                final FaceAnalysisResult? storedResult =
+                                    _loadResultForPath(entry.path);
                                 _GrowthHaptics.primary();
                                 Navigator.of(context).push<void>(
                                   MaterialPageRoute<void>(
                                     builder: (_) => FaceAnalysisResultScreen(
                                       imagePath: entry.path,
                                       sideImagePath: entry.sidePath,
-                                      result: _resultForScore(openScore),
+                                      result: storedResult,
                                       persistSummary: false,
                                     ),
                                   ),

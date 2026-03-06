@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:convert';
@@ -11,6 +12,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../routes/scan_flow_material_page_route.dart';
+import '../services/facey_api_service.dart';
 import '../services/scan_flow_haptics.dart';
 import '../widgets/yomu_gender_two_choice.dart';
 import 'side_profile_upload_screen.dart';
@@ -58,8 +60,12 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
   static const String _resultMonthlyScoresKey = 'result_monthly_scores';
   static const String _pendingFaceAnalysisUntilMsKey =
       'pending_face_analysis_until_ms';
+  static const String _pendingFaceAnalysisStartedAtMsKey =
+      'pending_face_analysis_started_at_ms';
   static const String _pendingConditionAnalysisUntilMsKey =
       'pending_condition_analysis_until_ms';
+  static const String _pendingConditionAnalysisStartedAtMsKey =
+      'pending_condition_analysis_started_at_ms';
   static const String _homeScanTargetPageKey = 'home_scan_target_page';
   static const String _homeScanTargetAppliedAckKey =
       'home_scan_target_applied_ack';
@@ -76,6 +82,22 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
       'result_front_image_history';
   static const String _resultFrontImageHistoryMetaKey =
       'result_front_image_history_meta';
+  static const String _latestResultAnalysisJsonKey =
+      'latest_result_analysis_json';
+  static const String _latestResultAnalysisFrontPathKey =
+      'latest_result_analysis_front_path';
+  static const String _latestResultAnalysisSidePathKey =
+      'latest_result_analysis_side_path';
+  static const String _resultAnalysisByFrontPathKey =
+      'result_analysis_by_front_path';
+  static const String _conditionLatestResultAnalysisJsonKey =
+      'condition_latest_result_analysis_json';
+  static const String _conditionLatestResultAnalysisFrontPathKey =
+      'condition_latest_result_analysis_front_path';
+  static const String _conditionLatestResultAnalysisSidePathKey =
+      'condition_latest_result_analysis_side_path';
+  static const String _conditionResultAnalysisByFrontPathKey =
+      'condition_result_analysis_by_front_path';
   static const double _previewAspectRatio = 1057 / 1403;
   final ImagePicker _picker = ImagePicker();
   late String _currentImagePath;
@@ -416,15 +438,16 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
               } else {
                 await prefs.delete(_latestResultSideImageKey);
               }
-              await _persistGrowthSummaryForFaceFlow(
-                frontImagePath: laserImagePath,
-                sideImagePath: sideImagePath,
-              );
-              final int pendingUntilMs =
-                  DateTime.now().millisecondsSinceEpoch + 8000;
+              await prefs.put(_pendingFaceAnalysisUntilMsKey, 'running');
               await prefs.put(
-                _pendingFaceAnalysisUntilMsKey,
-                pendingUntilMs.toString(),
+                _pendingFaceAnalysisStartedAtMsKey,
+                DateTime.now().millisecondsSinceEpoch.toString(),
+              );
+              unawaited(
+                _runFaceHomeAnalysisInBackground(
+                  frontImagePath: laserImagePath,
+                  sideImagePath: sideImagePath,
+                ),
               );
               final String homePageAckToken = DateTime.now()
                   .microsecondsSinceEpoch
@@ -463,11 +486,16 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
               await prefs.delete(_conditionLatestResultSideImageKey);
             }
             await _persistConditionHistory(frontImagePath: laserImagePath);
-            final int pendingUntilMs =
-                DateTime.now().millisecondsSinceEpoch + 8000;
+            await prefs.put(_pendingConditionAnalysisUntilMsKey, 'running');
             await prefs.put(
-              _pendingConditionAnalysisUntilMsKey,
-              pendingUntilMs.toString(),
+              _pendingConditionAnalysisStartedAtMsKey,
+              DateTime.now().millisecondsSinceEpoch.toString(),
+            );
+            unawaited(
+              _runConditionAnalysisInBackground(
+                frontImagePath: laserImagePath,
+                sideImagePath: sideImagePath,
+              ),
             );
             final String activityPageAckToken = DateTime.now()
                 .microsecondsSinceEpoch
@@ -573,12 +601,169 @@ class _ScanImageConfirmScreenState extends State<ScanImageConfirmScreen> {
     return persistentFrontImagePath;
   }
 
-  Future<void> _persistGrowthSummaryForFaceFlow({
+  int _scoreFrom(dynamic value, int fallback) {
+    if (value is int) return value.clamp(0, 100);
+    if (value is double) return value.round().clamp(0, 100);
+    if (value is String) {
+      return (int.tryParse(value) ?? fallback).clamp(0, 100);
+    }
+    return fallback.clamp(0, 100);
+  }
+
+  Future<void> _persistAnalysisByFrontPath({
+    required String frontImagePath,
+    required Map<String, dynamic> analysis,
+  }) async {
+    final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+    final String raw = prefs.get(_resultAnalysisByFrontPathKey) ?? '{}';
+    Map<String, dynamic> byPath;
+    try {
+      byPath = Map<String, dynamic>.from(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      byPath = <String, dynamic>{};
+    }
+    byPath[frontImagePath] = analysis;
+    await prefs.put(_resultAnalysisByFrontPathKey, jsonEncode(byPath));
+  }
+
+  Future<void> _runFaceHomeAnalysisInBackground({
     required String frontImagePath,
     String? sideImagePath,
   }) async {
-    const int overallScore = 20;
-    const int potentialScore = 40;
+    final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+    try {
+      final List<int> frontImageBytes = await File(
+        frontImagePath,
+      ).readAsBytes();
+      final List<int>? sideImageBytes =
+          sideImagePath != null && sideImagePath.isNotEmpty
+          ? await File(sideImagePath).readAsBytes()
+          : null;
+      final String gender = widget.selectedGender == YomuGender.female
+          ? 'female'
+          : 'male';
+      final Map<String, dynamic> analysis = await FaceyApiService.analyzeHome(
+        frontImageBytes: frontImageBytes,
+        sideImageBytes: sideImageBytes,
+        gender: gender,
+      );
+      final int overallScore = _scoreFrom(analysis['overall'], 50);
+      final List<dynamic> metrics =
+          (analysis['metrics'] as List?) ?? <dynamic>[];
+      final dynamic firstMetric = metrics.isNotEmpty ? metrics.first : null;
+      final int potentialScore = _scoreFrom(
+        (firstMetric is Map<String, dynamic>) ? firstMetric['value'] : null,
+        50,
+      );
+
+      await prefs.put(_latestResultOverallScoreKey, overallScore.toString());
+      await prefs.put(
+        _latestResultPotentialScoreKey,
+        potentialScore.toString(),
+      );
+      await prefs.put(_latestResultAnalysisFrontPathKey, frontImagePath);
+      if (sideImagePath != null && sideImagePath.isNotEmpty) {
+        await prefs.put(_latestResultAnalysisSidePathKey, sideImagePath);
+      } else {
+        await prefs.delete(_latestResultAnalysisSidePathKey);
+      }
+      await prefs.put(_latestResultAnalysisJsonKey, jsonEncode(analysis));
+      await _persistAnalysisByFrontPath(
+        frontImagePath: frontImagePath,
+        analysis: analysis,
+      );
+
+      await _persistGrowthSummaryForFaceFlow(
+        frontImagePath: frontImagePath,
+        sideImagePath: sideImagePath,
+        overallScore: overallScore,
+        potentialScore: potentialScore,
+      );
+    } catch (_) {
+      // Keep pending clear behavior even on failure.
+    } finally {
+      await prefs.delete(_pendingFaceAnalysisUntilMsKey);
+      await prefs.delete(_pendingFaceAnalysisStartedAtMsKey);
+    }
+  }
+
+  Future<void> _persistConditionAnalysisByFrontPath({
+    required String frontImagePath,
+    required Map<String, dynamic> analysis,
+  }) async {
+    final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+    final String raw =
+        prefs.get(_conditionResultAnalysisByFrontPathKey) ?? '{}';
+    Map<String, dynamic> byPath;
+    try {
+      byPath = Map<String, dynamic>.from(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      byPath = <String, dynamic>{};
+    }
+    byPath[frontImagePath] = analysis;
+    await prefs.put(_conditionResultAnalysisByFrontPathKey, jsonEncode(byPath));
+  }
+
+  Future<void> _runConditionAnalysisInBackground({
+    required String frontImagePath,
+    String? sideImagePath,
+  }) async {
+    final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+    try {
+      final List<int> frontImageBytes = await File(
+        frontImagePath,
+      ).readAsBytes();
+      final List<int>? sideImageBytes =
+          sideImagePath != null && sideImagePath.isNotEmpty
+          ? await File(sideImagePath).readAsBytes()
+          : null;
+      final String gender = widget.selectedGender == YomuGender.female
+          ? 'female'
+          : 'male';
+      final Map<String, dynamic> analysis = await FaceyApiService.analyzeHome(
+        frontImageBytes: frontImageBytes,
+        sideImageBytes: sideImageBytes,
+        gender: gender,
+      );
+
+      await prefs.put(
+        _conditionLatestResultAnalysisFrontPathKey,
+        frontImagePath,
+      );
+      if (sideImagePath != null && sideImagePath.isNotEmpty) {
+        await prefs.put(
+          _conditionLatestResultAnalysisSidePathKey,
+          sideImagePath,
+        );
+      } else {
+        await prefs.delete(_conditionLatestResultAnalysisSidePathKey);
+      }
+      await prefs.put(
+        _conditionLatestResultAnalysisJsonKey,
+        jsonEncode(analysis),
+      );
+      await _persistConditionAnalysisByFrontPath(
+        frontImagePath: frontImagePath,
+        analysis: analysis,
+      );
+    } catch (_) {
+      // best effort
+    } finally {
+      await prefs.delete(_pendingConditionAnalysisUntilMsKey);
+      await prefs.delete(_pendingConditionAnalysisStartedAtMsKey);
+    }
+  }
+
+  Future<void> _persistGrowthSummaryForFaceFlow({
+    required String frontImagePath,
+    String? sideImagePath,
+    required int overallScore,
+    required int potentialScore,
+  }) async {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
     await box.put(_latestResultOverallScoreKey, overallScore.toString());
     await box.put(_latestResultPotentialScoreKey, potentialScore.toString());

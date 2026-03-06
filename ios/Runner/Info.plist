@@ -32,6 +32,11 @@
 	<string>顔解析のために画像を選択します。</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>解析結果カードを写真ライブラリに保存します。</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

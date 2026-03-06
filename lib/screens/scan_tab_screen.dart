@@ -28,10 +28,6 @@ class ScanTabScreen extends StatefulWidget {
 }
 
 class _ScanTabScreenState extends State<ScanTabScreen> {
-  static const bool _useDummyWarmup = bool.fromEnvironment(
-    'FACEY_USE_DUMMY_HOME_CONDITION',
-    defaultValue: true,
-  );
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultFrontImageKey = 'latest_result_front_image';
   static const String _latestResultSideImageKey = 'latest_result_side_image';
@@ -41,19 +37,18 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
       'result_front_image_history_meta';
   static const String _pendingFaceAnalysisUntilMsKey =
       'pending_face_analysis_until_ms';
+  static const String _pendingFaceAnalysisStartedAtMsKey =
+      'pending_face_analysis_started_at_ms';
   static const String _homeScanTargetPageKey = 'home_scan_target_page';
   static const String _homeScanTargetAppliedAckKey =
       'home_scan_target_applied_ack';
-  static const int _pendingFaceAnalysisDurationMs = 8000;
+  static const int _pendingFaceAnalysisVisualDurationMs = 18000;
   final PageController _pageController = PageController(viewportFraction: 0.93);
   int _currentPageIndex = 0;
   String? _latestResultFrontImagePath;
   String? _latestResultSideImagePath;
   bool _isPendingFaceAnalysis = false;
   double _pendingFaceAnalysisProgress = 0;
-  bool _isApiPreparing = true;
-  String? _apiInitError;
-  Timer? _analysisUnlockTimer;
   Timer? _analysisProgressTimer;
   StreamSubscription<BoxEvent>? _prefsSubscription;
 
@@ -111,7 +106,6 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   @override
   void dispose() {
     _prefsSubscription?.cancel();
-    _analysisUnlockTimer?.cancel();
     _analysisProgressTimer?.cancel();
     _pageController.dispose();
     super.dispose();
@@ -119,42 +113,46 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
 
   void _loadLatestResult() {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
-    _analysisUnlockTimer?.cancel();
     _analysisProgressTimer?.cancel();
     final int nowMs = DateTime.now().millisecondsSinceEpoch;
-    final int? pendingUntilMs = int.tryParse(
-      box.get(_pendingFaceAnalysisUntilMsKey) ?? '',
-    );
-    final bool isPending = pendingUntilMs != null && pendingUntilMs > nowMs;
+    final String pendingStatus = (box.get(_pendingFaceAnalysisUntilMsKey) ?? '')
+        .trim();
+    final bool isPending = pendingStatus == 'running';
     if (isPending) {
-      final int remainingMs = pendingUntilMs - nowMs;
-      _pendingFaceAnalysisProgress = _progressFromRemainingMs(remainingMs);
+      final int startedAtMs =
+          int.tryParse(box.get(_pendingFaceAnalysisStartedAtMsKey) ?? '') ??
+          nowMs;
+      _pendingFaceAnalysisProgress = _progressFromElapsedMs(
+        nowMs - startedAtMs,
+      );
       _analysisProgressTimer = Timer.periodic(
         const Duration(milliseconds: 90),
         (_) {
           if (!mounted) return;
-          final int now = DateTime.now().millisecondsSinceEpoch;
-          final int left = pendingUntilMs - now;
-          if (left <= 0) {
+          final Box<String> prefs = Hive.box<String>(_prefsBoxName);
+          final String status =
+              (prefs.get(_pendingFaceAnalysisUntilMsKey) ?? '').trim();
+          if (status != 'running') {
             _analysisProgressTimer?.cancel();
+            _loadLatestResult();
             return;
           }
+          final int now = DateTime.now().millisecondsSinceEpoch;
+          final int started =
+              int.tryParse(
+                prefs.get(_pendingFaceAnalysisStartedAtMsKey) ?? '',
+              ) ??
+              now;
           setState(() {
-            _pendingFaceAnalysisProgress = _progressFromRemainingMs(left);
+            _pendingFaceAnalysisProgress = _progressFromElapsedMs(
+              now - started,
+            );
           });
         },
       );
-      _analysisUnlockTimer = Timer(
-        Duration(milliseconds: pendingUntilMs - nowMs),
-        () async {
-          final Box<String> prefs = Hive.box<String>(_prefsBoxName);
-          await prefs.delete(_pendingFaceAnalysisUntilMsKey);
-          if (!mounted) return;
-          _loadLatestResult();
-        },
-      );
-    } else if (pendingUntilMs != null) {
+    } else if (pendingStatus.isNotEmpty) {
       unawaited(box.delete(_pendingFaceAnalysisUntilMsKey));
+      unawaited(box.delete(_pendingFaceAnalysisStartedAtMsKey));
       _pendingFaceAnalysisProgress = 0;
     }
     final String? rawFrontPath = box.get(_latestResultFrontImageKey);
@@ -193,37 +191,16 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
   }
 
   Future<void> _prepareApi() async {
-    if (!mounted) return;
-    if (_useDummyWarmup) {
-      setState(() {
-        _isApiPreparing = false;
-        _apiInitError = null;
-      });
-      return;
-    }
-    setState(() {
-      _isApiPreparing = true;
-      _apiInitError = null;
-    });
     try {
-      await FaceyApiService.waitUntilReady();
-      await FaceyApiService.warmupHome();
-      if (!mounted) return;
-      setState(() {
-        _isApiPreparing = false;
-      });
-    } catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _isApiPreparing = false;
-        _apiInitError = 'API接続に失敗しました。';
-      });
+      await FaceyApiService.warmupForStartup();
+    } catch (_) {
+      // Warmup is best-effort and stays in the background.
     }
   }
 
-  double _progressFromRemainingMs(int remainingMs) {
-    final double raw = 1 - (remainingMs / _pendingFaceAnalysisDurationMs);
-    return raw.clamp(0.0, 1.0);
+  double _progressFromElapsedMs(int elapsedMs) {
+    final double raw = elapsedMs / _pendingFaceAnalysisVisualDurationMs;
+    return raw.clamp(0.0, 0.95);
   }
 
   void _resetToFirstPage() {
@@ -798,48 +775,6 @@ class _ScanTabScreenState extends State<ScanTabScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isApiPreparing) {
-      return const Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 14),
-            Text(
-              'APIを準備しています...',
-              style: TextStyle(color: Color(0xFFB9C0CF), fontSize: 14),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_apiInitError != null) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _apiInitError!,
-              style: const TextStyle(color: Color(0xFFFFCDD2), fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                ScanFlowHaptics.secondary();
-                _prepareApi();
-              },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                side: const BorderSide(color: Colors.white54),
-              ),
-              child: const Text('再試行'),
-            ),
-          ],
-        ),
-      );
-    }
-
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final double widthScale = (constraints.maxWidth / 430).clamp(0.82, 1.0);

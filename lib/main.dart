@@ -9,6 +9,7 @@ import 'screens/chat_tab_screen.dart';
 import 'screens/coach_settings_screen.dart';
 import 'screens/growth_log_tab_screen.dart';
 import 'screens/scan_tab_screen.dart';
+import 'services/facey_api_service.dart';
 import 'services/notification_permission_service.dart';
 import 'screens/onboarding_start_screen.dart';
 import 'widgets/yomu_gender_two_choice.dart';
@@ -103,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
     _loadSavedGender();
     _loadSavedNotificationEnabled();
+    unawaited(FaceyApiService.warmupForStartup());
     _homeEnterController.forward();
   }
 
