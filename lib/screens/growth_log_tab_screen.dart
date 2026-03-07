@@ -6,6 +6,7 @@ import 'package:facey/screens/face_analysis_result_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../widgets/yomu_gender_two_choice.dart';
 import 'scan_next_screen.dart';
@@ -40,6 +41,7 @@ class GrowthLogTabScreen extends StatefulWidget {
 class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   static const String _prefsBoxName = 'app_prefs';
   static const String _latestResultFrontImageKey = 'latest_result_front_image';
+  static const String _latestResultCardImageKey = 'latest_result_card_image';
   static const String _resultOverallSumKey = 'result_overall_sum';
   static const String _resultPotentialSumKey = 'result_potential_sum';
   static const String _resultCountKey = 'result_count';
@@ -53,6 +55,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   int? _overallScore;
   int? _potentialScore;
   String? _latestFrontImagePath;
+  String? _latestCardImagePath;
   List<_FrontImageEntry> _frontImageHistory = <_FrontImageEntry>[];
   Map<String, _MonthlyScore> _monthlyScores = <String, _MonthlyScore>{};
   List<_HabitItem> _habits = <_HabitItem>[];
@@ -64,6 +67,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
   StreamSubscription<BoxEvent>? _prefsSubscription;
   static const Set<String> _observedPrefsKeys = <String>{
     _latestResultFrontImageKey,
+    _latestResultCardImageKey,
     _resultOverallSumKey,
     _resultPotentialSumKey,
     _resultCountKey,
@@ -100,6 +104,9 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
 
   Future<void> _loadLatestScores() async {
     final Box<String> box = Hive.box<String>(_prefsBoxName);
+    final Directory appDir = await getApplicationDocumentsDirectory();
+    final String scanResultsDirPath = '${appDir.path}/scan_results';
+    final String analysisResultsDirPath = '${appDir.path}/analysis_results';
     final int storedOverallSum =
         int.tryParse(box.get(_resultOverallSumKey) ?? '') ?? 0;
     final int storedPotentialSum =
@@ -107,22 +114,60 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     final int storedCount = int.tryParse(box.get(_resultCountKey) ?? '') ?? 0;
     final String metaRaw = box.get(_resultFrontImageHistoryMetaKey) ?? '[]';
     List<_FrontImageEntry> history = <_FrontImageEntry>[];
+    bool shouldRewriteMeta = false;
+
+    String fileNameOf(String path) {
+      final int slash = path.lastIndexOf('/');
+      final int backslash = path.lastIndexOf(r'\');
+      final int index = slash > backslash ? slash : backslash;
+      return index >= 0 ? path.substring(index + 1) : path;
+    }
+
+    String? resolveStoredPath(String rawPath) {
+      final String trimmed = rawPath.trim();
+      if (trimmed.isEmpty) return null;
+      if (File(trimmed).existsSync()) return trimmed;
+      final String fileName = fileNameOf(trimmed);
+      if (fileName.isEmpty) return null;
+      final List<String> candidates = <String>[];
+      if (trimmed.contains('/scan_results/')) {
+        candidates.add('$scanResultsDirPath/$fileName');
+        candidates.add('$analysisResultsDirPath/$fileName');
+      } else if (trimmed.contains('/analysis_results/')) {
+        candidates.add('$analysisResultsDirPath/$fileName');
+        candidates.add('$scanResultsDirPath/$fileName');
+      } else {
+        candidates.add('$scanResultsDirPath/$fileName');
+        candidates.add('$analysisResultsDirPath/$fileName');
+      }
+      for (final String candidate in candidates) {
+        if (File(candidate).existsSync()) return candidate;
+      }
+      return null;
+    }
+
     try {
       final List<dynamic> metaList = jsonDecode(metaRaw) as List<dynamic>;
       history = metaList
-          .whereType<Map<String, dynamic>>()
-          .map((Map<String, dynamic> item) {
+          .whereType<Map>()
+          .map((Map item) {
             final String path = (item['path'] ?? '').toString();
             final String sidePath = (item['sidePath'] ?? '').toString();
             final bool imageOnly = item['imageOnly'] == true;
             final String addedAtRaw = (item['addedAt'] ?? '').toString();
             final DateTime? addedAt = DateTime.tryParse(addedAtRaw);
-            if (path.isEmpty || !File(path).existsSync()) return null;
+            final String? resolvedPath = resolveStoredPath(path);
+            if (resolvedPath == null) return null;
+            final String? resolvedSidePath = sidePath.isEmpty
+                ? null
+                : resolveStoredPath(sidePath);
+            if (resolvedPath != path ||
+                (sidePath.isNotEmpty && resolvedSidePath != sidePath)) {
+              shouldRewriteMeta = true;
+            }
             return _FrontImageEntry(
-              path: path,
-              sidePath: sidePath.isNotEmpty && File(sidePath).existsSync()
-                  ? sidePath
-                  : null,
+              path: resolvedPath,
+              sidePath: resolvedSidePath,
               addedAt: addedAt ?? DateTime.now(),
               imageOnly: imageOnly,
             );
@@ -132,11 +177,13 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     } catch (_) {
       history = <_FrontImageEntry>[];
     }
+    bool shouldRewriteHistory = false;
     if (history.isEmpty) {
       final String historyRaw = box.get(_resultFrontImageHistoryKey) ?? '';
       history = historyRaw
           .split('\n')
-          .where((String p) => p.isNotEmpty && File(p).existsSync())
+          .map(resolveStoredPath)
+          .whereType<String>()
           .map(
             (String p) => _FrontImageEntry(
               path: p,
@@ -145,6 +192,23 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
             ),
           )
           .toList();
+      final List<String> original = historyRaw
+          .split('\n')
+          .where((String p) => p.isNotEmpty)
+          .toList();
+      final List<String> resolved = history.map((e) => e.path).toList();
+      if (original.length != resolved.length) {
+        shouldRewriteHistory = true;
+      } else {
+        for (int i = 0; i < original.length; i++) {
+          if (original[i] != resolved[i]) {
+            shouldRewriteHistory = true;
+            break;
+          }
+        }
+      }
+    } else if (shouldRewriteMeta) {
+      shouldRewriteHistory = true;
     }
     final String monthlyRaw = box.get(_resultMonthlyScoresKey) ?? '{}';
     Map<String, _MonthlyScore> monthlyScores = <String, _MonthlyScore>{};
@@ -195,11 +259,15 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
         ? (effectivePotentialSum / effectiveCount).round()
         : null;
     final String? rawLatestFrontPath = box.get(_latestResultFrontImageKey);
-    String? effectiveLatestFrontPath =
-        rawLatestFrontPath != null &&
-            rawLatestFrontPath.isNotEmpty &&
-            File(rawLatestFrontPath).existsSync()
-        ? rawLatestFrontPath
+    String? effectiveLatestFrontPath = rawLatestFrontPath != null
+        ? resolveStoredPath(rawLatestFrontPath)
+        : null;
+    final String? rawLatestCardPath = box.get(_latestResultCardImageKey);
+    final String? effectiveLatestCardPath =
+        rawLatestCardPath != null &&
+            rawLatestCardPath.isNotEmpty &&
+            File(rawLatestCardPath).existsSync()
+        ? rawLatestCardPath
         : null;
     if (effectiveLatestFrontPath == null && history.isNotEmpty) {
       effectiveLatestFrontPath = history.first.path;
@@ -225,6 +293,7 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
       _overallScore = overallParsed?.clamp(0, 100);
       _potentialScore = potentialParsed?.clamp(0, 100);
       _latestFrontImagePath = effectiveLatestFrontPath;
+      _latestCardImagePath = effectiveLatestCardPath;
       _frontImageHistory = history;
       _monthlyScores = monthlyScores;
       _habits = habits;
@@ -232,6 +301,26 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
     if (effectiveLatestFrontPath != null &&
         effectiveLatestFrontPath != rawLatestFrontPath) {
       await box.put(_latestResultFrontImageKey, effectiveLatestFrontPath);
+    }
+    if (shouldRewriteMeta) {
+      final List<Map<String, dynamic>> normalized = history
+          .map(
+            (_FrontImageEntry e) => <String, dynamic>{
+              'path': e.path,
+              'addedAt': e.addedAt.toIso8601String(),
+              if (e.sidePath != null && e.sidePath!.isNotEmpty)
+                'sidePath': e.sidePath,
+              if (e.imageOnly) 'imageOnly': true,
+            },
+          )
+          .toList();
+      await box.put(_resultFrontImageHistoryMetaKey, jsonEncode(normalized));
+    }
+    if (shouldRewriteHistory) {
+      await box.put(
+        _resultFrontImageHistoryKey,
+        history.map((e) => e.path).join('\n'),
+      );
     }
     if (storedCount <= 0 && monthlyCount > 0) {
       await box.put(_resultOverallSumKey, monthlyOverallSum.toString());
@@ -699,8 +788,8 @@ class _GrowthLogTabScreenState extends State<GrowthLogTabScreen> {
         .toList();
     final String? latestHomeResultImagePath = existingEntries.isNotEmpty
         ? existingEntries.first.path
-        : _latestFrontImagePath;
-    final bool canOpenProgress = hasScores && _frontImageHistory.isNotEmpty;
+        : _latestFrontImagePath ?? _latestCardImagePath;
+    final bool canOpenProgress = hasScores;
     final int overallScore = _overallScore ?? 0;
     final int potentialScore = _potentialScore ?? 0;
     final int potentialDelta = potentialScore - overallScore;

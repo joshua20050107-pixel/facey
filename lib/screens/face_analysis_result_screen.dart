@@ -556,15 +556,22 @@ class _FaceAnalysisResultScreenState extends State<FaceAnalysisResultScreen>
 
   Future<void> _loadHomeAnalysis() async {
     if (widget.result != null) return;
-    final FaceAnalysisResult? cached = widget.persistSummary
-        ? _loadPersistedAnalysisForCurrentImage()
-        : null;
+    final FaceAnalysisResult? cached = _loadPersistedAnalysisForCurrentImage();
     if (cached != null) {
       if (!mounted) return;
       setState(() {
         _apiResult = cached;
         _isApiLoading = false;
         _apiResultError = null;
+      });
+      return;
+    }
+    if (!widget.persistSummary) {
+      if (!mounted) return;
+      setState(() {
+        _apiResult = null;
+        _isApiLoading = false;
+        _apiResultError = '保存済みの解析結果が見つかりません。';
       });
       return;
     }

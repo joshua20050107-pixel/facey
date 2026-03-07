@@ -1,0 +1,32 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Facey (iOS/macOS localhost)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--dart-define=FACEY_API_BASE_URL=http://localhost:3000"
+      ]
+    },
+    {
+      "name": "Facey (Android emulator)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--dart-define=FACEY_API_BASE_URL=http://10.0.2.2:3000"
+      ]
+    },
+    {
+      "name": "Facey (iPhone device 192.168.11.24)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--dart-define=FACEY_API_BASE_URL=http://192.168.11.24:3000"
+      ]
+    }
+  ]
+}
